@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export default function Home() {
   return (
     <main className="max-w-[640px] mx-auto px-6 py-16 sm:py-24">
@@ -283,22 +285,30 @@ export default function Home() {
           aligned with SOL price milestones. Each $200 increase in SOL advances
           the entire collection to the next stage.
         </P>
+
+        <StageImage src="/stages/stage-1.png" alt="Stage I — The Humble Believer" />
         <P>
           <strong className="text-foreground">Stage I</strong>, below $200 SOL,
           presents the subject as a humble believer. Clothing is restrained.
           Ornamentation is minimal. The expression conveys quiet conviction
           rather than dominance.
         </P>
+
+        <StageImage src="/stages/stage-2.png" alt="Stage II — Emerging Confidence" />
         <P>
           <strong className="text-foreground">Stage II</strong>, between $200 and
           $399 SOL, introduces subtle signals of improvement. Fabrics refine.
           Accessories appear. Posture becomes more upright. Confidence emerges.
         </P>
+
+        <StageImage src="/stages/stage-3.png" alt="Stage III — Established Wealth" />
         <P>
           <strong className="text-foreground">Stage III</strong>, between $400 and
           $599 SOL, represents established wealth. Jewelry becomes explicit.
           Lighting intensifies. The subject appears accomplished and assured.
         </P>
+
+        <StageImage src="/stages/stage-4.png" alt="Stage IV — Maximal Expression" />
         <P>
           <strong className="text-foreground">Stage IV</strong>, between $600 and
           $799 SOL, embodies maximal expression. Diamond grills, layered chains,
@@ -306,6 +316,8 @@ export default function Home() {
           form. Lighting becomes dramatic and flash-like. The portrait embraces
           spectacle and visible abundance.
         </P>
+
+        <StageImage src="/stages/stage-5.png" alt="Stage V — Reflection" />
         <P>
           <strong className="text-foreground">Stage V</strong>, between $800 and
           $1,000 SOL, shifts the emotional register. The overt spectacle
@@ -315,6 +327,7 @@ export default function Home() {
           has been experienced; excess has been performed; what remains is
           perspective.
         </P>
+
         <P>
           This final stage introduces maturity rather than infinite escalation.
           The arc mirrors market psychology: belief, growth, dominance, excess,
@@ -441,6 +454,23 @@ function Section({
 
 function P({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-foreground/70 leading-relaxed mb-4">{children}</p>;
+}
+
+function StageImage({ src, alt }: { src: string; alt: string }) {
+  return (
+    <figure className="my-8">
+      <Image
+        src={src}
+        alt={alt}
+        width={400}
+        height={400}
+        className="w-full max-w-[400px] mx-auto block"
+      />
+      <figcaption className="text-xs text-muted/50 text-center mt-3">
+        {alt}
+      </figcaption>
+    </figure>
+  );
 }
 
 function Ul({ children }: { children: React.ReactNode }) {
