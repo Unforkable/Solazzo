@@ -8,14 +8,16 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <div className="mb-20 sm:mb-28">
         <p className="text-2xl sm:text-3xl font-normal leading-snug text-foreground mb-8">
-          This NFT gives you your money back when someone takes it from you.
+          Solana is trading under $100. This collection settles when it
+          hits $1,000.
         </p>
         <p className="text-base text-muted leading-relaxed">
-          1,000 people will lock SOL into a smart contract. Each will receive an
-          AI-generated Baroque oil portrait derived from their own likeness. Any
-          of them can be displaced at any time by someone willing to lock more.
-          The displaced party receives a full refund. No capital is lost. Only
-          position.
+          Lock SOL into one of 1,000 slots. Receive an AI-generated Baroque oil
+          portrait of your own face &mdash; one that evolves through five stages
+          as the price of SOL climbs toward a thousand dollars. Your capital is
+          never spent. It stays locked until someone outbids you or the
+          settlement condition is met. Either way, you get every SOL back. The
+          only thing you can lose is your position.
         </p>
       </div>
 
@@ -27,7 +29,7 @@ export default function Home() {
           SOLAZZO
         </h1>
         <p className="text-sm text-muted">
-          Whitepaper v1 &mdash; A Conviction-Based NFT Collection on Solana
+          Whitepaper v1 &mdash; Conviction-Based Identity on Solana
         </p>
       </div>
 
@@ -48,7 +50,7 @@ export default function Home() {
           <li><a href="#aesthetic-ceiling" className="hover:text-foreground transition-colors">Lock Amount as Aesthetic Ceiling</a></li>
           <li><a href="#culture" className="hover:text-foreground transition-colors">Cultural Positioning</a></li>
           <li><a href="#conclusion" className="hover:text-foreground transition-colors">Conclusion</a></li>
-          <li><a href="#collaborators" className="hover:text-foreground transition-colors">Built For Collaborators</a></li>
+          <li><a href="#faq" className="hover:text-foreground transition-colors">Frequently Asked Questions</a></li>
         </ol>
       </nav>
 
@@ -57,25 +59,52 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="abstract" number={1} title="Abstract">
         <P>
-          Solazzo is a collection of 1,000 competitive NFT slots on Solana where
-          ownership is earned through locked capital rather than purchased
-          through a fixed mint price. Participants claim and defend slots by
-          locking SOL into a smart contract. At any moment, the owner of a slot
-          is the participant who has committed the highest amount of SOL to it.
+          Solazzo takes its name from the Italian word <em>sollazzo</em> &mdash;
+          delight, amusement &mdash; fused with SOL, the native token of
+          Solana. The name captures the spirit of the collection: a place where
+          conviction meets spectacle, where financial commitment becomes
+          personal identity, and where the oldest traditions of portraiture
+          collide with the newest forms of digital ownership.
         </P>
         <P>
-          Locked capital remains fully refundable. Upon displacement or
-          settlement, participants receive exactly the amount of SOL originally
-          locked. The system deploys locked capital into liquid staking
-          infrastructure, capturing staking yield while preserving principal
-          guarantees. All staking rewards accrue to the Solazzo treasury.
+          Solazzo is built on a single premise: that Solana will reach $1,000.
         </P>
         <P>
-          Each slot is represented by a personalized, AI-generated oil portrait
-          derived from the current owner&rsquo;s headshot. The portrait evolves
-          across five predefined stages tied to SOL price milestones, forming a
-          narrative arc from humble belief through excess to reflective
-          realization.
+          The collection consists of exactly 1,000 NFT slots on Solana &mdash; a
+          number chosen deliberately, not arbitrarily. One thousand is scarce
+          enough to be meaningful, large enough to form a community, and
+          resonant with the price target that governs the entire system. Each
+          slot is claimed not through a mint price but through locked capital.
+          You don&rsquo;t buy a Solazzo &mdash; you commit to one by locking SOL
+          into a smart contract. The participant who has locked the most SOL to a
+          given slot owns it. Anyone may challenge for ownership at any time by
+          committing a greater amount. The displaced owner receives a full and
+          immediate refund of their principal. No capital is lost. Only position.
+        </P>
+        <P>
+          This structure means that participation is not a purchase but a
+          continuous act of conviction. You are not buying an NFT at a fixed
+          price and hoping it appreciates. You are locking capital into a system
+          that treats $1,000 SOL as a terminal milestone &mdash; and you remain
+          exposed until that milestone is reached, until you are displaced, or
+          until you withdraw. At today&rsquo;s prices, that is roughly an
+          11&times; bet. It is, by design, an unreasonable position to hold. The
+          collection exists for the people who hold it anyway.
+        </P>
+        <P>
+          Locked SOL is deployed into liquid staking infrastructure, generating
+          yield that accrues to the Solazzo treasury. Principal remains fully
+          refundable at all times. Each slot is visually represented by a
+          personalized, AI-generated oil portrait derived from the
+          owner&rsquo;s own likeness. The portrait evolves across five stages
+          tied to SOL price milestones, forming a narrative arc from humble
+          belief through excess to reflective maturity. The visual language is
+          rooted in the Baroque and Renaissance oil painting
+          tradition &mdash; chiaroscuro lighting, dark backgrounds, textured
+          brushwork &mdash; but the symbols of power are contemporary. Subjects
+          wear diamond grills, iced-out watches, and Solana-branded eyewear. The
+          result is controlled irony rather than parody: portraits that feel both
+          timeless and unmistakably of this moment.
         </P>
         <P>
           Solazzo unifies economic conviction, social signaling, and narrative
@@ -96,13 +125,26 @@ export default function Home() {
           opinion but an ongoing decision to remain exposed.
         </P>
         <P>
-          Solazzo formalizes that condition.
+          Solazzo formalizes that condition &mdash; and ties it to a specific,
+          falsifiable thesis.
         </P>
         <P>
-          Ownership is not purchased once and held passively. It must be
-          continuously defended. Capital is locked, not spent. Displacement is
-          always possible. The cost of ownership is the opportunity cost of
-          liquidity and the risk of being outbid.
+          The thesis is that Solana will reach $1,000. Whether that takes one
+          year or ten, whether it happens through gradual adoption or a parabolic
+          cycle, the collection is structured around this single future state.
+          Everything that happens before settlement &mdash; the locking, the
+          displacement, the portrait evolution &mdash; occurs in the space
+          between belief and realization. Participants are not expressing a vague
+          optimism about crypto. They are making a quantified bet that most
+          people, looking at current prices, would consider irrational.
+        </P>
+        <P>
+          That is precisely the point. Conviction is only interesting when it is
+          costly, when it requires holding a position that the prevailing
+          consensus considers wrong. Solazzo does not reward passive holding.
+          Ownership must be continuously defended. Capital is locked, not spent.
+          Displacement is always possible. The cost of ownership is the
+          opportunity cost of liquidity and the risk of being outbid.
         </P>
         <P>
           Conviction is measurable because it is denominated in locked SOL. It
@@ -232,8 +274,17 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="settlement" number={6} title="Settlement Condition">
         <P>
-          Solazzo defines a terminal milestone at SOL reaching $1,000, as
+          Solazzo defines a terminal milestone: SOL reaching $1,000, as
           determined by a specified oracle feed.
+        </P>
+        <P>
+          This is not an arbitrary number. It is a psychological and economic
+          threshold &mdash; roughly an order of magnitude above current
+          prices &mdash; that represents a conviction about Solana&rsquo;s
+          long-term position in the broader financial system. The entire
+          collection is structured as a wager that this milestone will eventually
+          be reached. Every portrait, every displacement, every SOL locked into
+          the contract exists in the interval between now and that moment.
         </P>
         <P>
           Upon confirmation, Solazzo enters a settled state. New locks and
@@ -253,7 +304,7 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="portraits" number={7} title="Personalized Portrait System">
         <P>
-          Each Solazzo slot is visually represented by a personalized oil
+          Each Solazzo NFT slot is visually represented by a personalized oil
           portrait derived from the current owner&rsquo;s headshot. Portrait
           generation is asynchronous and occurs off-chain.
         </P>
@@ -289,43 +340,58 @@ export default function Home() {
 
         <StageImage src="/stages/stage-1.png" alt="Stage I — The Humble Believer" />
         <P>
-          <strong className="text-foreground">Stage I</strong>, below $200 SOL,
-          presents the subject as a humble believer. Clothing is restrained.
+          <strong className="text-foreground">Stage I &mdash; Humble Believer</strong>{" "}
+          <span className="text-muted/50">Below $200 SOL</span>
+        </P>
+        <P>
+          The subject is presented as a humble believer. Clothing is restrained.
           Ornamentation is minimal. The expression conveys quiet conviction
           rather than dominance.
         </P>
 
-        <StageImage src="/stages/stage-2.png" alt="Stage II — Emerging Confidence" />
+        <StageImage src="/stages/stage-2.png" alt="Stage II — Rising Confidence" />
         <P>
-          <strong className="text-foreground">Stage II</strong>, between $200 and
-          $399 SOL, introduces subtle signals of improvement. Fabrics refine.
-          Accessories appear. Posture becomes more upright. Confidence emerges.
+          <strong className="text-foreground">Stage II &mdash; Rising Confidence</strong>{" "}
+          <span className="text-muted/50">$200&ndash;$399 SOL</span>
+        </P>
+        <P>
+          Subtle signals of improvement emerge. Fabrics refine. Accessories
+          appear. Posture becomes more upright. Confidence emerges.
         </P>
 
         <StageImage src="/stages/stage-3.png" alt="Stage III — Established Wealth" />
         <P>
-          <strong className="text-foreground">Stage III</strong>, between $400 and
-          $599 SOL, represents established wealth. Jewelry becomes explicit.
-          Lighting intensifies. The subject appears accomplished and assured.
+          <strong className="text-foreground">Stage III &mdash; Established Wealth</strong>{" "}
+          <span className="text-muted/50">$400&ndash;$599 SOL</span>
+        </P>
+        <P>
+          Established wealth is represented. Jewelry becomes explicit. Lighting
+          intensifies. The subject appears accomplished and assured.
         </P>
 
-        <StageImage src="/stages/stage-4.png" alt="Stage IV — Maximal Expression" />
+        <StageImage src="/stages/stage-4.png" alt="Stage IV — Maximum Excess" />
         <P>
-          <strong className="text-foreground">Stage IV</strong>, between $600 and
-          $799 SOL, embodies maximal expression. Diamond grills, layered chains,
-          and culturally recognizable accessories appear in their most theatrical
+          <strong className="text-foreground">Stage IV &mdash; Maximum Excess</strong>{" "}
+          <span className="text-muted/50">$600&ndash;$799 SOL</span>
+        </P>
+        <P>
+          Maximal expression is embodied. Diamond grills, layered chains, and
+          culturally recognizable accessories appear in their most theatrical
           form. Lighting becomes dramatic and flash-like. The portrait embraces
           spectacle and visible abundance.
         </P>
 
-        <StageImage src="/stages/stage-5.png" alt="Stage V — Reflection" />
+        <StageImage src="/stages/stage-5.png" alt="Stage V — Reflective Maturity" />
         <P>
-          <strong className="text-foreground">Stage V</strong>, between $800 and
-          $1,000 SOL, shifts the emotional register. The overt spectacle
-          recedes. Ornamentation softens. The expression becomes contemplative.
-          There is wisdom without sanctification, composure without triumph. The
-          subject appears aware that accumulation does not resolve longing. Wealth
-          has been experienced; excess has been performed; what remains is
+          <strong className="text-foreground">Stage V &mdash; Reflective Maturity</strong>{" "}
+          <span className="text-muted/50">$800&ndash;$1,000 SOL</span>
+        </P>
+        <P>
+          The emotional register shifts. The overt spectacle recedes.
+          Ornamentation softens. The expression becomes contemplative. There is
+          wisdom without sanctification, composure without triumph. The subject
+          appears aware that accumulation does not resolve longing. Wealth has
+          been experienced; excess has been performed; what remains is
           perspective.
         </P>
 
@@ -341,33 +407,19 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="aesthetic-ceiling" number={9} title="Lock Amount as Aesthetic Ceiling">
         <P>
-          Stage progression is determined by global SOL price and applies
-          equally to every portrait in the collection. But within each stage,
-          the amount of SOL locked by an individual owner determines the
-          aesthetic ceiling of their specific portrait.
+          While stage progression is determined by global SOL price, the amount
+          of SOL locked by an individual owner determines the aesthetic ceiling
+          within each stage.
         </P>
         <P>
-          This is not a cosmetic distinction. It is a design principle:
-          conviction should be visible in the work itself. Two portraits
-          rendered at Stage III may occupy the same narrative position &mdash;
-          established wealth &mdash; while expressing it at different levels of
-          refinement. A lower lock produces a portrait that is accomplished and
-          assured. A higher lock produces one that is intricate, textured, and
-          ornamented beyond the baseline.
-        </P>
-        <P>
-          In practice, this means higher locked capital unlocks richer brushwork
-          detail, rarer accessories, more complex layering of jewelry and
-          fabric, and premium ornamentation tiers unavailable at lower amounts.
-          At Stage IV, for example, a minimum lock renders diamond grills and
-          chains in their standard theatrical form. A significantly higher lock
-          adds iced-out watches, Solana-branded eyewear, and a more dramatic
-          flash-lit composition with greater painterly complexity.
+          Higher lock amounts unlock richer textures, rarer accessories, more
+          intricate details, and premium ornamentation tiers. Two participants at
+          the same stage may display different levels of refinement based on
+          their locked capital.
         </P>
         <P>
           Price determines narrative position. Locked capital determines
-          stylistic refinement. The portrait is therefore a dual record: of
-          where the market stands, and of how much the individual committed.
+          stylistic refinement.
         </P>
       </Section>
 
@@ -376,56 +428,29 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="culture" number={10} title="Cultural Positioning">
         <P>
-          The decision to build Solazzo around Baroque and Renaissance oil
-          portraiture was not aesthetic preference. It was conceptual precision.
+          The visual language of Solazzo draws from Renaissance and Baroque oil
+          painting traditions &mdash; chiaroscuro lighting, textured brushwork,
+          dark backgrounds, and psychologically charged expressions. These
+          techniques historically depicted figures of importance, nobility, and
+          myth.
         </P>
         <P>
-          For centuries, the painted portrait was the primary technology of
-          status. Commissioned by merchants, aristocrats, and rulers, these
-          works performed a specific function: they made power legible,
-          projected permanence, and transformed the transient accumulation of
-          wealth into something that looked like it had always existed.
-          Caravaggio, Rembrandt, Vel&aacute;zquez &mdash; the masters of this
-          tradition were not simply skilled painters. They were the
-          infrastructure through which elites constructed their public identity.
+          Solazzo juxtaposes this classical aesthetic with contemporary crypto
+          iconography and degen symbolism. Diamond-set grills, iced-out watches,
+          ecosystem-referential eyewear, and other modern signifiers are
+          integrated proportionally within classical composition.
         </P>
         <P>
-          Crypto participation involves a structurally similar impulse. Capital
-          is committed to narratives that may or may not resolve. Identity
-          becomes entangled with positions. Conviction is performed publicly,
-          through wallets and social feeds, in ways that are simultaneously
-          sincere and theatrical. The degen and the aristocrat are separated by
-          four hundred years and a very different set of accessories, but they
-          share the same underlying desire: to make belief visible, to have the
-          external world reflect an internal commitment.
+          The result is controlled irony rather than parody. The portraits are
+          timeless yet contemporary. They reflect the duality of crypto
+          participation: solemn belief intertwined with speculative spectacle.
         </P>
         <P>
-          Solazzo takes this seriously rather than laughing at it. The visual
-          language &mdash; chiaroscuro lighting, dark backgrounds, cracked-canvas
-          texture, psychologically charged expressions &mdash; is applied without
-          irony to subjects wearing diamond grills, iced-out watches, and
-          Solana-branded eyewear. The result is controlled irony rather than
-          parody. The portraits are not making fun of crypto culture by dressing
-          it in classical clothing. They are asking what it looks like when the
-          oldest tradition of status portraiture encounters the newest. The
-          answer, it turns out, is not absurd. It is strangely coherent.
-        </P>
-        <P>
-          This coherence is what makes the format work as identity. A cartoon
-          avatar signals community membership. A Baroque oil portrait derived
-          from your own likeness signals something else &mdash; a claim to
-          permanence, a willingness to be rendered seriously, a particular
-          relationship to your own conviction. Holders who adopt their portrait
-          as their PFP are not being ironic. They are using the oldest tool in
-          the status repertoire, updated for the current moment.
-        </P>
-        <P>
-          The style also provides durability. Trends in generative art move
-          fast. The Baroque does not. A portrait painted in this tradition in
-          2026 will not look dated in 2030 in the way a pixelated avatar or a
-          procedurally generated cartoon might. The oil painting format anchors
-          Solazzo in a visual tradition with historical depth rather than
-          cycle-dependent aesthetics.
+          By allowing participants to generate portraits derived from their own
+          likeness, Solazzo increases the likelihood that holders will adopt the
+          NFT as their public identity. The oil painting format anchors the
+          system in a visual tradition with historical durability rather than
+          trend-based cartoon aesthetics.
         </P>
       </Section>
 
@@ -434,9 +459,9 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="conclusion" number={11} title="Conclusion">
         <P>
-          Solazzo introduces a conviction-based NFT collection in which
-          ownership is dynamic, principal is protected, yield sustains the
-          system, and identity evolves with market conditions.
+          Solazzo introduces a conviction-based NFT primitive in which ownership
+          is dynamic, principal is protected, yield sustains the system, and
+          identity evolves with market conditions.
         </P>
         <P>
           The NFT is not a static collectible. It is a live staking position
@@ -453,39 +478,127 @@ export default function Home() {
       </Section>
 
       {/* ---------------------------------------------------------- */}
-      {/* 12. BUILT FOR COLLABORATORS                                */}
+      {/* 12. FREQUENTLY ASKED QUESTIONS                             */}
       {/* ---------------------------------------------------------- */}
-      <Section id="collaborators" number={12} title="Built For Collaborators">
-        <P>
-          Solazzo is in active development. The implementation spans smart
-          contract engineering, AI portrait generation, and frontend
-          design &mdash; and the quality of each depends on the people who
-          build it.
-        </P>
-        <P>
-          If you are reading this document as a potential collaborator, this is
-          what the project requires:
-        </P>
-        <P>
-          <strong className="text-foreground">On the technical side:</strong> a
-          Solana smart contract engineer fluent in Rust and Anchor to own the
-          lock-to-own mechanism, liquid staking integration, and on-chain
-          security; a full-stack engineer to build the wallet-connected
-          frontend, portrait studio, and metadata engine; and an AI/ML engineer
-          experienced with diffusion models, LoRA training, and face
-          preservation techniques to develop the portrait generation pipeline.
-        </P>
-        <P>
-          <strong className="text-foreground">On the creative side:</strong> an
-          art director or painter with a genuine relationship to Baroque and
-          Renaissance oil painting who can define the visual language
-          systematically, curate the training dataset, and ensure that the
-          aesthetic holds across five stages and thousands of unique portraits.
-        </P>
-        <P>
-          The project brief, implementation plan, and reference images are
-          available on request.
-        </P>
+      <Section id="faq" number={12} title="Frequently Asked Questions">
+        <FaqItem question="Do I earn staking rewards on my locked SOL?">
+          No. The staking yield generated by your locked SOL accrues to the
+          Solazzo treasury, not to you individually. This is how the project
+          sustains itself &mdash; there is no mint price, no royalty structure,
+          and no token. Staking yield is the sole revenue model. Your return is
+          not denominated in yield. It is denominated in conviction. You lock SOL
+          at today&rsquo;s prices, and if the thesis is correct, you withdraw
+          that same SOL when it is worth substantially more. The opportunity cost
+          of foregone staking rewards is real, but it is modest relative to the
+          magnitude of the bet itself. If SOL reaches $1,000, the difference
+          between earning 7% APY and not earning it on the way there is trivial
+          compared to the appreciation of the underlying asset you held through
+          conviction rather than selling.
+        </FaqItem>
+
+        <FaqItem question="Can I get my SOL back at any time?">
+          Yes. You can voluntarily withdraw your locked SOL at any point, which
+          releases your slot. You will receive exactly the amount you
+          locked &mdash; no penalties, no fees, no slippage on principal. The
+          only thing you lose is your position and your portrait. If you are
+          displaced by someone locking a greater amount, you are also refunded in
+          full automatically.
+        </FaqItem>
+
+        <FaqItem question="What happens if SOL never reaches $1,000?">
+          Your SOL remains locked for as long as you choose to keep it locked.
+          There is no expiration. You can withdraw at any time. The settlement
+          condition at $1,000 is a terminal milestone &mdash; it concludes the
+          competitive phase and enables all holders to withdraw simultaneously.
+          But you are never forced to wait for settlement. The system is designed
+          so that the only scenario in which your capital is inaccessible is one
+          in which you have voluntarily chosen to keep it there.
+        </FaqItem>
+
+        <FaqItem question="Why only 1,000 slots?">
+          The scarcity is structural, not cosmetic. One thousand slots means
+          ownership is genuinely competitive &mdash; there is a finite number of
+          positions and anyone can be displaced. It also means the collection can
+          sustain cultural coherence. A 10,000-piece generative collection
+          dilutes identity. One thousand portraits, each derived from a real
+          person&rsquo;s likeness and painted in a consistent Baroque style, form
+          something closer to a gallery than a drop. The number also rhymes with
+          the price target. One thousand slots. One thousand dollars.
+        </FaqItem>
+
+        <FaqItem question="Is my face stored somewhere?">
+          No. Headshot uploads are processed ephemerally during the portrait
+          generation session. The raw photograph is used only to extract a facial
+          embedding for the AI model and is never permanently stored. Once your
+          five-stage portrait set is finalized, only the stylized oil paintings
+          are retained &mdash; uploaded to Arweave for permanent decentralized
+          storage. The original headshot is discarded. Solazzo never holds,
+          sells, or shares your biometric data.
+        </FaqItem>
+
+        <FaqItem question="What if I don't like my portrait?">
+          Each ownership cycle includes a limited number of draft iterations
+          before finalization. You can preview and regenerate your portrait
+          within that allowance. Once you finalize, the five-stage set is
+          committed to decentralized storage and becomes the permanent visual
+          representation of your slot. If you are displaced and later reclaim the
+          slot (or claim a new one), a fresh portrait session begins.
+        </FaqItem>
+
+        <FaqItem question="What happens to my portrait if I get displaced?">
+          Your portrait is removed from the slot. The NFT reverts to a neutral
+          placeholder until the new owner generates their own portrait. Your
+          finalized images remain on Arweave &mdash; they are permanently stored
+          and accessible &mdash; but they are no longer displayed as the active
+          representation of that slot.
+        </FaqItem>
+
+        <FaqItem question="Can I choose which slot I want?">
+          Yes. You can claim any unowned slot or challenge any owned slot by
+          locking a greater amount of SOL. There is no random assignment. Slot
+          selection is a deliberate act.
+        </FaqItem>
+
+        <FaqItem question="What determines how detailed or ornate my portrait is?">
+          Two factors. First, the global SOL price determines your <em>stage</em>{" "}
+          &mdash; which of the five evolutionary phases your portrait displays.
+          Second, your individual lock amount determines the <em>aesthetic
+          ceiling</em> within that stage. Two holders at the same stage may have
+          different levels of refinement &mdash; richer textures, rarer
+          accessories, more intricate brushwork &mdash; based on how much SOL
+          they have committed. Price determines narrative position. Locked
+          capital determines stylistic depth.
+        </FaqItem>
+
+        <FaqItem question="Is this a security? Am I investing?">
+          Solazzo is not an investment product and does not promise financial
+          returns. You lock SOL and receive it back in exactly the same quantity.
+          There is no token, no equity, no profit-sharing arrangement, and no
+          expectation of profit derived from the efforts of others. The locked
+          SOL remains your property throughout. Staking yield accrues to the
+          treasury as payment for the infrastructure, portrait generation, and
+          operational costs of the system &mdash; not as a return distributed to
+          participants. Solazzo is a collection, not a fund. That said, this
+          document is not legal advice and participants should evaluate their own
+          regulatory context.
+        </FaqItem>
+
+        <FaqItem question="What blockchain is this on? Why Solana?">
+          Solana. The choice is not incidental &mdash; it is the thesis. The
+          collection&rsquo;s entire economic structure is built around the belief
+          that SOL will reach $1,000. Solana also provides the transaction speed,
+          low fees, and composability that make the lock-and-displace mechanic
+          practical at scale. A displacement must settle instantly and cheaply.
+          Solana makes that possible.
+        </FaqItem>
+
+        <FaqItem question="How is the $1,000 settlement price verified?">
+          The SOL/USD price is consumed from Pyth Network&rsquo;s on-chain
+          oracle feed. Settlement requires the price to be sustained above
+          $1,000 for a confirmation window &mdash; multiple consecutive oracle
+          updates &mdash; to prevent flash spikes or manipulation from triggering
+          a premature conclusion.
+        </FaqItem>
       </Section>
 
       {/* ---------------------------------------------------------- */}
@@ -559,5 +672,20 @@ function Ul({ children }: { children: React.ReactNode }) {
     <ul className="text-sm text-foreground/70 leading-relaxed mb-4 ml-4 space-y-1 list-disc list-outside">
       {children}
     </ul>
+  );
+}
+
+function FaqItem({
+  question,
+  children,
+}: {
+  question: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mb-6">
+      <p className="text-sm font-medium text-foreground mb-2">{question}</p>
+      <p className="text-sm text-foreground/70 leading-relaxed">{children}</p>
+    </div>
   );
 }
