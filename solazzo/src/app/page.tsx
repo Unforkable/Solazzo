@@ -12,9 +12,10 @@ export default function Home() {
         </p>
         <p className="text-base text-muted leading-relaxed">
           1,000 people will lock SOL into a smart contract. Each will receive an
-          AI-generated oil portrait in the Baroque tradition. Any of them can be
-          displaced at any time by someone willing to lock more. The displaced
-          party receives a full refund. No capital is lost. Only position.
+          AI-generated Baroque oil portrait derived from their own likeness. Any
+          of them can be displaced at any time by someone willing to lock more.
+          The displaced party receives a full refund. No capital is lost. Only
+          position.
         </p>
       </div>
 
@@ -26,7 +27,7 @@ export default function Home() {
           SOLAZZO
         </h1>
         <p className="text-sm text-muted">
-          Whitepaper v1 &mdash; A Conviction-Based NFT Identity Protocol on Solana
+          Whitepaper v1 &mdash; A Conviction-Based NFT Collection on Solana
         </p>
       </div>
 
@@ -47,6 +48,7 @@ export default function Home() {
           <li><a href="#aesthetic-ceiling" className="hover:text-foreground transition-colors">Lock Amount as Aesthetic Ceiling</a></li>
           <li><a href="#culture" className="hover:text-foreground transition-colors">Cultural Positioning</a></li>
           <li><a href="#conclusion" className="hover:text-foreground transition-colors">Conclusion</a></li>
+          <li><a href="#collaborators" className="hover:text-foreground transition-colors">Built For Collaborators</a></li>
         </ol>
       </nav>
 
@@ -55,31 +57,30 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="abstract" number={1} title="Abstract">
         <P>
-          This protocol introduces a new NFT primitive in which ownership is
-          earned and maintained through locked capital rather than purchased
-          through a fixed mint price. Participants acquire and defend one of
-          1,000 NFT slots by locking SOL into a smart contract. At any moment,
-          the owner of a slot is the participant who has committed the highest
-          amount of SOL to that slot.
+          Solazzo is a collection of 1,000 competitive NFT slots on Solana where
+          ownership is earned through locked capital rather than purchased
+          through a fixed mint price. Participants claim and defend slots by
+          locking SOL into a smart contract. At any moment, the owner of a slot
+          is the participant who has committed the highest amount of SOL to it.
         </P>
         <P>
-          Locked capital remains fully refundable. Upon displacement or protocol
+          Locked capital remains fully refundable. Upon displacement or
           settlement, participants receive exactly the amount of SOL originally
-          locked. The protocol deploys locked capital into liquid staking
+          locked. The system deploys locked capital into liquid staking
           infrastructure, capturing staking yield while preserving principal
-          guarantees. All staking rewards accrue to the protocol treasury.
+          guarantees. All staking rewards accrue to the Solazzo treasury.
         </P>
         <P>
-          Each NFT slot is represented by a personalized, AI-generated oil
-          portrait derived from the current owner&rsquo;s headshot. The portrait
-          evolves across five predefined stages tied to SOL price milestones,
-          forming a narrative arc from humble belief through excess to reflective
+          Each slot is represented by a personalized, AI-generated oil portrait
+          derived from the current owner&rsquo;s headshot. The portrait evolves
+          across five predefined stages tied to SOL price milestones, forming a
+          narrative arc from humble belief through excess to reflective
           realization.
         </P>
         <P>
-          The protocol unifies economic conviction, social signaling, and
-          narrative progression into a single system. Ownership is dynamic.
-          Identity is personalized. Wealth is expressed visually but ultimately
+          Solazzo unifies economic conviction, social signaling, and narrative
+          progression into a single system. Ownership is dynamic. Identity is
+          personalized. Wealth is expressed visually but ultimately
           interrogated.
         </P>
       </Section>
@@ -95,7 +96,7 @@ export default function Home() {
           opinion but an ongoing decision to remain exposed.
         </P>
         <P>
-          This protocol formalizes that condition.
+          Solazzo formalizes that condition.
         </P>
         <P>
           Ownership is not purchased once and held passively. It must be
@@ -130,7 +131,7 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="architecture" number={3} title="System Architecture">
         <P>
-          The protocol consists of 1,000 NFT slots deployed on Solana. Each slot
+          Solazzo consists of 1,000 NFT slots deployed on Solana. Each slot
           represents a competitive staking position and an associated evolving
           portrait.
         </P>
@@ -161,7 +162,7 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="lock-to-own" number={4} title="Lock-to-Own Mechanism">
         <P>
-          Ownership of a slot is established by locking SOL into the protocol
+          Ownership of a slot is established by locking SOL into the Solazzo
           contract. If a slot is unowned, any participant may claim it by locking
           a positive amount of SOL. If a slot is already owned, a new
           participant must lock an amount that exceeds the existing locked amount
@@ -213,12 +214,12 @@ export default function Home() {
         <P>
           Participants are guaranteed the return of exactly the amount of SOL
           they locked. Staking rewards generated during the lock period accrue
-          exclusively to the protocol treasury.
+          exclusively to the Solazzo treasury.
         </P>
         <P>
-          Protocol revenue is therefore a function of total locked SOL, staking
-          yield, and time. Sustainability derives from aggregate conviction
-          rather than mint proceeds.
+          Revenue is therefore a function of total locked SOL, staking yield,
+          and time. Sustainability derives from aggregate conviction rather than
+          mint proceeds.
         </P>
         <P>
           Principal protection, yield segregation, and buffer solvency are core
@@ -231,15 +232,15 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="settlement" number={6} title="Settlement Condition">
         <P>
-          The protocol defines a terminal milestone at SOL reaching $1,000, as
+          Solazzo defines a terminal milestone at SOL reaching $1,000, as
           determined by a specified oracle feed.
         </P>
         <P>
-          Upon confirmation, the protocol enters a settled state. New locks and
+          Upon confirmation, Solazzo enters a settled state. New locks and
           displacements are disabled. Each current owner may withdraw their
           locked SOL principal. A final liquidity rebalance ensures sufficient
           funds for withdrawals. Staking rewards accumulated up to this point
-          remain in the protocol treasury.
+          remain in the Solazzo treasury.
         </P>
         <P>
           The settlement condition concludes the competitive phase. Capital is
@@ -252,9 +253,9 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="portraits" number={7} title="Personalized Portrait System">
         <P>
-          Each NFT slot is visually represented by a personalized oil portrait
-          derived from the current owner&rsquo;s headshot. Portrait generation is
-          asynchronous and occurs off-chain.
+          Each Solazzo slot is visually represented by a personalized oil
+          portrait derived from the current owner&rsquo;s headshot. Portrait
+          generation is asynchronous and occurs off-chain.
         </P>
         <P>
           Upon acquiring a slot, the NFT displays a neutral placeholder. The
@@ -340,19 +341,33 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="aesthetic-ceiling" number={9} title="Lock Amount as Aesthetic Ceiling">
         <P>
-          While stage progression is determined by global SOL price, the amount
-          of SOL locked by an individual owner determines the aesthetic ceiling
-          within each stage.
+          Stage progression is determined by global SOL price and applies
+          equally to every portrait in the collection. But within each stage,
+          the amount of SOL locked by an individual owner determines the
+          aesthetic ceiling of their specific portrait.
         </P>
         <P>
-          Higher lock amounts unlock richer textures, rarer accessories, more
-          intricate details, and premium ornamentation tiers. Two participants at
-          the same stage may display different levels of refinement based on
-          their locked capital.
+          This is not a cosmetic distinction. It is a design principle:
+          conviction should be visible in the work itself. Two portraits
+          rendered at Stage III may occupy the same narrative position &mdash;
+          established wealth &mdash; while expressing it at different levels of
+          refinement. A lower lock produces a portrait that is accomplished and
+          assured. A higher lock produces one that is intricate, textured, and
+          ornamented beyond the baseline.
+        </P>
+        <P>
+          In practice, this means higher locked capital unlocks richer brushwork
+          detail, rarer accessories, more complex layering of jewelry and
+          fabric, and premium ornamentation tiers unavailable at lower amounts.
+          At Stage IV, for example, a minimum lock renders diamond grills and
+          chains in their standard theatrical form. A significantly higher lock
+          adds iced-out watches, Solana-branded eyewear, and a more dramatic
+          flash-lit composition with greater painterly complexity.
         </P>
         <P>
           Price determines narrative position. Locked capital determines
-          stylistic refinement.
+          stylistic refinement. The portrait is therefore a dual record: of
+          where the market stands, and of how much the individual committed.
         </P>
       </Section>
 
@@ -361,28 +376,56 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="culture" number={10} title="Cultural Positioning">
         <P>
-          The visual language draws from Renaissance and Baroque oil painting
-          traditions&mdash;chiaroscuro lighting, textured brushwork, dark
-          backgrounds, and psychologically charged expressions. These techniques
-          historically depicted figures of importance, nobility, and myth.
+          The decision to build Solazzo around Baroque and Renaissance oil
+          portraiture was not aesthetic preference. It was conceptual precision.
         </P>
         <P>
-          The protocol juxtaposes this classical aesthetic with contemporary
-          crypto iconography and degen symbolism. Diamond-set grills, iced-out
-          watches, ecosystem-referential eyewear, and other modern signifiers are
-          integrated proportionally within classical composition.
+          For centuries, the painted portrait was the primary technology of
+          status. Commissioned by merchants, aristocrats, and rulers, these
+          works performed a specific function: they made power legible,
+          projected permanence, and transformed the transient accumulation of
+          wealth into something that looked like it had always existed.
+          Caravaggio, Rembrandt, Vel&aacute;zquez &mdash; the masters of this
+          tradition were not simply skilled painters. They were the
+          infrastructure through which elites constructed their public identity.
         </P>
         <P>
-          The result is controlled irony rather than parody. The portraits are
-          timeless yet contemporary. They reflect the duality of crypto
-          participation: solemn belief intertwined with speculative spectacle.
+          Crypto participation involves a structurally similar impulse. Capital
+          is committed to narratives that may or may not resolve. Identity
+          becomes entangled with positions. Conviction is performed publicly,
+          through wallets and social feeds, in ways that are simultaneously
+          sincere and theatrical. The degen and the aristocrat are separated by
+          four hundred years and a very different set of accessories, but they
+          share the same underlying desire: to make belief visible, to have the
+          external world reflect an internal commitment.
         </P>
         <P>
-          By allowing participants to generate portraits derived from their own
-          likeness, the protocol increases the likelihood that holders will adopt
-          the NFT as their public identity. The oil painting format anchors the
-          system in a visual tradition with historical durability rather than
-          trend-based cartoon aesthetics.
+          Solazzo takes this seriously rather than laughing at it. The visual
+          language &mdash; chiaroscuro lighting, dark backgrounds, cracked-canvas
+          texture, psychologically charged expressions &mdash; is applied without
+          irony to subjects wearing diamond grills, iced-out watches, and
+          Solana-branded eyewear. The result is controlled irony rather than
+          parody. The portraits are not making fun of crypto culture by dressing
+          it in classical clothing. They are asking what it looks like when the
+          oldest tradition of status portraiture encounters the newest. The
+          answer, it turns out, is not absurd. It is strangely coherent.
+        </P>
+        <P>
+          This coherence is what makes the format work as identity. A cartoon
+          avatar signals community membership. A Baroque oil portrait derived
+          from your own likeness signals something else &mdash; a claim to
+          permanence, a willingness to be rendered seriously, a particular
+          relationship to your own conviction. Holders who adopt their portrait
+          as their PFP are not being ironic. They are using the oldest tool in
+          the status repertoire, updated for the current moment.
+        </P>
+        <P>
+          The style also provides durability. Trends in generative art move
+          fast. The Baroque does not. A portrait painted in this tradition in
+          2026 will not look dated in 2030 in the way a pixelated avatar or a
+          procedurally generated cartoon might. The oil painting format anchors
+          Solazzo in a visual tradition with historical depth rather than
+          cycle-dependent aesthetics.
         </P>
       </Section>
 
@@ -391,19 +434,57 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       <Section id="conclusion" number={11} title="Conclusion">
         <P>
-          This protocol introduces a conviction-based NFT primitive in which
+          Solazzo introduces a conviction-based NFT collection in which
           ownership is dynamic, principal is protected, yield sustains the
           system, and identity evolves with market conditions.
         </P>
         <P>
           The NFT is not a static collectible. It is a live staking position
-          rendered as an evolving portrait. Conviction is quantified economically
-          and expressed visually. The system encodes exposure, escalation, and
-          reflection into deterministic rules.
+          rendered as an evolving portrait. Conviction is quantified
+          economically and expressed visually. The system encodes exposure,
+          escalation, and reflection into deterministic rules.
         </P>
         <P>
-          Ownership is temporary. Conviction is continuous. Wealth is narrative
-          rather than endpoint.
+          <em>
+            Ownership is temporary. Conviction is continuous. Wealth is
+            narrative rather than endpoint.
+          </em>
+        </P>
+      </Section>
+
+      {/* ---------------------------------------------------------- */}
+      {/* 12. BUILT FOR COLLABORATORS                                */}
+      {/* ---------------------------------------------------------- */}
+      <Section id="collaborators" number={12} title="Built For Collaborators">
+        <P>
+          Solazzo is in active development. The implementation spans smart
+          contract engineering, AI portrait generation, and frontend
+          design &mdash; and the quality of each depends on the people who
+          build it.
+        </P>
+        <P>
+          If you are reading this document as a potential collaborator, this is
+          what the project requires:
+        </P>
+        <P>
+          <strong className="text-foreground">On the technical side:</strong> a
+          Solana smart contract engineer fluent in Rust and Anchor to own the
+          lock-to-own mechanism, liquid staking integration, and on-chain
+          security; a full-stack engineer to build the wallet-connected
+          frontend, portrait studio, and metadata engine; and an AI/ML engineer
+          experienced with diffusion models, LoRA training, and face
+          preservation techniques to develop the portrait generation pipeline.
+        </P>
+        <P>
+          <strong className="text-foreground">On the creative side:</strong> an
+          art director or painter with a genuine relationship to Baroque and
+          Renaissance oil painting who can define the visual language
+          systematically, curate the training dataset, and ensure that the
+          aesthetic holds across five stages and thousands of unique portraits.
+        </P>
+        <P>
+          The project brief, implementation plan, and reference images are
+          available on request.
         </P>
       </Section>
 
