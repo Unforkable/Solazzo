@@ -86,15 +86,16 @@ export default function Home() {
           continuous act of conviction. You are not buying an NFT at a fixed
           price and hoping it appreciates. You are locking capital into a system
           that treats $1,000 SOL as a terminal milestone &mdash; and you remain
-          exposed until that milestone is reached, until you are displaced, or
-          until you withdraw. At today&rsquo;s prices, that is roughly an
+          exposed until that milestone is reached or until someone displaces you
+          by committing more. At today&rsquo;s prices, that is roughly an
           11&times; bet. It is, by design, an unreasonable position to hold. The
           collection exists for the people who hold it anyway.
         </P>
         <P>
           Locked SOL is deployed into liquid staking infrastructure, generating
-          yield that accrues to the Solazzo treasury. Principal remains fully
-          refundable at all times. Each slot is visually represented by a
+          yield that accrues to the Solazzo treasury. Principal is never spent
+          or consumed &mdash; it is returned in full upon displacement or
+          settlement. Each slot is visually represented by a
           personalized, AI-generated oil portrait derived from the
           owner&rsquo;s own likeness. The portrait evolves across five stages
           tied to SOL price milestones, forming a narrative arc from humble
@@ -487,32 +488,38 @@ export default function Home() {
           sustains itself &mdash; there is no mint price, no royalty structure,
           and no token. Staking yield is the sole revenue model. Your return is
           not denominated in yield. It is denominated in conviction. You lock SOL
-          at today&rsquo;s prices, and if the thesis is correct, you withdraw
-          that same SOL when it is worth substantially more. The opportunity cost
-          of foregone staking rewards is real, but it is modest relative to the
-          magnitude of the bet itself. If SOL reaches $1,000, the difference
-          between earning 7% APY and not earning it on the way there is trivial
-          compared to the appreciation of the underlying asset you held through
-          conviction rather than selling.
+          at today&rsquo;s prices, and when the thesis resolves &mdash; either
+          through displacement or settlement at $1,000 &mdash; you receive that
+          same SOL back, at whatever it is then worth. The opportunity cost of
+          foregone staking rewards is real, but it is small relative to the
+          magnitude of the underlying bet. Solana&rsquo;s current staking yield
+          is approximately 4% and declining annually toward a terminal rate of
+          roughly 1.5%. If SOL goes from $86 to $1,000, the staking yield you
+          did not earn along the way is rounding error on an
+          11&times; move.
         </FaqItem>
 
         <FaqItem question="Can I get my SOL back at any time?">
-          Yes. You can voluntarily withdraw your locked SOL at any point, which
-          releases your slot. You will receive exactly the amount you
-          locked &mdash; no penalties, no fees, no slippage on principal. The
-          only thing you lose is your position and your portrait. If you are
-          displaced by someone locking a greater amount, you are also refunded in
-          full automatically.
+          No. That is the point. Your SOL is locked until one of two things
+          happens: someone displaces you by locking a greater amount into your
+          slot, or SOL reaches $1,000 and the collection settles. In either
+          case, you receive exactly the amount you originally locked &mdash; no
+          penalties, no slippage, no reductions. But you cannot simply decide to
+          withdraw because you got nervous. The mechanism is designed to make
+          conviction binding. If you could leave whenever you wanted, it would
+          not be conviction &mdash; it would be a savings account.
         </FaqItem>
 
         <FaqItem question="What happens if SOL never reaches $1,000?">
-          Your SOL remains locked for as long as you choose to keep it locked.
-          There is no expiration. You can withdraw at any time. The settlement
-          condition at $1,000 is a terminal milestone &mdash; it concludes the
-          competitive phase and enables all holders to withdraw simultaneously.
-          But you are never forced to wait for settlement. The system is designed
-          so that the only scenario in which your capital is inaccessible is one
-          in which you have voluntarily chosen to keep it there.
+          Your SOL remains locked until you are displaced. If no one ever
+          outbids you and SOL never reaches $1,000, your capital stays in the
+          contract. This is the real cost of conviction &mdash; not the SOL
+          itself (which is never consumed), but the liquidity you forfeit while
+          holding the position. The system does not pretend this risk away. It
+          prices it in. You are making a bet, and the bet has duration. The
+          question is not whether you can afford to lose the SOL &mdash; you
+          cannot lose it. The question is whether you can afford to have it
+          locked while the world changes around you.
         </FaqItem>
 
         <FaqItem question="Why only 1,000 slots?">
@@ -572,10 +579,10 @@ export default function Home() {
 
         <FaqItem question="Is this a security? Am I investing?">
           Solazzo is not an investment product and does not promise financial
-          returns. You lock SOL and receive it back in exactly the same quantity.
-          There is no token, no equity, no profit-sharing arrangement, and no
-          expectation of profit derived from the efforts of others. The locked
-          SOL remains your property throughout. Staking yield accrues to the
+          returns. You lock SOL and receive it back in exactly the same quantity
+          upon displacement or settlement. There is no token, no equity, no
+          profit-sharing arrangement, and no expectation of profit derived from
+          the efforts of others. Staking yield accrues to the
           treasury as payment for the infrastructure, portrait generation, and
           operational costs of the system &mdash; not as a return distributed to
           participants. Solazzo is a collection, not a fund. That said, this
