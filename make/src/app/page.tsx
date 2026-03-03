@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { STAGE_NAMES, type StageNumber } from "@/lib/prompt";
+import type { TraitManifest } from "@/lib/traits/types";
 import { savePortraits, loadPortraits, clearPortraits } from "@/lib/storage";
 
 type AppStage = "intro" | "capture" | "preview" | "gallery" | "locked";
@@ -193,6 +194,7 @@ export default function PortraitStudio() {
   const [captureMode, setCaptureMode] = useState<CaptureMode>("upload");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [portraits, setPortraits] = useState<(string | null)[]>([null, null, null, null, null]);
+  const [traitManifests, setTraitManifests] = useState<(TraitManifest | null)[]>([null, null, null, null, null]);
   const [generatingStages, setGeneratingStages] = useState<Set<number>>(new Set());
   const [stageErrors, setStageErrors] = useState<(string | null)[]>([null, null, null, null, null]);
   const [error, setError] = useState<string | null>(null);
@@ -277,6 +279,13 @@ export default function PortraitStudio() {
         next[stage - 1] = `data:image/png;base64,${data.image}`;
         return next;
       });
+      if (data.traits) {
+        setTraitManifests((prev) => {
+          const next = [...prev];
+          next[stage - 1] = data.traits;
+          return next;
+        });
+      }
     } catch {
       setStageErrors((prev) => {
         const next = [...prev];
@@ -312,7 +321,8 @@ export default function PortraitStudio() {
       const compressed = await Promise.all(
         portraits.map((p) => compressForStorage(p!)),
       );
-      savePortraits(compressed);
+      const validTraits = traitManifests.filter((t): t is TraitManifest => t !== null);
+      savePortraits(compressed, validTraits.length === 5 ? validTraits : undefined);
       setPortraits(compressed);
       setAppStage("locked");
     } catch {
@@ -323,6 +333,7 @@ export default function PortraitStudio() {
   const reset = useCallback(() => {
     clearPortraits();
     setPortraits([null, null, null, null, null]);
+    setTraitManifests([null, null, null, null, null]);
     setStageErrors([null, null, null, null, null]);
     setGeneratingStages(new Set());
     setPreviewUrl(null);

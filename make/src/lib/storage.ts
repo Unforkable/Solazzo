@@ -1,13 +1,20 @@
+import type { TraitManifest } from "./traits/types";
+
 const STORAGE_KEY = "solazzo-portraits";
 
 export interface LockedPortraitSet {
   portraits: string[]; // 5 data URLs
+  traits?: TraitManifest[]; // 5 trait manifests (optional for backward compat)
   lockedAt: number;
 }
 
-export function savePortraits(portraits: string[]): void {
+export function savePortraits(
+  portraits: string[],
+  traits?: TraitManifest[],
+): void {
   const data: LockedPortraitSet = {
     portraits,
+    traits,
     lockedAt: Date.now(),
   };
   try {

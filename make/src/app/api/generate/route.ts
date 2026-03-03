@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import OpenAI from "openai";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { getPromptForStage, type StageNumber } from "@/lib/prompt";
+import { rollAndAssemble, type StageNumber } from "@/lib/prompt";
 
 export const maxDuration = 60;
 
@@ -111,7 +111,8 @@ export async function POST(request: NextRequest) {
       );
     }
     const stage = stageNum as StageNumber;
-    const prompt = getPromptForStage(stage);
+    const manifest = rollAndAssemble(stage);
+    const prompt = manifest.prompt;
 
     const arrayBuffer = await file.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
@@ -137,7 +138,15 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { image: imageData, stage },
+      {
+        image: imageData,
+        stage,
+        traits: {
+          seed: manifest.seed,
+          rolls: manifest.rolls,
+          couplingsFired: manifest.couplingsFired,
+        },
+      },
       { headers: { "X-RateLimit-Remaining": String(remaining) } },
     );
   } catch (error: unknown) {
