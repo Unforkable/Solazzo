@@ -1,5 +1,5 @@
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const MAX_REQUESTS = 5;
+const MAX_REQUESTS = 15;
 
 const hits = new Map<string, number[]>();
 
