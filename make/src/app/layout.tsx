@@ -1,5 +1,20 @@
 import type { Metadata } from "next";
+import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 import "./globals.css";
+
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-body",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "SOLAZZO — Portrait Studio",
@@ -21,7 +36,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={`${cormorant.variable} ${dmSans.variable}`}>
+        {children}
+      </body>
     </html>
   );
 }

@@ -14,7 +14,7 @@ const ALL_STAGES: StageNumber[] = [1, 2, 3, 4, 5];
 
 function BaroqueFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="w-full">
+    <div className="w-full" style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.5))" }}>
       <div className="p-[3px] bg-gradient-to-b from-[#8B7441] via-[#5C4A28] to-[#3A2E18]">
         <div className="p-[4px] sm:p-[6px] bg-gradient-to-b from-[#C9A84C] via-[#A07B3A] to-[#7A5C2E]">
           <div className="p-[3px] sm:p-[4px] bg-[#1a1408]">
@@ -36,10 +36,10 @@ function BaroqueFrame({ children }: { children: React.ReactNode }) {
 }
 
 const RARITY_COLORS: Record<string, string> = {
-  Common: "#888",
-  Uncommon: "#4ade80",
-  Rare: "#60a5fa",
-  Legendary: "#facc15",
+  Common: "#8a7f72",
+  Uncommon: "#7ab87a",
+  Rare: "#6a9fd8",
+  Legendary: "#c9a84c",
 };
 
 function TraitSummary({ manifest }: { manifest: TraitManifest }) {
@@ -51,7 +51,7 @@ function TraitSummary({ manifest }: { manifest: TraitManifest }) {
     <div className="mt-1 space-y-px">
       {visible.map((r: TraitRoll) => (
         <p key={r.category} className="text-[10px] leading-tight text-muted/60">
-          <span style={{ color: RARITY_COLORS[r.rarity] ?? "#888" }}>
+          <span style={{ color: RARITY_COLORS[r.rarity] ?? "#8a7f72" }}>
             {r.itemName}
           </span>
         </p>
@@ -75,34 +75,42 @@ function PromptModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/80" />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
       <div
-        className="relative max-w-2xl w-full max-h-[80vh] bg-[#1a1408] border border-muted/30 flex flex-col"
+        className="relative w-full sm:max-w-2xl max-h-[85vh] sm:max-h-[80vh] bg-surface-raised border border-gold-dim/30 flex flex-col rounded-t-2xl sm:rounded-none animate-slide-up sm:animate-fade-in"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile drag indicator */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-muted/30" />
+        </div>
+
         <div className="p-6 flex-1 overflow-auto">
-          <p className="text-xs text-muted/60 mb-3">
-            Stage {manifest.stage} — {STAGE_NAMES[manifest.stage]}
+          <p className="text-xs text-muted/60 mb-3 font-body">
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gold/20 text-gold text-[10px] font-semibold mr-2">
+              {manifest.stage}
+            </span>
+            {STAGE_NAMES[manifest.stage]}
           </p>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            className="w-full h-64 bg-black/30 border border-muted/20 text-xs text-muted/80 font-mono leading-relaxed p-3 resize-y focus:outline-none focus:border-muted/40"
+            className="w-full h-64 bg-black/30 border border-muted/20 text-xs text-foreground/80 font-mono leading-relaxed p-3 resize-y focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 transition-colors"
           />
         </div>
         <div className="flex justify-end gap-3 px-6 pb-6">
           <button
             onClick={onClose}
-            className="text-xs text-muted/60 hover:text-foreground transition-colors cursor-pointer px-4 py-2"
+            className="btn-ghost text-xs min-h-[44px] px-4"
           >
             Close
           </button>
           <button
             onClick={() => onSaveAndRegenerate(text)}
-            className="text-xs text-foreground border border-muted/30 hover:border-foreground/40 transition-colors cursor-pointer px-4 py-2"
+            className="btn-gold text-xs min-h-[44px] px-4"
           >
             Save &amp; Regenerate
           </button>
@@ -164,6 +172,27 @@ function compressForStorage(dataUrl: string): Promise<string> {
   });
 }
 
+/* Paintbrush SVG for loading state */
+function PaintbrushIcon() {
+  return (
+    <svg
+      width="28"
+      height="28"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-gold/60"
+    >
+      <path d="M18.37 2.63 14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3Z" />
+      <path d="M9 8c-2 3-4 3.5-7 4l8 10c2-1 6-5 6-7" />
+      <path d="M14.5 17.5 4.5 15" />
+    </svg>
+  );
+}
+
 function WebcamCapture({ onCapture, onBack }: { onCapture: (blob: Blob) => void; onBack: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -208,7 +237,6 @@ function WebcamCapture({ onCapture, onBack }: { onCapture: (blob: Blob) => void;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Mirror horizontally for selfie feel
     ctx.translate(1024, 0);
     ctx.scale(-1, 1);
     ctx.drawImage(video, sx, sy, size, size, 0, 0, 1024, 1024);
@@ -224,8 +252,8 @@ function WebcamCapture({ onCapture, onBack }: { onCapture: (blob: Blob) => void;
   if (camError) {
     return (
       <div className="space-y-4">
-        <p className="text-red-400 text-sm">{camError}</p>
-        <button onClick={onBack} className="text-sm text-muted hover:text-foreground transition-colors cursor-pointer">
+        <p className="text-red-400 text-sm font-body">{camError}</p>
+        <button onClick={onBack} className="text-sm text-muted hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body">
           &larr; Back
         </button>
       </div>
@@ -234,10 +262,10 @@ function WebcamCapture({ onCapture, onBack }: { onCapture: (blob: Blob) => void;
 
   return (
     <div className="space-y-6">
-      <button onClick={onBack} className="text-sm text-muted hover:text-foreground transition-colors cursor-pointer">
+      <button onClick={onBack} className="text-sm text-muted hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body">
         &larr; Back
       </button>
-      <div className="aspect-square w-full max-w-[400px] mx-auto overflow-hidden bg-black/50 relative">
+      <div className="aspect-square w-full max-w-[400px] mx-auto overflow-hidden bg-black/50 relative border border-gold-dim/20">
         <video
           ref={videoRef}
           autoPlay
@@ -248,7 +276,7 @@ function WebcamCapture({ onCapture, onBack }: { onCapture: (blob: Blob) => void;
         />
         {!ready && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-muted text-sm">Starting camera…</p>
+            <p className="text-muted text-sm font-body">Starting camera…</p>
           </div>
         )}
       </div>
@@ -256,7 +284,7 @@ function WebcamCapture({ onCapture, onBack }: { onCapture: (blob: Blob) => void;
         <div className="flex justify-center">
           <button
             onClick={capture}
-            className="border border-muted/30 px-6 py-3 text-sm text-foreground hover:border-foreground/40 transition-colors cursor-pointer"
+            className="btn-gold"
           >
             Take Photo
           </button>
@@ -277,11 +305,11 @@ export default function PortraitStudio() {
   const [error, setError] = useState<string | null>(null);
   const [promptViewStage, setPromptViewStage] = useState<number | null>(null);
   const [editedPrompts, setEditedPrompts] = useState<Record<number, string>>({});
+  const [dragOver, setDragOver] = useState(false);
 
   const compressedRef = useRef<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Restore locked portraits on mount
   useEffect(() => {
     const saved = loadPortraits();
     if (saved) {
@@ -319,6 +347,7 @@ export default function PortraitStudio() {
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
+      setDragOver(false);
       const file = e.dataTransfer.files?.[0];
       if (file) handleFile(file);
     },
@@ -374,7 +403,6 @@ export default function PortraitStudio() {
           return next;
         });
       } else if (customPrompt) {
-        // Update prompt in existing manifest without overwriting trait rolls
         setTraitManifests((prev) => {
           const next = [...prev];
           const existing = next[stage - 1];
@@ -406,7 +434,6 @@ export default function PortraitStudio() {
 
     for (const stage of ALL_STAGES) {
       generateStage(stage);
-      // Stagger requests by 500ms to avoid rate limit bursts
       if (stage < 5) await new Promise((r) => setTimeout(r, 500));
     }
   }, [generateStage]);
@@ -426,7 +453,7 @@ export default function PortraitStudio() {
     } catch {
       setError("Failed to save portraits. Please try again.");
     }
-  }, [portraits]);
+  }, [portraits, traitManifests]);
 
   const reset = useCallback(() => {
     clearPortraits();
@@ -458,42 +485,43 @@ export default function PortraitStudio() {
       <div className={`w-full ${appStage === "gallery" || appStage === "locked" ? "max-w-[1200px]" : "max-w-[640px]"}`}>
         {/* ── Intro ── */}
         {appStage === "intro" && (
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+          <div className="flex flex-col items-center text-center space-y-8 animate-fade-in">
+            <div className="space-y-5">
+              <h1 className="text-4xl sm:text-5xl font-display font-bold tracking-wide text-foreground hover:animate-shimmer transition-all duration-500 cursor-default">
                 SOLAZZO
               </h1>
-              <p className="text-muted leading-relaxed">
+              <div className="w-24 h-px mx-auto bg-gradient-to-r from-transparent via-gold to-transparent" />
+              <p className="text-muted leading-relaxed max-w-md mx-auto font-body">
                 Upload a selfie. Receive five Baroque oil portraits tracing the
                 Solazzo journey — from humble believer to reflective maturity.
               </p>
             </div>
             <button
               onClick={() => setAppStage("capture")}
-              className="border border-muted/30 px-6 py-3 text-sm text-foreground hover:border-foreground/40 transition-colors cursor-pointer"
+              className="btn-gold font-display tracking-wide"
             >
-              Create your portraits
+              Create Your Portraits
             </button>
           </div>
         )}
 
         {/* ── Capture ── */}
         {appStage === "capture" && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-stage-enter">
             <button
               onClick={() => setAppStage("intro")}
-              className="text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+              className="text-sm text-muted hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body"
             >
               &larr; Back
             </button>
 
             {/* Tabs */}
-            <div className="flex gap-4 border-b border-muted/20 pb-px">
+            <div className="flex gap-6 border-b border-gold-dim/20 pb-px">
               <button
                 onClick={() => setCaptureMode("upload")}
-                className={`text-sm pb-2 border-b-2 transition-colors cursor-pointer ${
+                className={`text-sm pb-2 border-b-2 transition-colors cursor-pointer min-h-[44px] font-body ${
                   captureMode === "upload"
-                    ? "border-foreground text-foreground"
+                    ? "border-gold text-gold"
                     : "border-transparent text-muted hover:text-foreground"
                 }`}
               >
@@ -501,9 +529,9 @@ export default function PortraitStudio() {
               </button>
               <button
                 onClick={() => setCaptureMode("camera")}
-                className={`text-sm pb-2 border-b-2 transition-colors cursor-pointer ${
+                className={`text-sm pb-2 border-b-2 transition-colors cursor-pointer min-h-[44px] font-body ${
                   captureMode === "camera"
-                    ? "border-foreground text-foreground"
+                    ? "border-gold text-gold"
                     : "border-transparent text-muted hover:text-foreground"
                 }`}
               >
@@ -515,14 +543,31 @@ export default function PortraitStudio() {
               <div className="space-y-4">
                 <div
                   onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-muted/30 hover:border-foreground/30 transition-colors p-12 text-center cursor-pointer"
+                  className={`drop-zone p-12 text-center ${dragOver ? "drag-over" : ""}`}
                 >
-                  <p className="text-muted text-sm">
+                  {/* Upload icon */}
+                  <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mx-auto mb-4 text-gold/40"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  <p className="text-muted text-sm font-body">
                     Drag &amp; drop a selfie here, or click to browse
                   </p>
-                  <p className="text-muted/60 text-xs mt-2">
+                  <p className="text-muted/40 text-xs mt-2 font-body">
                     JPEG, PNG, or WebP — max 10 MB
                   </p>
                 </div>
@@ -542,46 +587,51 @@ export default function PortraitStudio() {
               />
             )}
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p className="text-red-400 text-sm font-body">{error}</p>}
           </div>
         )}
 
         {/* ── Preview ── */}
         {appStage === "preview" && previewUrl && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-stage-enter">
             <button
               onClick={repick}
-              className="text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+              className="text-sm text-muted hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body"
             >
               &larr; Choose different photo
             </button>
-            <div className="aspect-square w-full max-w-[400px] mx-auto overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={previewUrl}
-                alt="Your selfie"
-                className="w-full h-full object-cover"
-              />
+            <div className="max-w-[400px] mx-auto">
+              <BaroqueFrame>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewUrl}
+                  alt="Your selfie"
+                  className="w-full aspect-square object-cover"
+                />
+              </BaroqueFrame>
             </div>
             <div className="flex flex-col items-center gap-3">
+              <p className="text-muted/60 text-xs font-body">
+                5 unique Baroque portraits will be generated from this photo
+              </p>
               <button
                 onClick={generateAll}
-                className="border border-muted/30 px-6 py-3 text-sm text-foreground hover:border-foreground/40 transition-colors cursor-pointer"
+                className="btn-gold font-display tracking-wide"
               >
                 Generate All 5 Portraits
               </button>
-              {error && <p className="text-red-400 text-sm">{error}</p>}
+              {error && <p className="text-red-400 text-sm font-body">{error}</p>}
             </div>
           </div>
         )}
 
         {/* ── Gallery (generating + results) ── */}
         {appStage === "gallery" && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
+          <div className="space-y-8 animate-stage-enter">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Your Solazzo Collection</h2>
-                <p className="text-muted text-sm mt-1">
+                <h2 className="text-xl sm:text-2xl font-display font-bold text-foreground">Your Solazzo Collection</h2>
+                <p className="text-muted text-sm mt-1 font-body">
                   {isGenerating
                     ? `${completedCount} of 5 portraits complete…`
                     : allComplete
@@ -592,14 +642,21 @@ export default function PortraitStudio() {
               {allComplete && (
                 <button
                   onClick={lockIn}
-                  className="border border-muted/30 px-5 py-2.5 text-sm text-foreground hover:border-foreground/40 transition-colors cursor-pointer"
+                  className="btn-gold font-display tracking-wide"
                 >
-                  Lock In
+                  Lock In Collection
                 </button>
               )}
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {/* Gold progress bar */}
+            {isGenerating && (
+              <div className="progress-bar">
+                <div style={{ width: `${(completedCount / 5) * 100}%` }} />
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-4">
               {ALL_STAGES.map((stage) => {
                 const idx = stage - 1;
                 const portrait = portraits[idx];
@@ -625,7 +682,7 @@ export default function PortraitStudio() {
                             {traitManifests[idx] && (
                               <button
                                 onClick={() => setPromptViewStage(stage)}
-                                className="absolute top-1.5 right-1.5 bg-black/50 hover:bg-black/70 text-muted/60 hover:text-foreground text-[10px] font-mono px-1.5 py-0.5 transition-colors cursor-pointer"
+                                className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-gold/60 hover:text-gold text-[10px] font-mono px-2 py-1 transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 title="View prompt"
                               >
                                 {"{…}"}
@@ -633,30 +690,34 @@ export default function PortraitStudio() {
                             )}
                           </>
                         ) : generating ? (
-                          <div className="aspect-square flex items-center justify-center animate-pulse-frame">
-                            <p className="text-muted text-xs text-center px-2">Painting…</p>
+                          <div className="aspect-square flex flex-col items-center justify-center gap-3 relative overflow-hidden">
+                            <div className="animate-brush-stroke absolute inset-0 bg-gradient-to-r from-gold-dim/10 via-gold/5 to-transparent" />
+                            <PaintbrushIcon />
+                            <p className="text-gold/50 text-xs text-center px-2 font-body">Painting…</p>
                           </div>
                         ) : stageError ? (
                           <div className="aspect-square flex items-center justify-center">
-                            <p className="text-red-400 text-xs text-center px-2">{stageError}</p>
+                            <p className="text-red-400 text-xs text-center px-2 font-body">{stageError}</p>
                           </div>
                         ) : (
                           <div className="aspect-square flex items-center justify-center">
-                            <p className="text-muted/40 text-xs">Waiting…</p>
+                            <p className="text-muted/30 text-xs font-body">Waiting…</p>
                           </div>
                         )}
                       </div>
                     </BaroqueFrame>
-                    <div className="mt-2 text-center">
-                      <p className="text-xs text-muted/80 leading-tight">
-                        {stage}. {STAGE_NAMES[stage]}{" "}
-                        <span className="text-[10px] text-muted/40">{STAGE_PRICES[stage]}</span>
+                    <div className="mt-3 text-center">
+                      <p className="text-sm font-display font-semibold text-foreground/80 leading-tight">
+                        {stage}. {STAGE_NAMES[stage]}
+                      </p>
+                      <p className="text-[11px] text-muted/40 font-body mt-0.5">
+                        {STAGE_PRICES[stage]}
                       </p>
                       {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
                       {!generating && (portrait || stageError) && (
                         <button
                           onClick={() => generateStage(stage)}
-                          className="text-xs text-muted/50 hover:text-foreground transition-colors cursor-pointer mt-1"
+                          className="text-xs text-muted/50 hover:text-gold transition-colors cursor-pointer mt-1 min-h-[44px] font-body"
                         >
                           {stageError ? "Retry" : "Regenerate"}
                         </button>
@@ -671,7 +732,7 @@ export default function PortraitStudio() {
               <div className="flex justify-center">
                 <button
                   onClick={repick}
-                  className="text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+                  className="text-sm text-muted hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body"
                 >
                   &larr; Try a different photo
                 </button>
@@ -682,11 +743,11 @@ export default function PortraitStudio() {
 
         {/* ── Locked ── */}
         {appStage === "locked" && (
-          <div className="space-y-8 animate-fade-in">
-            <div className="flex items-center justify-between">
+          <div className="space-y-8 animate-celebration">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Your Solazzo Collection</h2>
-                <p className="text-muted text-sm mt-1">Locked &amp; saved</p>
+                <h2 className="text-xl sm:text-2xl font-display font-bold text-foreground">Your Solazzo Collection</h2>
+                <p className="text-gold text-sm mt-1 font-display tracking-wide">Locked &amp; Saved</p>
               </div>
               <div className="flex gap-3">
                 <button
@@ -699,14 +760,14 @@ export default function PortraitStudio() {
                       a.click();
                     });
                   }}
-                  className="border border-muted/30 px-5 py-2.5 text-sm text-foreground hover:border-foreground/40 transition-colors cursor-pointer"
+                  className="btn-gold font-display tracking-wide"
                 >
                   Download All
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-4">
               {ALL_STAGES.map((stage) => {
                 const idx = stage - 1;
                 const portrait = portraits[idx];
@@ -729,7 +790,7 @@ export default function PortraitStudio() {
                             {traitManifests[idx] && (
                               <button
                                 onClick={() => setPromptViewStage(stage)}
-                                className="absolute top-1.5 right-1.5 bg-black/50 hover:bg-black/70 text-muted/60 hover:text-foreground text-[10px] font-mono px-1.5 py-0.5 transition-colors cursor-pointer"
+                                className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-gold/60 hover:text-gold text-[10px] font-mono px-2 py-1 transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 title="View prompt"
                               >
                                 {"{…}"}
@@ -739,17 +800,19 @@ export default function PortraitStudio() {
                         )}
                       </div>
                     </BaroqueFrame>
-                    <div className="mt-2 text-center">
-                      <p className="text-xs text-muted/80 leading-tight">
-                        {stage}. {STAGE_NAMES[stage]}{" "}
-                        <span className="text-[10px] text-muted/40">{STAGE_PRICES[stage]}</span>
+                    <div className="mt-3 text-center">
+                      <p className="text-sm font-display font-semibold text-foreground/80 leading-tight">
+                        {stage}. {STAGE_NAMES[stage]}
+                      </p>
+                      <p className="text-[11px] text-muted/40 font-body mt-0.5">
+                        {STAGE_PRICES[stage]}
                       </p>
                       {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
                       {portrait && (
                         <a
                           href={portrait}
                           download={`solazzo-stage-${stage}.jpg`}
-                          className="text-xs text-muted/50 hover:text-foreground transition-colors mt-1 inline-block"
+                          className="text-xs text-muted/50 hover:text-gold transition-colors mt-1 inline-flex items-center justify-center min-h-[44px] font-body"
                         >
                           Download
                         </a>
@@ -763,7 +826,7 @@ export default function PortraitStudio() {
             <div className="flex justify-center">
               <button
                 onClick={reset}
-                className="text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+                className="text-sm text-muted/50 hover:text-red-400 transition-colors cursor-pointer min-h-[44px] font-body"
               >
                 Start Over
               </button>
@@ -773,7 +836,7 @@ export default function PortraitStudio() {
 
         {/* Global error */}
         {error && appStage === "gallery" && (
-          <p className="text-red-400 text-sm text-center mt-4">{error}</p>
+          <p className="text-red-400 text-sm text-center mt-4 font-body">{error}</p>
         )}
       </div>
 

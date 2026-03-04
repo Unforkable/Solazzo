@@ -1,10 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #111;
-  --foreground: #ccc;
-  --muted: #666;
-  --accent: #999;
+  --background: #0a0908;
+  --foreground: #e8e0d4;
+  --muted: #7a7168;
+  --accent: #c9a84c;
+  --surface: #151210;
+  --surface-raised: #1c1916;
+  --burgundy: #6b2b3a;
+  --gold-dim: #8b7441;
+  --gold: #c9a84c;
+  --gold-bright: #e2c97e;
 }
 
 @theme inline {
@@ -12,18 +18,63 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-gold: var(--gold);
+  --color-gold-dim: var(--gold-dim);
+  --color-gold-bright: var(--gold-bright);
+  --color-burgundy: var(--burgundy);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: var(--font-body), "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 1.7;
 }
 
+/* Subtle noise grain overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* Gold selection highlight */
 ::selection {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(201, 168, 76, 0.3);
+  color: var(--foreground);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--gold-dim);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
+}
+
+/* ── Animations ── */
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
 }
 
 @keyframes pulse-frame {
@@ -36,6 +87,49 @@ body {
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes gallery-stagger {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes brush-stroke {
+  0% { clip-path: inset(0 100% 0 0); opacity: 0.3; }
+  50% { clip-path: inset(0 30% 0 0); opacity: 0.6; }
+  100% { clip-path: inset(0 0% 0 0); opacity: 0.3; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes celebration {
+  0% { opacity: 0; transform: scale(0.95); }
+  50% { transform: scale(1.01); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes stage-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--foreground) 0%,
+    var(--gold-bright) 25%,
+    var(--gold) 50%,
+    var(--gold-bright) 75%,
+    var(--foreground) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+
 .animate-pulse-frame {
   animation: pulse-frame 2s ease-in-out infinite;
 }
@@ -44,12 +138,87 @@ body {
   animation: fade-in 0.8s ease-out forwards;
 }
 
-@keyframes gallery-stagger {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+.animate-brush-stroke {
+  animation: brush-stroke 2.5s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-celebration {
+  animation: celebration 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-stage-enter {
+  animation: stage-enter 0.5s ease-out forwards;
 }
 
 .gallery-panel {
   opacity: 0;
   animation: gallery-stagger 0.5s ease-out forwards;
+}
+
+/* ── Utility classes ── */
+
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold-dim), var(--gold), var(--gold-dim));
+  color: var(--background);
+  font-weight: 600;
+  border: 1px solid var(--gold);
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-gold:hover {
+  background: linear-gradient(135deg, var(--gold), var(--gold-bright), var(--gold));
+  box-shadow: 0 0 20px rgba(201, 168, 76, 0.25);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-ghost:hover {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+}
+
+.drop-zone {
+  border: 2px dashed rgba(201, 168, 76, 0.3);
+  background: rgba(201, 168, 76, 0.03);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+.drop-zone:hover,
+.drop-zone.drag-over {
+  border-color: var(--gold);
+  background: rgba(201, 168, 76, 0.08);
+}
+
+.progress-bar {
+  height: 3px;
+  background: var(--surface-raised);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-bar > div {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-dim), var(--gold), var(--gold-bright));
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
