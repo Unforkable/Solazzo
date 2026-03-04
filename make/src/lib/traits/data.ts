@@ -222,13 +222,11 @@ export const EYEWEAR: TraitCategoryDef = {
     { id: "nothing", name: "Nothing", stages: [1], weight: 50, rarity: "Common", fragment: "", isNothing: true },
     { id: "gas-station-sunglasses", name: "Cheap gas station sunglasses", stages: [1], weight: 15, rarity: "Common", fragment: "Cheap gas station sunglasses with scratched dark lenses sit on the face, their plastic frames rendered with the same care as fine tortoiseshell.", tags: ["opaque-eyewear"] },
     { id: "blue-light-glasses", name: "Blue light glasses (office)", stages: [1], weight: 15, rarity: "Common", fragment: "Blue light blocking glasses with thin transparent frames sit on the nose, their nearly invisible lenses catching a subtle blue reflection." },
-    { id: "taped-nerd-glasses", name: "Taped-together nerd glasses", stages: [1], weight: 10, rarity: "Uncommon", fragment: "Thick-framed glasses held together with tape at the bridge sit askew on the nose, the repair rendered with tender, precise brushwork." },
     { id: "safety-goggles", name: "Safety goggles (work)", stages: [1], weight: 10, rarity: "Uncommon", fragment: "Industrial safety goggles pushed up on the forehead, their scratched polycarbonate lenses catching a flat reflection of the studio light.", tags: ["opaque-eyewear"] },
     // Stage II
     { id: "nothing-ii", name: "Nothing", stages: [2], weight: 45, rarity: "Common", fragment: "", isNothing: true },
     { id: "ray-ban-wayfarers", name: "Ray-Ban Wayfarers", stages: [2], weight: 20, rarity: "Common", fragment: "Ray-Ban Wayfarers sit on the face, their classic black frames a sharp geometric presence, the dark lenses reflecting a distorted version of the light source." },
     { id: "clean-aviators", name: "Clean aviators", stages: [2], weight: 20, rarity: "Common", fragment: "Clean aviator sunglasses catch reflected light across their teardrop lenses, the thin metal frames a delicate scaffold of warm gold." },
-    { id: "reading-glasses", name: "Reading glasses", stages: [2], weight: 15, rarity: "Common", fragment: "Reading glasses sit on the nose, their lenses magnifying the skin beneath slightly, creating a subtle visual distortion painted with precision." },
     // Stage III
     { id: "nothing-iii", name: "Nothing", stages: [3], weight: 40, rarity: "Common", fragment: "", isNothing: true },
     { id: "designer-frames-thick", name: "Designer frames (thick)", stages: [3], weight: 20, rarity: "Common", fragment: "Thick designer frames sit confidently on the face, their heavy acetate catching light along polished edges — eyewear as architecture." },
@@ -260,7 +258,6 @@ export const HEADWEAR: TraitCategoryDef = {
     { id: "gas-station-trucker", name: "Gas station trucker hat", stages: [1], weight: 15, rarity: "Common", fragment: "A mesh-backed trucker hat from a gas station sits on the head, its foam front panel catching flat light while the mesh dissolves into shadow." },
     { id: "backwards-snapback", name: "Worn-out backwards snapback", stages: [1], weight: 15, rarity: "Common", fragment: "A faded snapback worn backwards, its adjustment strap visible across the forehead, the brim a dark crescent behind the head." },
     { id: "sweatband", name: "Sweatband", stages: [1], weight: 8, rarity: "Uncommon", fragment: "A terrycloth sweatband circles the forehead, its absorbent texture painted with visible brushstrokes, catching warm light on its raised loops." },
-    { id: "hard-hat", name: "Hard hat (construction)", stages: [1], weight: 5, rarity: "Uncommon", fragment: "A scuffed yellow hard hat sits on the head, its industrial plastic catching a broad highlight — labor's crown rendered with dignity." },
     // Stage II
     { id: "nothing-ii", name: "Nothing", stages: [2], weight: 50, rarity: "Common", fragment: "", isNothing: true },
     { id: "clean-fitted-cap", name: "Clean fitted cap", stages: [2], weight: 18, rarity: "Common", fragment: "A clean fitted cap sits low on the head, its structured crown catching a smooth curve of light, the brim casting a shadow across the forehead." },
@@ -372,50 +369,6 @@ export const TATTOO: TraitCategoryDef = {
   ],
 };
 
-export const BACKGROUND: TraitCategoryDef = {
-  id: "background",
-  displayName: "Background Element",
-  type: "optional",
-  items: [
-    // Stage I
-    { id: "nothing", name: "Nothing (pure dark)", stages: [1], weight: 55, rarity: "Common", fragment: "", isNothing: true },
-    { id: "brick-wall", name: "Faint brick wall texture", stages: [1], weight: 15, rarity: "Common", fragment: "Faint brick wall texture emerges from the darkness behind the subject, the mortar lines catching just enough light to suggest enclosure." },
-    { id: "fluorescent-leak", name: "Fluorescent light leak", stages: [1], weight: 10, rarity: "Uncommon", fragment: "A thin streak of cold fluorescent light leaks from the upper edge of the background, its blue-white tone cutting against the warm palette." },
-    { id: "rain-window", name: "Rain on window behind", stages: [1], weight: 10, rarity: "Uncommon", fragment: "Rain streaks on a dark window behind the subject, each droplet a tiny lens of refracted background light." },
-    { id: "steam-breath", name: "Steam/breath in cold air", stages: [1], weight: 10, rarity: "Uncommon", fragment: "A faint haze of breath or steam is visible in the cold air around the subject, softly scattering the directional light." },
-    // Stage II
-    { id: "nothing-ii", name: "Nothing (pure dark)", stages: [2], weight: 50, rarity: "Common", fragment: "", isNothing: true },
-    { id: "blurred-city-lights", name: "Blurred city lights", stages: [2], weight: 15, rarity: "Common", fragment: "Blurred city lights glow in soft circles of color deep in the background darkness — warm yellows and cool whites at impossible distance." },
-    { id: "smoke-haze-ii", name: "Smoke/haze drifting", stages: [2], weight: 15, rarity: "Common", fragment: "A soft haze of smoke drifts through the background, catching the light beam and making it visible as a solid shaft of warmth." },
-    { id: "neon-sign-glow", name: "Neon sign glow (color)", stages: [2], weight: 10, rarity: "Uncommon", fragment: "The glow of a neon sign bleeds color into the background shadow — a wash of pink or blue that doesn't match the key light." },
-    { id: "window-light-spill", name: "Window light spill", stages: [2], weight: 10, rarity: "Uncommon", fragment: "Light spills from an unseen window in the background, creating a soft rectangle of warm glow on an otherwise dark wall." },
-    // Stage III
-    { id: "nothing-iii", name: "Nothing (pure dark)", stages: [3], weight: 40, rarity: "Common", fragment: "", isNothing: true },
-    { id: "warm-interior", name: "Warm interior (out of focus)", stages: [3], weight: 15, rarity: "Common", fragment: "A warm interior space is suggested in the blurred background — rich wood tones and amber light implying comfort and establishment." },
-    { id: "smoke-haze-iii", name: "Smoke/haze", stages: [3], weight: 15, rarity: "Common", fragment: "Smoke or haze drifts through the mid-ground, softening the transition between subject and darkness." },
-    { id: "gold-leaf-flaking", name: "Gold leaf flaking", stages: [3], weight: 10, rarity: "Uncommon", fragment: "Flakes of gold leaf float or cling to the background surface, catching light like tiny mirrors — wealth becoming atmosphere." },
-    { id: "blurred-figures", name: "Blurred figures in background", stages: [3], weight: 10, rarity: "Rare", fragment: "Blurred figures are barely visible in the deep background, their forms suggested by the faintest interruptions of shadow — a crowd at distance." },
-    { id: "art-on-wall", name: "Art hanging on wall (blurred)", stages: [3], weight: 10, rarity: "Uncommon", fragment: "The blurred edge of a framed painting is visible on the wall behind — art within art, both catching the same warm light." },
-    // Stage IV
-    { id: "nothing-iv", name: "Nothing (pure dark)", stages: [4], weight: 25, rarity: "Common", fragment: "", isNothing: true },
-    { id: "neon-multi", name: "Neon glow (multiple colors)", stages: [4], weight: 15, rarity: "Common", fragment: "Multiple neon colors bleed into the background — pink, purple, green — creating a chromatic haze that contrasts with the baroque technique." },
-    { id: "stacked-cash", name: "Stacked cash (blurred)", stages: [4], weight: 10, rarity: "Uncommon", fragment: "Blurred stacks of cash are visible in the background, their green-grey paper catching ambient light — wealth as wallpaper." },
-    { id: "floating-solana-logos", name: "Floating Solana logos", stages: [4], weight: 10, rarity: "Rare", fragment: "Faint Solana logos float in the background like sigils, their angular forms catching light as if projected onto the dark void." },
-    { id: "ring-light-reflection", name: "LED ring light reflection", stages: [4], weight: 10, rarity: "Uncommon", fragment: "A ring light reflection is visible in the background — a perfect circle of white light, the modern studio invading the old master's space." },
-    { id: "smoke-haze-heavy", name: "Smoke/haze (heavy)", stages: [4], weight: 10, rarity: "Common", fragment: "Heavy smoke or haze fills the background, thick enough to catch and scatter light into visible beams and pools." },
-    { id: "confetti-sparkle", name: "Confetti/sparkle particles", stages: [4], weight: 8, rarity: "Uncommon", fragment: "Confetti particles and sparkles float in the background, each one catching light independently like a field of tiny stars." },
-    { id: "portrait-within-portrait", name: "A second smaller portrait within portrait", stages: [4], weight: 5, rarity: "Legendary", fragment: "A smaller framed portrait is visible within the background — a painting within a painting, its subject unclear but watching." },
-    { id: "fireworks", name: "Fireworks", stages: [4], weight: 7, rarity: "Rare", fragment: "Fireworks bloom in the deep background, their burst patterns painted with thick impasto dabs of color against the dark sky." },
-    // Stage V
-    { id: "nothing-v", name: "Nothing (pure dark)", stages: [5], weight: 55, rarity: "Common", fragment: "", isNothing: true },
-    { id: "aged-canvas-texture", name: "Aged canvas texture (heavy)", stages: [5], weight: 15, rarity: "Common", fragment: "Heavy aged canvas texture dominates the background, the painting surface itself becoming visible — craquelure and weave as compositional elements." },
-    { id: "single-candle-distant", name: "Single candle flame (distant)", stages: [5], weight: 10, rarity: "Uncommon", fragment: "A single candle flame burns in the distant background, its small warm glow the only point of light behind the subject." },
-    { id: "rain-glass-blurred", name: "Rain on glass (blurred)", stages: [5], weight: 10, rarity: "Uncommon", fragment: "Rain on a window blurs the background into soft streaks of muted light, each droplet painted with careful translucency." },
-    { id: "faint-landscape", name: "Faint landscape (barely visible)", stages: [5], weight: 5, rarity: "Rare", fragment: "The faintest suggestion of a landscape recedes into the background darkness — hills or water, barely there, a world beyond the portrait." },
-    { id: "empty-room-dark", name: "Empty room receding into dark", stages: [5], weight: 5, rarity: "Rare", fragment: "An empty room recedes into darkness behind the subject, its bare walls and floor catching the barest edge of warm light." },
-  ],
-};
-
 export const CLOTHING: TraitCategoryDef = {
   id: "clothing",
   displayName: "Clothing Detail",
@@ -466,7 +419,6 @@ export const LIGHTING: TraitCategoryDef = {
     { id: "single-candle-below", name: "Single candle from below", stages: [1, 5], weight: 8, rarity: "Uncommon", fragment: "A single candle illuminates from below, casting unsettling upward shadows that hollow the eye sockets and accentuate the jaw — interrogation lighting, unflattering and honest." },
     { id: "harsh-caravaggio", name: "Harsh directional upper-left 45° (Caravaggio)", stages: "all", weight: 20, rarity: "Common", fragment: "Harsh directional light from the upper-left at 45 degrees — the classic Caravaggio setup — carving the face into sharp planes of light and shadow." },
     { id: "soft-rembrandt", name: "Soft diffused golden (Rembrandt)", stages: [2, 3, 5], weight: 18, rarity: "Common", fragment: "Soft diffused golden light wraps the face with Rembrandt warmth, the shadow triangle forming naturally beneath one eye." },
-    { id: "backlit-rim", name: "Backlit with rim light", stages: [1, 5], weight: 10, rarity: "Uncommon", fragment: "The subject is backlit, a rim of light tracing the silhouette's edge while the face falls into shadow, features emerging only in reflected ambient glow." },
     { id: "dual-source-conflicting", name: "Dual source conflicting (warm vs cool)", stages: [3, 4], weight: 8, rarity: "Rare", fragment: "Two conflicting light sources — one warm, one cool — paint the face in split tones, warm gold on one side and cold blue on the other." },
     { id: "flash-paparazzi", name: "Flash photography (flat, paparazzi)", stages: [4], weight: 8, rarity: "Rare", fragment: "Flat, harsh flash lighting blows out the center of the face, killing shadow and creating the unflattering forensic look of paparazzi photography." },
     { id: "moonlight-warm-accent", name: "Moonlight cold blue with warm accent", stages: [1, 5], weight: 8, rarity: "Uncommon", fragment: "Cold blue moonlight washes the face with an otherworldly pallor, a single point of warm light — a candle, a match — creating a small island of warmth." },
@@ -573,6 +525,6 @@ export const ATMOSPHERE: TraitCategoryDef = {
 
 export const ALL_CATEGORIES: TraitCategoryDef[] = [
   WRIST, CHAINS, EARRINGS, RINGS, GRILLZ,
-  EYEWEAR, HEADWEAR, PROP, TATTOO, BACKGROUND, CLOTHING,
+  EYEWEAR, HEADWEAR, PROP, TATTOO, CLOTHING,
   LIGHTING, EXPRESSION, EYE_DIRECTION, POSE, COMPOSITION, ATMOSPHERE,
 ];

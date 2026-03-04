@@ -305,7 +305,6 @@ export default function PortraitStudio() {
   const [error, setError] = useState<string | null>(null);
   const [promptViewStage, setPromptViewStage] = useState<number | null>(null);
   const [editedPrompts, setEditedPrompts] = useState<Record<number, string>>({});
-  const [providers, setProviders] = useState<(string | null)[]>([null, null, null, null, null]);
   const [lightboxStage, setLightboxStage] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -398,11 +397,6 @@ export default function PortraitStudio() {
         next[stage - 1] = `data:image/png;base64,${data.image}`;
         return next;
       });
-      setProviders((prev) => {
-        const next = [...prev];
-        next[stage - 1] = data.provider ?? null;
-        return next;
-      });
       if (data.traits) {
         setTraitManifests((prev) => {
           const next = [...prev];
@@ -437,7 +431,6 @@ export default function PortraitStudio() {
   const generateAll = useCallback(async () => {
     setPortraits([null, null, null, null, null]);
     setStageErrors([null, null, null, null, null]);
-    setProviders([null, null, null, null, null]);
     setAppStage("gallery");
 
     for (const stage of ALL_STAGES) {
@@ -468,7 +461,6 @@ export default function PortraitStudio() {
     setPortraits([null, null, null, null, null]);
     setTraitManifests([null, null, null, null, null]);
     setStageErrors([null, null, null, null, null]);
-    setProviders([null, null, null, null, null]);
     setGeneratingStages(new Set());
     setPreviewUrl(null);
     setError(null);
@@ -722,9 +714,6 @@ export default function PortraitStudio() {
                       </p>
                       <p className="text-[11px] text-muted/40 font-body mt-0.5">
                         {STAGE_PRICES[stage]}
-                        {providers[idx] && (
-                          <span className="text-muted/25 ml-1.5">via {providers[idx]}</span>
-                        )}
                       </p>
                       {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
                       {!generating && (portrait || stageError) && (

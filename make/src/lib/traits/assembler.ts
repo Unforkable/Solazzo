@@ -32,21 +32,37 @@ function collectFragments(
 // ── Public API ──
 
 /**
- * Assemble a 10-block prompt string from resolved trait rolls and a stage number.
+ * Assemble a single unified prompt from resolved trait rolls and a stage number.
  *
- * Blocks that resolve to empty content are omitted.
- * All non-empty blocks are joined with double newlines.
+ * The prompt is fed to Gemini alongside the headshot so it can render the
+ * subject with identity preservation, all rolled traits, AND Baroque
+ * oil-painting style in a single pass.
  */
 export function assemblePrompt(
   rolls: Record<TraitCategory, TraitRoll>,
   stage: StageNumber,
-): string {
+): { prompt: string } {
   const blocks: string[] = [];
 
-  // Block 1: Identity Lock (constant)
+  // 1. Identity lock (primacy position)
   blocks.push(BLOCK_1_IDENTITY_LOCK);
 
-  // Block 2: Composition & Pose
+  // 2. Style directive
+  blocks.push(
+    "STYLE — Baroque oil-painting treatment in the tradition of Caravaggio's tenebrism. " +
+    "Render entirely as oil paint on canvas: dramatic chiaroscuro, visible brushwork, impasto on highlights. " +
+    "Do not reposition, resize, or re-proportion any part of the subject. " +
+    "The painting must look like an authentic 17th-century Old Master work.",
+  );
+
+  // 3. Background
+  blocks.push(
+    "BACKGROUND: The background MUST be a near-black (#0A0A0A) void. " +
+    "Completely remove any original background elements — no scenery, no objects, no colors, no gradients. " +
+    "Only darkness behind the subject.",
+  );
+
+  // 4. Composition & Pose
   {
     const parts: string[] = [];
     const poseFragment = usable(rolls.pose);
@@ -58,7 +74,7 @@ export function assemblePrompt(
     blocks.push(`COMPOSITION & POSE: Chest-up framing.${suffix}`);
   }
 
-  // Block 3: Expression & Eyes
+  // 5. Expression & Eyes
   {
     const parts: string[] = [];
     const exprFragment = usable(rolls.expression);
@@ -71,7 +87,7 @@ export function assemblePrompt(
     }
   }
 
-  // Block 4: Lighting Setup
+  // 6. Lighting (with shadow ratio)
   {
     const { min, max } = SHADOW_RATIOS[stage];
     const shadowPercent = Math.round((min + max) / 2);
@@ -82,7 +98,7 @@ export function assemblePrompt(
     );
   }
 
-  // Block 5: Mandatory Wealth Traits
+  // 7. Mandatory Wealth Traits
   {
     const wealthCategories: TraitCategory[] = [
       "wrist",
@@ -97,7 +113,7 @@ export function assemblePrompt(
     }
   }
 
-  // Block 6: Optional Flavor Traits
+  // 8. Optional Flavor Traits
   {
     const flavorCategories: TraitCategory[] = [
       "eyewear",
@@ -112,23 +128,30 @@ export function assemblePrompt(
     }
   }
 
-  // Block 7: Background & Atmosphere
+  // 9. Atmosphere / Surface Texture
   {
-    const envCategories: TraitCategory[] = ["background", "atmosphere"];
-    const fragments = collectFragments(rolls, envCategories);
-    if (fragments.length > 0) {
-      blocks.push(`ENVIRONMENT: ${fragments.join(" ")}`);
+    const atmosphereFragment = usable(rolls.atmosphere);
+    if (atmosphereFragment) {
+      blocks.push(`ATMOSPHERE & SURFACE TEXTURE: ${atmosphereFragment}`);
     }
   }
 
-  // Block 8: Palette Directive (stage-determined)
+  // 10. Palette Directive
   blocks.push(PALETTE_DIRECTIVES[stage]);
 
-  // Block 9: Technical Finish (constant)
+  // 11. Technical Finish
   blocks.push(BLOCK_9_TECHNICAL_FINISH);
 
-  // Block 10: Negative Prompt (constant)
+  // 12. Negative Prompt
   blocks.push(BLOCK_10_NEGATIVE_PROMPT);
 
-  return blocks.join("\n\n");
+  // Identity lock — repeated last (recency)
+  blocks.push(
+    "FINAL REMINDER — The face is sacred. If any instruction above conflicts with identity " +
+    "preservation, identity preservation wins. No feature may be altered, warped, smoothed, " +
+    "or repositioned. The output must look like a painting OF this exact person, not a painting " +
+    "INSPIRED BY them.",
+  );
+
+  return { prompt: blocks.join("\n\n") };
 }

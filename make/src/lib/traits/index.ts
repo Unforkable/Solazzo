@@ -9,7 +9,7 @@ export function rollAndAssemble(
   seed?: string,
 ): TraitManifest {
   const { rolls, seed: actualSeed, couplingsFired } = rollTraits(stage, seed);
-  const prompt = assemblePrompt(rolls, stage);
+  const { prompt } = assemblePrompt(rolls, stage);
 
   return {
     stage,

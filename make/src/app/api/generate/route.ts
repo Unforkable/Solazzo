@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import OpenAI from "openai";
-import { checkRateLimit } from "@/lib/rate-limit";
 import { rollAndAssemble, type StageNumber } from "@/lib/prompt";
 import { reportError } from "@/lib/report";
 
 export const maxDuration = 60;
 
 const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-async function generateWithGemini(
+async function geminiGenerate(
   base64Image: string,
   mimeType: string,
   prompt: string,
@@ -62,40 +59,8 @@ async function generateWithGemini(
   return imagePart.inlineData.data;
 }
 
-async function generateWithOpenAI(
-  file: File,
-  prompt: string,
-): Promise<string | null> {
-  const response = await openai.images.edit({
-    model: "gpt-image-1",
-    image: file,
-    prompt,
-    size: "1024x1024",
-    quality: "high",
-  });
-
-  return response.data?.[0]?.b64_json ?? null;
-}
-
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting disabled during testing
-    // const ip =
-    //   request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    //   request.headers.get("x-real-ip") ??
-    //   "unknown";
-    //
-    // const { allowed, remaining } = checkRateLimit(ip);
-    // if (!allowed) {
-    //   return NextResponse.json(
-    //     { error: "Rate limit exceeded. Please try again in an hour." },
-    //     {
-    //       status: 429,
-    //       headers: { "X-RateLimit-Remaining": String(remaining) },
-    //     },
-    //   );
-    // }
-
     const formData = await request.formData();
     const file = formData.get("image");
 
@@ -148,31 +113,10 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    // Try Gemini first (cheaper), fall back to OpenAI
-    let imageData: string | null = null;
-    let provider: "gemini" | "openai" = "gemini";
-    try {
-      imageData = await generateWithGemini(base64Image, file.type, prompt, stage);
-    } catch (geminiError) {
-      console.warn("Gemini threw error, falling back to OpenAI:", geminiError);
-      const errMsg = geminiError instanceof Error ? geminiError.message : String(geminiError);
-      const errName = geminiError instanceof Error ? geminiError.constructor.name : "unknown";
-      reportError("Gemini threw exception", { stage, type: errName, message: errMsg.slice(0, 500) });
-    }
+    const imageData = await geminiGenerate(base64Image, file.type, prompt, stage);
 
     if (!imageData) {
-      console.log("Gemini failed or blocked, falling back to OpenAI");
-      provider = "openai";
-      const fallbackFile = new File(
-        [Buffer.from(base64Image, "base64")],
-        "selfie.png",
-        { type: file.type },
-      );
-      imageData = await generateWithOpenAI(fallbackFile, prompt);
-    }
-
-    if (!imageData) {
-      reportError("Both providers failed to generate image", { stage, provider });
+      reportError("Gemini generation failed", { stage });
       return NextResponse.json(
         { error: "Failed to generate portrait. Please try again." },
         { status: 500 },
@@ -184,7 +128,6 @@ export async function POST(request: NextRequest) {
         image: imageData,
         stage,
         prompt,
-        provider,
         traits: manifest
           ? {
               seed: manifest.seed,

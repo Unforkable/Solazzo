@@ -16,7 +16,6 @@ export type OptionalCategory =
   | "headwear"
   | "prop"
   | "tattoo"
-  | "background"
   | "clothing";
 
 export type MoodCategory =
