@@ -764,14 +764,16 @@ export default function PortraitStudio() {
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={() => {
-                    portraits.forEach((p, i) => {
-                      if (!p) return;
+                  onClick={async () => {
+                    for (let i = 0; i < portraits.length; i++) {
+                      const p = portraits[i];
+                      if (!p) continue;
                       const a = document.createElement("a");
                       a.href = p;
                       a.download = `solazzo-stage-${i + 1}.jpg`;
                       a.click();
-                    });
+                      await new Promise((r) => setTimeout(r, 300));
+                    }
                   }}
                   className="btn-gold font-display tracking-wide"
                 >

@@ -79,21 +79,22 @@ async function generateWithOpenAI(
 
 export async function POST(request: NextRequest) {
   try {
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-      request.headers.get("x-real-ip") ??
-      "unknown";
-
-    const { allowed, remaining } = checkRateLimit(ip);
-    if (!allowed) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Please try again in an hour." },
-        {
-          status: 429,
-          headers: { "X-RateLimit-Remaining": String(remaining) },
-        },
-      );
-    }
+    // Rate limiting disabled during testing
+    // const ip =
+    //   request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    //   request.headers.get("x-real-ip") ??
+    //   "unknown";
+    //
+    // const { allowed, remaining } = checkRateLimit(ip);
+    // if (!allowed) {
+    //   return NextResponse.json(
+    //     { error: "Rate limit exceeded. Please try again in an hour." },
+    //     {
+    //       status: 429,
+    //       headers: { "X-RateLimit-Remaining": String(remaining) },
+    //     },
+    //   );
+    // }
 
     const formData = await request.formData();
     const file = formData.get("image");
@@ -192,7 +193,6 @@ export async function POST(request: NextRequest) {
             }
           : null,
       },
-      { headers: { "X-RateLimit-Remaining": String(remaining) } },
     );
   } catch (error: unknown) {
     console.error("Portrait generation error:", error);

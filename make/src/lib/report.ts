@@ -1,11 +1,16 @@
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-
 export function reportError(
   title: string,
   details: Record<string, unknown> = {},
 ) {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+
+  console.log("[reportError]", title, JSON.stringify(details));
+
+  if (!token || !chatId) {
+    console.warn("[reportError] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
+    return;
+  }
 
   const lines = [
     `⚠️ *SOLAZZO ERROR*`,
@@ -20,12 +25,12 @@ export function reportError(
 
   // Fire-and-forget — don't await, don't block the response
   fetch(
-    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+    `https://api.telegram.org/bot${token}/sendMessage`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: TELEGRAM_CHAT_ID,
+        chat_id: chatId,
         text: lines.join("\n"),
         parse_mode: "Markdown",
       }),
