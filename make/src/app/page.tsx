@@ -305,6 +305,7 @@ export default function PortraitStudio() {
   const [error, setError] = useState<string | null>(null);
   const [promptViewStage, setPromptViewStage] = useState<number | null>(null);
   const [editedPrompts, setEditedPrompts] = useState<Record<number, string>>({});
+  const [providers, setProviders] = useState<(string | null)[]>([null, null, null, null, null]);
   const [dragOver, setDragOver] = useState(false);
 
   const compressedRef = useRef<Blob | null>(null);
@@ -396,6 +397,11 @@ export default function PortraitStudio() {
         next[stage - 1] = `data:image/png;base64,${data.image}`;
         return next;
       });
+      setProviders((prev) => {
+        const next = [...prev];
+        next[stage - 1] = data.provider ?? null;
+        return next;
+      });
       if (data.traits) {
         setTraitManifests((prev) => {
           const next = [...prev];
@@ -430,6 +436,7 @@ export default function PortraitStudio() {
   const generateAll = useCallback(async () => {
     setPortraits([null, null, null, null, null]);
     setStageErrors([null, null, null, null, null]);
+    setProviders([null, null, null, null, null]);
     setAppStage("gallery");
 
     for (const stage of ALL_STAGES) {
@@ -460,6 +467,7 @@ export default function PortraitStudio() {
     setPortraits([null, null, null, null, null]);
     setTraitManifests([null, null, null, null, null]);
     setStageErrors([null, null, null, null, null]);
+    setProviders([null, null, null, null, null]);
     setGeneratingStages(new Set());
     setPreviewUrl(null);
     setError(null);
@@ -679,6 +687,11 @@ export default function PortraitStudio() {
                               alt={`Stage ${stage}: ${STAGE_NAMES[stage]}`}
                               className="aspect-square w-full object-cover animate-fade-in"
                             />
+                            {providers[idx] && (
+                              <span className="absolute top-2 left-2 bg-black/60 text-[9px] font-mono text-muted/50 px-1.5 py-0.5">
+                                {providers[idx]}
+                              </span>
+                            )}
                             {traitManifests[idx] && (
                               <button
                                 onClick={() => setPromptViewStage(stage)}

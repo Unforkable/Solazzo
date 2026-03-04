@@ -3,6 +3,7 @@ import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import OpenAI from "openai";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { rollAndAssemble, type StageNumber } from "@/lib/prompt";
+import { reportError } from "@/lib/report";
 
 export const maxDuration = 60;
 
@@ -130,10 +131,18 @@ export async function POST(request: NextRequest) {
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
     // Try Gemini first (cheaper), fall back to OpenAI
-    let imageData = await generateWithGemini(base64Image, file.type, prompt);
+    let imageData: string | null = null;
+    let provider: "gemini" | "openai" = "gemini";
+    try {
+      imageData = await generateWithGemini(base64Image, file.type, prompt);
+    } catch (geminiError) {
+      console.warn("Gemini threw error, falling back to OpenAI:", geminiError);
+      reportError("Gemini threw, falling back to OpenAI", { stage, error: geminiError });
+    }
 
     if (!imageData) {
       console.log("Gemini failed or blocked, falling back to OpenAI");
+      provider = "openai";
       const fallbackFile = new File(
         [Buffer.from(base64Image, "base64")],
         "selfie.png",
@@ -143,6 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!imageData) {
+      reportError("Both providers failed to generate image", { stage, provider });
       return NextResponse.json(
         { error: "Failed to generate portrait. Please try again." },
         { status: 500 },
@@ -154,6 +164,7 @@ export async function POST(request: NextRequest) {
         image: imageData,
         stage,
         prompt,
+        provider,
         traits: manifest
           ? {
               seed: manifest.seed,
@@ -173,6 +184,7 @@ export async function POST(request: NextRequest) {
       message.includes("blocked") ||
       message.includes("content_policy_violation")
     ) {
+      reportError("Content policy violation", { error: message });
       return NextResponse.json(
         {
           error:
@@ -182,6 +194,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    reportError("Unhandled error in portrait generation", { error: message });
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 },
