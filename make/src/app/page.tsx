@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { STAGE_NAMES, type StageNumber } from "@/lib/prompt";
-import type { TraitManifest } from "@/lib/traits/types";
+import { STAGE_NAMES, STAGE_PRICES, type StageNumber } from "@/lib/prompt";
+import type { TraitManifest, TraitRoll } from "@/lib/traits/types";
 import { savePortraits, loadPortraits, clearPortraits } from "@/lib/storage";
 
 type AppStage = "intro" | "capture" | "preview" | "gallery" | "locked";
@@ -29,6 +29,83 @@ function BaroqueFrame({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const RARITY_COLORS: Record<string, string> = {
+  Common: "#888",
+  Uncommon: "#4ade80",
+  Rare: "#60a5fa",
+  Legendary: "#facc15",
+};
+
+function TraitSummary({ manifest }: { manifest: TraitManifest }) {
+  const visible = Object.values(manifest.rolls).filter(
+    (r: TraitRoll) => !r.isNothing,
+  );
+  if (visible.length === 0) return null;
+  return (
+    <div className="mt-1 space-y-px">
+      {visible.map((r: TraitRoll) => (
+        <p key={r.category} className="text-[10px] leading-tight text-muted/60">
+          <span style={{ color: RARITY_COLORS[r.rarity] ?? "#888" }}>
+            {r.itemName}
+          </span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function PromptModal({
+  manifest,
+  initialPrompt,
+  onClose,
+  onSaveAndRegenerate,
+}: {
+  manifest: TraitManifest;
+  initialPrompt: string;
+  onClose: () => void;
+  onSaveAndRegenerate: (editedPrompt: string) => void;
+}) {
+  const [text, setText] = useState(initialPrompt);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/80" />
+      <div
+        className="relative max-w-2xl w-full max-h-[80vh] bg-[#1a1408] border border-muted/30 flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6 flex-1 overflow-auto">
+          <p className="text-xs text-muted/60 mb-3">
+            Stage {manifest.stage} — {STAGE_NAMES[manifest.stage]}
+          </p>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="w-full h-64 bg-black/30 border border-muted/20 text-xs text-muted/80 font-mono leading-relaxed p-3 resize-y focus:outline-none focus:border-muted/40"
+          />
+        </div>
+        <div className="flex justify-end gap-3 px-6 pb-6">
+          <button
+            onClick={onClose}
+            className="text-xs text-muted/60 hover:text-foreground transition-colors cursor-pointer px-4 py-2"
+          >
+            Close
+          </button>
+          <button
+            onClick={() => onSaveAndRegenerate(text)}
+            className="text-xs text-foreground border border-muted/30 hover:border-foreground/40 transition-colors cursor-pointer px-4 py-2"
+          >
+            Save &amp; Regenerate
+          </button>
         </div>
       </div>
     </div>
@@ -198,6 +275,8 @@ export default function PortraitStudio() {
   const [generatingStages, setGeneratingStages] = useState<Set<number>>(new Set());
   const [stageErrors, setStageErrors] = useState<(string | null)[]>([null, null, null, null, null]);
   const [error, setError] = useState<string | null>(null);
+  const [promptViewStage, setPromptViewStage] = useState<number | null>(null);
+  const [editedPrompts, setEditedPrompts] = useState<Record<number, string>>({});
 
   const compressedRef = useRef<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -207,6 +286,7 @@ export default function PortraitStudio() {
     const saved = loadPortraits();
     if (saved) {
       setPortraits(saved.portraits);
+      if (saved.traits) setTraitManifests(saved.traits);
       setAppStage("locked");
     }
   }, []);
@@ -245,7 +325,7 @@ export default function PortraitStudio() {
     [handleFile],
   );
 
-  const generateStage = useCallback(async (stage: StageNumber) => {
+  const generateStage = useCallback(async (stage: StageNumber, customPrompt?: string) => {
     const raw = compressedRef.current;
     if (!raw) return;
 
@@ -261,6 +341,9 @@ export default function PortraitStudio() {
       const formData = new FormData();
       formData.append("image", compressed, "selfie.png");
       formData.append("stage", String(stage));
+      if (customPrompt) {
+        formData.append("customPrompt", customPrompt);
+      }
 
       const res = await fetch("/api/generate", { method: "POST", body: formData });
       const data = await res.json();
@@ -283,6 +366,16 @@ export default function PortraitStudio() {
         setTraitManifests((prev) => {
           const next = [...prev];
           next[stage - 1] = data.traits;
+          return next;
+        });
+      } else if (customPrompt) {
+        // Update prompt in existing manifest without overwriting trait rolls
+        setTraitManifests((prev) => {
+          const next = [...prev];
+          const existing = next[stage - 1];
+          if (existing) {
+            next[stage - 1] = { ...existing, prompt: customPrompt };
+          }
           return next;
         });
       }
@@ -515,31 +608,46 @@ export default function PortraitStudio() {
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
                     <BaroqueFrame>
-                      {portrait ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={portrait}
-                          alt={`Stage ${stage}: ${STAGE_NAMES[stage]}`}
-                          className="aspect-square w-full object-cover animate-fade-in"
-                        />
-                      ) : generating ? (
-                        <div className="aspect-square flex items-center justify-center animate-pulse-frame">
-                          <p className="text-muted text-xs text-center px-2">Painting…</p>
-                        </div>
-                      ) : stageError ? (
-                        <div className="aspect-square flex items-center justify-center">
-                          <p className="text-red-400 text-xs text-center px-2">{stageError}</p>
-                        </div>
-                      ) : (
-                        <div className="aspect-square flex items-center justify-center">
-                          <p className="text-muted/40 text-xs">Waiting…</p>
-                        </div>
-                      )}
+                      <div className="relative">
+                        {portrait ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={portrait}
+                              alt={`Stage ${stage}: ${STAGE_NAMES[stage]}`}
+                              className="aspect-square w-full object-cover animate-fade-in"
+                            />
+                            {traitManifests[idx] && (
+                              <button
+                                onClick={() => setPromptViewStage(stage)}
+                                className="absolute top-1.5 right-1.5 bg-black/50 hover:bg-black/70 text-muted/60 hover:text-foreground text-[10px] font-mono px-1.5 py-0.5 transition-colors cursor-pointer"
+                                title="View prompt"
+                              >
+                                {"{…}"}
+                              </button>
+                            )}
+                          </>
+                        ) : generating ? (
+                          <div className="aspect-square flex items-center justify-center animate-pulse-frame">
+                            <p className="text-muted text-xs text-center px-2">Painting…</p>
+                          </div>
+                        ) : stageError ? (
+                          <div className="aspect-square flex items-center justify-center">
+                            <p className="text-red-400 text-xs text-center px-2">{stageError}</p>
+                          </div>
+                        ) : (
+                          <div className="aspect-square flex items-center justify-center">
+                            <p className="text-muted/40 text-xs">Waiting…</p>
+                          </div>
+                        )}
+                      </div>
                     </BaroqueFrame>
                     <div className="mt-2 text-center">
                       <p className="text-xs text-muted/80 leading-tight">
-                        {stage}. {STAGE_NAMES[stage]}
+                        {stage}. {STAGE_NAMES[stage]}{" "}
+                        <span className="text-[10px] text-muted/40">{STAGE_PRICES[stage]}</span>
                       </p>
+                      {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
                       {!generating && (portrait || stageError) && (
                         <button
                           onClick={() => generateStage(stage)}
@@ -604,19 +712,34 @@ export default function PortraitStudio() {
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
                     <BaroqueFrame>
-                      {portrait && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={portrait}
-                          alt={`Stage ${stage}: ${STAGE_NAMES[stage]}`}
-                          className="aspect-square w-full object-cover"
-                        />
-                      )}
+                      <div className="relative">
+                        {portrait && (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={portrait}
+                              alt={`Stage ${stage}: ${STAGE_NAMES[stage]}`}
+                              className="aspect-square w-full object-cover"
+                            />
+                            {traitManifests[idx] && (
+                              <button
+                                onClick={() => setPromptViewStage(stage)}
+                                className="absolute top-1.5 right-1.5 bg-black/50 hover:bg-black/70 text-muted/60 hover:text-foreground text-[10px] font-mono px-1.5 py-0.5 transition-colors cursor-pointer"
+                                title="View prompt"
+                              >
+                                {"{…}"}
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </BaroqueFrame>
                     <div className="mt-2 text-center">
                       <p className="text-xs text-muted/80 leading-tight">
-                        {stage}. {STAGE_NAMES[stage]}
+                        {stage}. {STAGE_NAMES[stage]}{" "}
+                        <span className="text-[10px] text-muted/40">{STAGE_PRICES[stage]}</span>
                       </p>
+                      {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
                       {portrait && (
                         <a
                           href={portrait}
@@ -648,6 +771,22 @@ export default function PortraitStudio() {
           <p className="text-red-400 text-sm text-center mt-4">{error}</p>
         )}
       </div>
+
+      {promptViewStage !== null && traitManifests[promptViewStage - 1] && (
+        <PromptModal
+          manifest={traitManifests[promptViewStage - 1]!}
+          initialPrompt={
+            editedPrompts[promptViewStage] ??
+            traitManifests[promptViewStage - 1]!.prompt
+          }
+          onClose={() => setPromptViewStage(null)}
+          onSaveAndRegenerate={(editedPrompt) => {
+            setEditedPrompts((prev) => ({ ...prev, [promptViewStage]: editedPrompt }));
+            setPromptViewStage(null);
+            generateStage(promptViewStage as StageNumber, editedPrompt);
+          }}
+        />
+      )}
     </main>
   );
 }

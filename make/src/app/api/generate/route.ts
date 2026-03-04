@@ -111,8 +111,20 @@ export async function POST(request: NextRequest) {
       );
     }
     const stage = stageNum as StageNumber;
-    const manifest = rollAndAssemble(stage);
-    const prompt = manifest.prompt;
+
+    // Use custom prompt if provided, otherwise roll fresh traits
+    const customPrompt = formData.get("customPrompt");
+    const hasCustomPrompt = typeof customPrompt === "string" && customPrompt.length > 0;
+
+    let prompt: string;
+    let manifest: ReturnType<typeof rollAndAssemble> | null = null;
+
+    if (hasCustomPrompt) {
+      prompt = customPrompt;
+    } else {
+      manifest = rollAndAssemble(stage);
+      prompt = manifest.prompt;
+    }
 
     const arrayBuffer = await file.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
@@ -141,11 +153,13 @@ export async function POST(request: NextRequest) {
       {
         image: imageData,
         stage,
-        traits: {
-          seed: manifest.seed,
-          rolls: manifest.rolls,
-          couplingsFired: manifest.couplingsFired,
-        },
+        traits: manifest
+          ? {
+              seed: manifest.seed,
+              rolls: manifest.rolls,
+              couplingsFired: manifest.couplingsFired,
+            }
+          : null,
       },
       { headers: { "X-RateLimit-Remaining": String(remaining) } },
     );
