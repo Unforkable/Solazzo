@@ -78,7 +78,7 @@ export function assemblePrompt(
     const lightFragment = usable(rolls.lighting);
     const lightPrefix = lightFragment ? `${lightFragment} ` : "";
     blocks.push(
-      `LIGHTING: ${lightPrefix}Approximately ${shadowPercent}% of the canvas is in deep shadow.`,
+      `LIGHTING: ${lightPrefix}True Caravaggist tenebrism — approximately ${shadowPercent}% of the canvas must be swallowed in deep, near-black shadow. Only a narrow sliver of warm light reveals the subject. The overall image must read as DARK; a viewer should need to lean in to see detail in the shadows. Do not add fill light or ambient illumination to brighten the scene.`,
     );
   }
 

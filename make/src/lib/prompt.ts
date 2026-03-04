@@ -9,3 +9,11 @@ export const STAGE_NAMES: Record<1 | 2 | 3 | 4 | 5, string> = {
   4: "Maximum Excess",
   5: "Reflective Maturity",
 };
+
+export const STAGE_PRICES: Record<1 | 2 | 3 | 4 | 5, string> = {
+  1: "< $200",
+  2: "$200–$399",
+  3: "$400–$599",
+  4: "$600–$799",
+  5: "$800–$1,000",
+};
