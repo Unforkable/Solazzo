@@ -330,6 +330,11 @@ export default function PortraitStudio() {
     if (!raw) return;
 
     setGeneratingStages((prev) => new Set(prev).add(stage));
+    setPortraits((prev) => {
+      const next = [...prev];
+      next[stage - 1] = null;
+      return next;
+    });
     setStageErrors((prev) => {
       const next = [...prev];
       next[stage - 1] = null;
