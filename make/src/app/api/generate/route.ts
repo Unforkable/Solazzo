@@ -17,6 +17,7 @@ async function generateWithGemini(
   base64Image: string,
   mimeType: string,
   prompt: string,
+  stage: StageNumber,
 ): Promise<string | null> {
   const response = await gemini.models.generateContent({
     model: "gemini-3.1-flash-image-preview",
@@ -36,13 +37,29 @@ async function generateWithGemini(
   });
 
   if (response.promptFeedback?.blockReason) {
-    console.warn("Gemini blocked:", response.promptFeedback.blockReason);
+    reportError("Gemini blocked by safety filter", {
+      stage,
+      blockReason: response.promptFeedback.blockReason,
+    });
     return null;
   }
 
-  const parts = response.candidates?.[0]?.content?.parts;
+  const candidate = response.candidates?.[0];
+  const parts = candidate?.content?.parts;
   const imagePart = parts?.find((p) => p.inlineData);
-  return imagePart?.inlineData?.data ?? null;
+
+  if (!imagePart?.inlineData?.data) {
+    const textParts = parts?.filter((p) => p.text).map((p) => p.text).join(" ");
+    reportError("Gemini returned no image", {
+      stage,
+      finishReason: candidate?.finishReason ?? "unknown",
+      textResponse: textParts ? textParts.slice(0, 300) : "none",
+      partCount: parts?.length ?? 0,
+    });
+    return null;
+  }
+
+  return imagePart.inlineData.data;
 }
 
 async function generateWithOpenAI(
@@ -134,10 +151,12 @@ export async function POST(request: NextRequest) {
     let imageData: string | null = null;
     let provider: "gemini" | "openai" = "gemini";
     try {
-      imageData = await generateWithGemini(base64Image, file.type, prompt);
+      imageData = await generateWithGemini(base64Image, file.type, prompt, stage);
     } catch (geminiError) {
       console.warn("Gemini threw error, falling back to OpenAI:", geminiError);
-      reportError("Gemini threw, falling back to OpenAI", { stage, error: geminiError });
+      const errMsg = geminiError instanceof Error ? geminiError.message : String(geminiError);
+      const errName = geminiError instanceof Error ? geminiError.constructor.name : "unknown";
+      reportError("Gemini threw exception", { stage, type: errName, message: errMsg.slice(0, 500) });
     }
 
     if (!imageData) {

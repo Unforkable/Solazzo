@@ -306,6 +306,7 @@ export default function PortraitStudio() {
   const [promptViewStage, setPromptViewStage] = useState<number | null>(null);
   const [editedPrompts, setEditedPrompts] = useState<Record<number, string>>({});
   const [providers, setProviders] = useState<(string | null)[]>([null, null, null, null, null]);
+  const [lightboxStage, setLightboxStage] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
   const compressedRef = useRef<Blob | null>(null);
@@ -685,13 +686,9 @@ export default function PortraitStudio() {
                             <img
                               src={portrait}
                               alt={`Stage ${stage}: ${STAGE_NAMES[stage]}`}
-                              className="aspect-square w-full object-cover animate-fade-in"
+                              className="aspect-square w-full object-cover animate-fade-in cursor-pointer"
+                              onClick={() => setLightboxStage(stage)}
                             />
-                            {providers[idx] && (
-                              <span className="absolute top-2 left-2 bg-black/60 text-[9px] font-mono text-muted/50 px-1.5 py-0.5">
-                                {providers[idx]}
-                              </span>
-                            )}
                             {traitManifests[idx] && (
                               <button
                                 onClick={() => setPromptViewStage(stage)}
@@ -725,6 +722,9 @@ export default function PortraitStudio() {
                       </p>
                       <p className="text-[11px] text-muted/40 font-body mt-0.5">
                         {STAGE_PRICES[stage]}
+                        {providers[idx] && (
+                          <span className="text-muted/25 ml-1.5">via {providers[idx]}</span>
+                        )}
                       </p>
                       {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
                       {!generating && (portrait || stageError) && (
@@ -798,7 +798,8 @@ export default function PortraitStudio() {
                             <img
                               src={portrait}
                               alt={`Stage ${stage}: ${STAGE_NAMES[stage]}`}
-                              className="aspect-square w-full object-cover"
+                              className="aspect-square w-full object-cover cursor-pointer"
+                              onClick={() => setLightboxStage(stage)}
                             />
                             {traitManifests[idx] && (
                               <button
@@ -852,6 +853,29 @@ export default function PortraitStudio() {
           <p className="text-red-400 text-sm text-center mt-4 font-body">{error}</p>
         )}
       </div>
+
+      {/* ── Lightbox ── */}
+      {lightboxStage !== null && portraits[lightboxStage - 1] && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center p-4 sm:p-8"
+          onClick={() => setLightboxStage(null)}
+        >
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
+          <div className="relative max-w-3xl w-full animate-fade-in">
+            <BaroqueFrame>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={portraits[lightboxStage - 1]!}
+                alt={`Stage ${lightboxStage}: ${STAGE_NAMES[lightboxStage as StageNumber]}`}
+                className="w-full object-contain"
+              />
+            </BaroqueFrame>
+            <p className="text-center mt-4 font-display text-foreground/80 text-lg">
+              {lightboxStage}. {STAGE_NAMES[lightboxStage as StageNumber]}
+            </p>
+          </div>
+        </div>
+      )}
 
       {promptViewStage !== null && traitManifests[promptViewStage - 1] && (
         <PromptModal
