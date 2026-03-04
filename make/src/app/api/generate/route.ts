@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
       {
         image: imageData,
         stage,
+        prompt,
         traits: manifest
           ? {
               seed: manifest.seed,

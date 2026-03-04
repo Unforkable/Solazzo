@@ -365,7 +365,7 @@ export default function PortraitStudio() {
       if (data.traits) {
         setTraitManifests((prev) => {
           const next = [...prev];
-          next[stage - 1] = data.traits;
+          next[stage - 1] = { ...data.traits, stage, prompt: data.prompt };
           return next;
         });
       } else if (customPrompt) {
