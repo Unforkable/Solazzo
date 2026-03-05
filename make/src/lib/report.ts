@@ -84,5 +84,10 @@ export function reportGeneration(
   fetch(`https://api.telegram.org/bot${tg.token}/sendPhoto`, {
     method: "POST",
     body: form,
-  }).catch((err) => console.warn("Telegram photo report failed:", err));
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.ok) console.warn("Telegram sendPhoto error:", data);
+    })
+    .catch((err) => console.warn("Telegram photo report failed:", err));
 }

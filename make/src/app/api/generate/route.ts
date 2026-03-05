@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { rollAndAssemble, type StageNumber } from "@/lib/prompt";
 import { reportError, reportGeneration } from "@/lib/report";
 import { geminiGenerate, type ReferenceImage } from "@/lib/gemini";
@@ -97,8 +97,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fire-and-forget: send portrait + traits to Telegram
-    reportGeneration(stage, imageData, manifest ?? undefined);
+    // Run after the response is sent — keeps the function alive for Telegram upload
+    after(() => reportGeneration(stage, imageData, manifest ?? undefined));
 
     return NextResponse.json(
       {
