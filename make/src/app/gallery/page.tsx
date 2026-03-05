@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { GalleryEntry, GalleryTraitRoll } from "@/lib/gallery-store";
 
@@ -142,15 +143,33 @@ export default function GalleryPage() {
   const [selected, setSelected] = useState<GalleryEntry | null>(null);
   const [currentStage, setCurrentStage] = useState(1);
   const [solPrice, setSolPrice] = useState<number | null>(null);
+  const searchParams = useSearchParams();
+  const newId = searchParams.get("new");
+  const highlightedRef = useRef<HTMLDivElement>(null);
+  const didAutoOpen = useRef(false);
 
   useEffect(() => {
     fetch("/api/gallery")
       .then((res) => res.json())
       .then((data) => {
-        setCollections(data.collections ?? []);
+        const items = data.collections ?? [];
+        setCollections(items);
+        // Auto-open lightbox for newly published collection
+        if (newId && !didAutoOpen.current) {
+          const match = items.find((c: GalleryEntry) => c.id === newId);
+          if (match) {
+            setSelected(match);
+            didAutoOpen.current = true;
+          }
+        }
       })
       .catch(() => setError("Failed to load gallery."))
       .finally(() => setLoading(false));
+
+    // Scroll to highlighted collection after render
+    if (newId && highlightedRef.current) {
+      setTimeout(() => highlightedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 600);
+    }
 
     fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd")
       .then((res) => res.json())
@@ -227,7 +246,8 @@ export default function GalleryPage() {
               return (
                 <div
                   key={entry.id}
-                  className="gallery-panel cursor-pointer group"
+                  ref={entry.id === newId ? highlightedRef : undefined}
+                  className={`gallery-panel cursor-pointer group ${entry.id === newId ? "ring-1 ring-gold/50 ring-offset-2 ring-offset-black" : ""}`}
                   style={{ animationDelay: `${idx * 80}ms` }}
                   onClick={() => setSelected(entry)}
                 >

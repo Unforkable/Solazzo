@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import JSZip from "jszip";
 import { STAGE_NAMES, STAGE_PRICES, type StageNumber } from "@/lib/prompt";
 import type { TraitManifest, TraitRoll } from "@/lib/traits/types";
 import { savePortraits, loadPortraits, clearPortraits } from "@/lib/storage";
@@ -433,11 +435,11 @@ export default function PortraitStudio() {
   const [editedPrompts, setEditedPrompts] = useState<Record<number, string>>({});
   const [lightboxStage, setLightboxStage] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const [published, setPublished] = useState(false);
+  const [lockingIn, setLockingIn] = useState(false);
 
   const compressedRef = useRef<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const saved = loadPortraits();
@@ -569,20 +571,60 @@ export default function PortraitStudio() {
 
   const lockIn = useCallback(async () => {
     const allDone = portraits.every((p) => p !== null);
-    if (!allDone) return;
+    if (!allDone || lockingIn) return;
+
+    setLockingIn(true);
+    setError(null);
 
     try {
+      // 1. Compress for storage
       const compressed = await Promise.all(
         portraits.map((p) => compressForStorage(p!)),
       );
       const validTraits = traitManifests.filter((t): t is TraitManifest => t !== null);
       savePortraits(compressed, validTraits.length === 5 ? validTraits : undefined);
-      setPortraits(compressed);
-      setAppStage("locked");
+
+      // 2. Download zip
+      const zip = new JSZip();
+      for (let i = 0; i < portraits.length; i++) {
+        const dataUrl = portraits[i]!;
+        const base64 = dataUrl.split(",")[1];
+        if (base64) {
+          zip.file(`solazzo-stage-${i + 1}.jpg`, base64, { base64: true });
+        }
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "solazzo-collection.zip";
+      a.click();
+      URL.revokeObjectURL(a.href);
+
+      // 3. Publish to gallery
+      const res = await fetch("/api/gallery/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portraits: compressed,
+          traits: validTraits.length === 5 ? validTraits : undefined,
+        }),
+      });
+
+      if (res.ok) {
+        const { id } = await res.json();
+        router.push(`/gallery?new=${id}`);
+      } else {
+        // Publish failed — still save locally, stay on locked view
+        setPortraits(compressed);
+        setAppStage("locked");
+        setError("Collection saved locally but failed to publish. You can try again later.");
+      }
     } catch {
-      setError("Failed to save portraits. Please try again.");
+      setError("Failed to save. Please try again.");
+    } finally {
+      setLockingIn(false);
     }
-  }, [portraits, traitManifests]);
+  }, [portraits, traitManifests, lockingIn, router]);
 
   const reset = useCallback(() => {
     clearPortraits();
@@ -604,27 +646,6 @@ export default function PortraitStudio() {
     setAppStage("capture");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
-
-  const publishToGallery = useCallback(async () => {
-    if (publishing || published) return;
-    setPublishing(true);
-    try {
-      const res = await fetch("/api/gallery/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          portraits,
-          traits: traitManifests.filter(Boolean),
-        }),
-      });
-      if (!res.ok) throw new Error("Publish failed");
-      setPublished(true);
-    } catch {
-      setError("Failed to publish. Please try again.");
-    } finally {
-      setPublishing(false);
-    }
-  }, [portraits, traitManifests, publishing, published]);
 
   const completedCount = portraits.filter((p) => p !== null).length;
   const allComplete = completedCount === 5;
@@ -791,9 +812,10 @@ export default function PortraitStudio() {
               {allComplete && (
                 <button
                   onClick={lockIn}
-                  className="btn-gold font-display tracking-wide"
+                  disabled={lockingIn}
+                  className="btn-gold font-display tracking-wide disabled:opacity-50"
                 >
-                  Lock In Collection
+                  {lockingIn ? "Locking in..." : "Lock In Collection"}
                 </button>
               )}
             </div>
@@ -907,36 +929,30 @@ export default function PortraitStudio() {
               <div className="flex gap-3">
                 <button
                   onClick={async () => {
+                    const zip = new JSZip();
                     for (let i = 0; i < portraits.length; i++) {
                       const p = portraits[i];
                       if (!p) continue;
-                      const a = document.createElement("a");
-                      a.href = p;
-                      a.download = `solazzo-stage-${i + 1}.jpg`;
-                      a.click();
-                      await new Promise((r) => setTimeout(r, 300));
+                      const base64 = p.split(",")[1];
+                      if (base64) zip.file(`solazzo-stage-${i + 1}.jpg`, base64, { base64: true });
                     }
+                    const blob = await zip.generateAsync({ type: "blob" });
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = "solazzo-collection.zip";
+                    a.click();
+                    URL.revokeObjectURL(a.href);
                   }}
                   className="btn-gold font-display tracking-wide"
                 >
                   Download All
                 </button>
-                {published ? (
-                  <Link
-                    href="/gallery"
-                    className="btn-ghost font-display tracking-wide"
-                  >
-                    View Gallery
-                  </Link>
-                ) : (
-                  <button
-                    onClick={publishToGallery}
-                    disabled={publishing}
-                    className="btn-ghost font-display tracking-wide disabled:opacity-50"
-                  >
-                    {publishing ? "Publishing..." : "Publish to Gallery"}
-                  </button>
-                )}
+                <Link
+                  href="/gallery"
+                  className="btn-ghost font-display tracking-wide"
+                >
+                  View Gallery
+                </Link>
               </div>
             </div>
 
