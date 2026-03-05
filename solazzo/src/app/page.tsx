@@ -19,6 +19,12 @@ export default function Home() {
           settlement condition is met. Either way, you get every SOL back. The
           only thing you can lose is your position.
         </p>
+        <a
+          href="https://make.solazzo.fun"
+          className="inline-block mt-8 px-6 py-3 text-sm font-medium tracking-wide text-foreground border border-muted/30 hover:border-foreground/50 transition-colors"
+        >
+          Try the Portrait Studio &rarr;
+        </a>
       </div>
 
       {/* ---------------------------------------------------------- */}
@@ -611,16 +617,24 @@ export default function Home() {
       {/* ---------------------------------------------------------- */}
       {/* FOOTER                                                     */}
       {/* ---------------------------------------------------------- */}
-      <footer className="border-t border-muted/20 mt-16 pt-8 text-xs text-muted/50 space-y-2">
+      <footer className="border-t border-muted/20 mt-16 pt-8 text-xs text-muted/50 space-y-4">
         <a
-          href="https://solazzo.fun"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-muted transition-colors"
+          href="https://make.solazzo.fun"
+          className="block text-sm text-foreground/70 hover:text-foreground transition-colors"
         >
-          solazzo.fun
+          Create your portrait &rarr;
         </a>
-        <p>Built on Solana</p>
+        <div className="space-y-2">
+          <a
+            href="https://solazzo.fun"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-muted transition-colors"
+          >
+            solazzo.fun
+          </a>
+          <p>Built on Solana</p>
+        </div>
       </footer>
     </main>
   );

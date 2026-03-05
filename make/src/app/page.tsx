@@ -563,8 +563,7 @@ export default function PortraitStudio() {
     setAppStage("gallery");
 
     for (const stage of ALL_STAGES) {
-      generateStage(stage);
-      if (stage < 5) await new Promise((r) => setTimeout(r, 500));
+      await generateStage(stage);
     }
   }, [generateStage]);
 
