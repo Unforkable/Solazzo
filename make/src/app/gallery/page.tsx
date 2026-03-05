@@ -7,10 +7,19 @@ import type { GalleryEntry, GalleryTraitRoll } from "@/lib/gallery-store";
 const STAGE_NAMES: Record<number, string> = {
   1: "Humble Believer",
   2: "Rising Confidence",
-  3: "Visible Success",
-  4: "Full Excess",
-  5: "Quiet Reflection",
+  3: "Established Wealth",
+  4: "Maximum Excess",
+  5: "Reflective Maturity",
 };
+
+const STAGE_THRESHOLDS = [200, 400, 600, 800]; // SOL price boundaries
+
+function priceToStage(price: number): number {
+  for (let i = 0; i < STAGE_THRESHOLDS.length; i++) {
+    if (price < STAGE_THRESHOLDS[i]) return i + 1;
+  }
+  return 5;
+}
 
 const RARITY_COLORS: Record<string, string> = {
   Common: "#8a7f72",
@@ -58,9 +67,11 @@ function timeAgo(timestamp: number): string {
 function CollectionLightbox({
   entry,
   onClose,
+  currentStage,
 }: {
   entry: GalleryEntry;
   onClose: () => void;
+  currentStage: number;
 }) {
   return (
     <div
@@ -87,7 +98,7 @@ function CollectionLightbox({
               : [];
 
             return (
-              <div key={stage}>
+              <div key={stage} className={stage === currentStage ? "ring-1 ring-gold/40 ring-offset-2 ring-offset-black" : "opacity-50"}>
                 <BaroqueFrame>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -97,8 +108,9 @@ function CollectionLightbox({
                   />
                 </BaroqueFrame>
                 <div className="mt-2 text-center">
-                  <p className="text-xs font-display font-semibold text-foreground/80">
+                  <p className={`text-xs font-display font-semibold ${stage === currentStage ? "text-gold" : "text-foreground/80"}`}>
                     {stage}. {STAGE_NAMES[stage]}
+                    {stage === currentStage && " (current)"}
                   </p>
                   {visible.length > 0 && (
                     <div className="mt-1 space-y-px">
@@ -128,6 +140,8 @@ export default function GalleryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<GalleryEntry | null>(null);
+  const [currentStage, setCurrentStage] = useState(1);
+  const [solPrice, setSolPrice] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/gallery")
@@ -137,6 +151,17 @@ export default function GalleryPage() {
       })
       .catch(() => setError("Failed to load gallery."))
       .finally(() => setLoading(false));
+
+    fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd")
+      .then((res) => res.json())
+      .then((data) => {
+        const price = data?.solana?.usd;
+        if (typeof price === "number") {
+          setSolPrice(price);
+          setCurrentStage(priceToStage(price));
+        }
+      })
+      .catch(() => {}); // Fall back to stage 1
   }, []);
 
   return (
@@ -159,6 +184,11 @@ export default function GalleryPage() {
                 ? "Loading..."
                 : `${collections.length} collection${collections.length !== 1 ? "s" : ""} published`}
             </p>
+            {solPrice !== null && (
+              <p className="text-gold/60 text-xs mt-1 font-body">
+                SOL ${solPrice.toFixed(0)} — Stage {currentStage}: {STAGE_NAMES[currentStage]}
+              </p>
+            )}
           </div>
         </div>
 
@@ -182,8 +212,7 @@ export default function GalleryPage() {
         {collections.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
             {collections.map((entry, idx) => {
-              // Use Stage 3 as cover (middle stage, most visually rich)
-              const coverUrl = entry.portraits[2] ?? entry.portraits[0];
+              const coverUrl = entry.portraits[currentStage - 1] ?? entry.portraits[0];
               const legendaryCount = entry.traits
                 ? entry.traits.reduce(
                     (sum, t) =>
@@ -234,6 +263,7 @@ export default function GalleryPage() {
         <CollectionLightbox
           entry={selected}
           onClose={() => setSelected(null)}
+          currentStage={currentStage}
         />
       )}
     </main>
