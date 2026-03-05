@@ -48,13 +48,16 @@ interface TraitRollReport {
   isNothing: boolean;
 }
 
-export function reportGeneration(
+export async function reportGeneration(
   stage: number,
   imageBase64: string,
   traits?: { seed: string; rolls: Record<string, TraitRollReport> },
 ) {
   const tg = getTelegram();
-  if (!tg) return;
+  if (!tg) {
+    console.warn("[reportGeneration] No Telegram credentials");
+    return;
+  }
 
   const lines = [`🎨 *Stage ${stage} Portrait*`];
 
@@ -87,14 +90,16 @@ export function reportGeneration(
     Buffer.from(`--${boundary}--\r\n`),
   ]);
 
-  fetch(`https://api.telegram.org/bot${tg.token}/sendPhoto`, {
-    method: "POST",
-    headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
-    body,
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      if (!data.ok) console.warn("Telegram sendPhoto error:", data);
-    })
-    .catch((err) => console.warn("Telegram photo report failed:", err));
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${tg.token}/sendPhoto`, {
+      method: "POST",
+      headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+      body,
+    });
+    const data = await res.json();
+    if (!data.ok) console.warn("[reportGeneration] Telegram sendPhoto error:", JSON.stringify(data));
+    else console.log("[reportGeneration] Sent stage", stage, "portrait to Telegram");
+  } catch (err) {
+    console.warn("[reportGeneration] Telegram photo report failed:", err);
+  }
 }

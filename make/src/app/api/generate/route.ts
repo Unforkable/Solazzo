@@ -98,7 +98,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Run after the response is sent — keeps the function alive for Telegram upload
-    after(() => reportGeneration(stage, imageData, manifest ?? undefined));
+    after(async () => {
+      await reportGeneration(stage, imageData, manifest ?? undefined);
+    });
 
     return NextResponse.json(
       {
