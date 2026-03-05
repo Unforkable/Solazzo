@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { GalleryEntry, GalleryTraitRoll } from "@/lib/gallery-store";
@@ -137,6 +137,14 @@ function CollectionLightbox({
 }
 
 export default function GalleryPage() {
+  return (
+    <Suspense>
+      <GalleryContent />
+    </Suspense>
+  );
+}
+
+function GalleryContent() {
   const [collections, setCollections] = useState<GalleryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
