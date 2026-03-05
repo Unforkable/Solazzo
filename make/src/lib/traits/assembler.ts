@@ -41,6 +41,7 @@ function collectFragments(
 export function assemblePrompt(
   rolls: Record<TraitCategory, TraitRoll>,
   stage: StageNumber,
+  options?: { referenceImageCount?: number },
 ): { prompt: string } {
   const blocks: string[] = [];
 
@@ -54,6 +55,27 @@ export function assemblePrompt(
     "Do not reposition, resize, or re-proportion any part of the subject. " +
     "The painting must look like an authentic 17th-century Old Master work.",
   );
+
+  // 2b. Style reference (when reference images are provided)
+  {
+    const refCount = options?.referenceImageCount ?? 0;
+    if (refCount === 1) {
+      blocks.push(
+        "STYLE REFERENCE — Image 2 is a style and aesthetic reference ONLY. " +
+        "Match its painterly treatment, lighting quality, color mood, and overall " +
+        "atmosphere. Do NOT copy the person, pose, clothing, or specific objects " +
+        "from the reference. The subject's identity comes ONLY from Image 1.",
+      );
+    } else if (refCount > 1) {
+      const imageNums = Array.from({ length: refCount }, (_, i) => `Image ${i + 2}`).join(", ");
+      blocks.push(
+        `STYLE REFERENCES — ${imageNums} are style and aesthetic references ONLY. ` +
+        "Match their painterly treatment, lighting quality, color mood, and overall " +
+        "atmosphere. Do NOT copy any person, pose, clothing, or specific objects " +
+        "from the references. The subject's identity comes ONLY from Image 1.",
+      );
+    }
+  }
 
   // 3. Background
   blocks.push(

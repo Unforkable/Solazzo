@@ -1,1 +1,3 @@
 .vercel
+test-output/*.png
+test-output/*.txt

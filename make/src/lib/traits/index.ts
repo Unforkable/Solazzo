@@ -7,9 +7,10 @@ export type { StageNumber, TraitManifest, TraitRoll, TraitCategory } from "./typ
 export function rollAndAssemble(
   stage: StageNumber,
   seed?: string,
+  options?: { referenceImageCount?: number },
 ): TraitManifest {
   const { rolls, seed: actualSeed, couplingsFired } = rollTraits(stage, seed);
-  const { prompt } = assemblePrompt(rolls, stage);
+  const { prompt } = assemblePrompt(rolls, stage, options);
 
   return {
     stage,
