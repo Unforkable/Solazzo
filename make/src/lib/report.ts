@@ -74,16 +74,23 @@ export function reportGeneration(
   lines.push("", `_${new Date().toISOString()}_`);
 
   const imageBuffer = Buffer.from(imageBase64, "base64");
-  const blob = new Blob([imageBuffer], { type: "image/png" });
-  const form = new FormData();
-  form.append("chat_id", tg.chatId);
-  form.append("photo", blob, "portrait.png");
-  form.append("caption", lines.join("\n"));
-  form.append("parse_mode", "Markdown");
+  const caption = lines.join("\n");
+
+  // Build multipart body manually — FormData + Blob is unreliable in Vercel's Node.js runtime
+  const boundary = `----SolazzoBoundary${Date.now()}`;
+  const body = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${tg.chatId}\r\n`),
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="portrait.png"\r\nContent-Type: image/png\r\n\r\n`),
+    imageBuffer,
+    Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n`),
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="parse_mode"\r\n\r\nMarkdown\r\n`),
+    Buffer.from(`--${boundary}--\r\n`),
+  ]);
 
   fetch(`https://api.telegram.org/bot${tg.token}/sendPhoto`, {
     method: "POST",
-    body: form,
+    headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
+    body,
   })
     .then((res) => res.json())
     .then((data) => {
