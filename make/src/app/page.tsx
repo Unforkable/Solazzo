@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import JSZip from "jszip";
 import { STAGE_NAMES, STAGE_PRICES, type StageNumber } from "@/lib/prompt";
 import type { TraitManifest, TraitRoll } from "@/lib/traits/types";
 import { savePortraits, loadPortraits, clearPortraits } from "@/lib/storage";
@@ -584,41 +583,50 @@ export default function PortraitStudio() {
       const validTraits = traitManifests.filter((t): t is TraitManifest => t !== null);
       savePortraits(compressed, validTraits.length === 5 ? validTraits : undefined);
 
-      // 2. Download zip
-      const zip = new JSZip();
-      for (let i = 0; i < portraits.length; i++) {
-        const dataUrl = portraits[i]!;
-        const base64 = dataUrl.split(",")[1];
-        if (base64) {
-          zip.file(`solazzo-stage-${i + 1}.jpg`, base64, { base64: true });
+      // 2. Download zip (don't block the rest if this fails)
+      try {
+        const { default: JSZipLib } = await import("jszip");
+        const zip = new JSZipLib();
+        for (let i = 0; i < portraits.length; i++) {
+          const dataUrl = portraits[i]!;
+          const base64 = dataUrl.split(",")[1];
+          if (base64) {
+            zip.file(`solazzo-stage-${i + 1}.jpg`, base64, { base64: true });
+          }
         }
+        const blob = await zip.generateAsync({ type: "blob" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "solazzo-collection.zip";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      } catch (zipErr) {
+        console.warn("Zip download failed:", zipErr);
       }
-      const blob = await zip.generateAsync({ type: "blob" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "solazzo-collection.zip";
-      a.click();
-      URL.revokeObjectURL(a.href);
 
-      // 3. Publish to gallery
-      const res = await fetch("/api/gallery/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          portraits: compressed,
-          traits: validTraits.length === 5 ? validTraits : undefined,
-        }),
-      });
+      // 3. Publish to gallery + redirect
+      try {
+        const res = await fetch("/api/gallery/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            portraits: compressed,
+            traits: validTraits.length === 5 ? validTraits : undefined,
+          }),
+        });
 
-      if (res.ok) {
-        const { id } = await res.json();
-        router.push(`/gallery?new=${id}`);
-      } else {
-        // Publish failed — still save locally, stay on locked view
-        setPortraits(compressed);
-        setAppStage("locked");
-        setError("Collection saved locally but failed to publish. You can try again later.");
+        if (res.ok) {
+          const { id } = await res.json();
+          router.push(`/gallery?new=${id}`);
+          return;
+        }
+      } catch (pubErr) {
+        console.warn("Publish failed:", pubErr);
       }
+
+      // Fallback: stay on locked view
+      setPortraits(compressed);
+      setAppStage("locked");
     } catch {
       setError("Failed to save. Please try again.");
     } finally {
@@ -929,19 +937,33 @@ export default function PortraitStudio() {
               <div className="flex gap-3">
                 <button
                   onClick={async () => {
-                    const zip = new JSZip();
-                    for (let i = 0; i < portraits.length; i++) {
-                      const p = portraits[i];
-                      if (!p) continue;
-                      const base64 = p.split(",")[1];
-                      if (base64) zip.file(`solazzo-stage-${i + 1}.jpg`, base64, { base64: true });
+                    try {
+                      const { default: JSZipLib } = await import("jszip");
+                      const zip = new JSZipLib();
+                      for (let i = 0; i < portraits.length; i++) {
+                        const p = portraits[i];
+                        if (!p) continue;
+                        const base64 = p.split(",")[1];
+                        if (base64) zip.file(`solazzo-stage-${i + 1}.jpg`, base64, { base64: true });
+                      }
+                      const blob = await zip.generateAsync({ type: "blob" });
+                      const a = document.createElement("a");
+                      a.href = URL.createObjectURL(blob);
+                      a.download = "solazzo-collection.zip";
+                      a.click();
+                      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+                    } catch {
+                      // Fallback: download individually
+                      for (let i = 0; i < portraits.length; i++) {
+                        const p = portraits[i];
+                        if (!p) continue;
+                        const a = document.createElement("a");
+                        a.href = p;
+                        a.download = `solazzo-stage-${i + 1}.jpg`;
+                        a.click();
+                        await new Promise((r) => setTimeout(r, 300));
+                      }
                     }
-                    const blob = await zip.generateAsync({ type: "blob" });
-                    const a = document.createElement("a");
-                    a.href = URL.createObjectURL(blob);
-                    a.download = "solazzo-collection.zip";
-                    a.click();
-                    URL.revokeObjectURL(a.href);
                   }}
                   className="btn-gold font-display tracking-wide"
                 >
