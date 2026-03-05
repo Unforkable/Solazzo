@@ -1,63 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { rollAndAssemble, type StageNumber } from "@/lib/prompt";
-import { reportError } from "@/lib/report";
+import { reportError, reportGeneration } from "@/lib/report";
+import { geminiGenerate, type ReferenceImage } from "@/lib/gemini";
+import { loadStageReferences } from "@/lib/reference-images";
 
 export const maxDuration = 60;
 
-const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-
-async function geminiGenerate(
-  base64Image: string,
-  mimeType: string,
-  prompt: string,
-  stage: StageNumber,
-): Promise<string | null> {
-  const response = await gemini.models.generateContent({
-    model: "gemini-3.1-flash-image-preview",
-    contents: [
-      { text: prompt },
-      { inlineData: { mimeType, data: base64Image } },
-    ],
-    config: {
-      responseModalities: ["TEXT", "IMAGE"],
-      safetySettings: [
-        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-      ],
-    },
-  });
-
-  if (response.promptFeedback?.blockReason) {
-    reportError("Gemini blocked by safety filter", {
-      stage,
-      blockReason: response.promptFeedback.blockReason,
-    });
-    return null;
-  }
-
-  const candidate = response.candidates?.[0];
-  const parts = candidate?.content?.parts;
-  const imagePart = parts?.find((p) => p.inlineData);
-
-  if (!imagePart?.inlineData?.data) {
-    const textParts = parts?.filter((p) => p.text).map((p) => p.text).join(" ");
-    reportError("Gemini returned no image", {
-      stage,
-      finishReason: candidate?.finishReason ?? "unknown",
-      textResponse: textParts ? textParts.slice(0, 300) : "none",
-      partCount: parts?.length ?? 0,
-    });
-    return null;
-  }
-
-  return imagePart.inlineData.data;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -96,6 +46,24 @@ export async function POST(request: NextRequest) {
     }
     const stage = stageNum as StageNumber;
 
+    // Reference images: explicit uploads > per-stage defaults
+    const refFiles = formData.getAll("referenceImage");
+    let refs: ReferenceImage[] = [];
+
+    if (refFiles.length > 0 && refFiles[0] instanceof File) {
+      for (const rf of refFiles) {
+        if (rf instanceof File) {
+          const refBuf = await rf.arrayBuffer();
+          refs.push({
+            base64: Buffer.from(refBuf).toString("base64"),
+            mimeType: rf.type,
+          });
+        }
+      }
+    } else {
+      refs = await loadStageReferences(stage);
+    }
+
     // Use custom prompt if provided, otherwise roll fresh traits
     const customPrompt = formData.get("customPrompt");
     const hasCustomPrompt = typeof customPrompt === "string" && customPrompt.length > 0;
@@ -106,14 +74,20 @@ export async function POST(request: NextRequest) {
     if (hasCustomPrompt) {
       prompt = customPrompt;
     } else {
-      manifest = rollAndAssemble(stage);
+      manifest = rollAndAssemble(stage, undefined, { referenceImageCount: refs.length });
       prompt = manifest.prompt;
     }
 
     const arrayBuffer = await file.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const imageData = await geminiGenerate(base64Image, file.type, prompt, stage);
+    const imageData = await geminiGenerate({
+      base64Image,
+      mimeType: file.type,
+      prompt,
+      stage,
+      referenceImages: refs.length > 0 ? refs : undefined,
+    });
 
     if (!imageData) {
       reportError("Gemini generation failed", { stage });
@@ -122,6 +96,9 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+
+    // Fire-and-forget: send portrait + traits to Telegram
+    reportGeneration(stage, imageData, manifest ?? undefined);
 
     return NextResponse.json(
       {

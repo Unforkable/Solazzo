@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import Link from "next/link";
 import { STAGE_NAMES, STAGE_PRICES, type StageNumber } from "@/lib/prompt";
 import type { TraitManifest, TraitRoll } from "@/lib/traits/types";
 import { savePortraits, loadPortraits, clearPortraits } from "@/lib/storage";
@@ -193,6 +194,131 @@ function PaintbrushIcon() {
   );
 }
 
+function ShareButton({
+  portrait,
+  stage,
+  manifest,
+}: {
+  portrait: string;
+  stage: StageNumber;
+  manifest: TraitManifest | null;
+}) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMenu]);
+
+  const buildShareText = () => {
+    let text = `My Solazzo portrait — Stage ${stage}: ${STAGE_NAMES[stage]}`;
+    if (manifest) {
+      const legendaries = Object.values(manifest.rolls)
+        .filter((r: TraitRoll) => r.rarity === "Legendary" && !r.isNothing);
+      if (legendaries.length > 0) {
+        text += ` — ${legendaries.map((r: TraitRoll) => r.itemName).join(", ")}`;
+      }
+    }
+    text += "\n#Solazzo";
+    return text;
+  };
+
+  const toFile = async (): Promise<File> => {
+    const res = await fetch(portrait);
+    const blob = await res.blob();
+    return new File([blob], `solazzo-stage-${stage}.jpg`, { type: "image/jpeg" });
+  };
+
+  const handleShare = async () => {
+    try {
+      const file = await toFile();
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: "Solazzo", text: buildShareText() });
+        return;
+      }
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+    }
+    setShowMenu(true);
+  };
+
+  const shareToX = () => {
+    const text = encodeURIComponent(buildShareText());
+    window.open(`https://x.com/intent/tweet?text=${text}`, "_blank", "noopener");
+    setShowMenu(false);
+  };
+
+  const copyImage = async () => {
+    try {
+      const img = new Image();
+      img.src = portrait;
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject()), "image/png"),
+      );
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const a = document.createElement("a");
+      a.href = portrait;
+      a.download = `solazzo-stage-${stage}.jpg`;
+      a.click();
+    }
+    setShowMenu(false);
+  };
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={handleShare}
+        className="text-xs text-muted/50 hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body"
+      >
+        {copied ? "Copied!" : "Share"}
+      </button>
+      {showMenu && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#1a1408] border border-gold-dim/30 py-1 min-w-[160px] z-50 animate-fade-in shadow-lg">
+          <button
+            onClick={shareToX}
+            className="w-full px-4 py-3 text-left text-xs text-foreground/80 hover:bg-gold/10 hover:text-gold transition-colors font-body flex items-center gap-2 cursor-pointer"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            Share to X
+          </button>
+          <button
+            onClick={copyImage}
+            className="w-full px-4 py-3 text-left text-xs text-foreground/80 hover:bg-gold/10 hover:text-gold transition-colors font-body flex items-center gap-2 cursor-pointer"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+            Copy image
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WebcamCapture({ onCapture, onBack }: { onCapture: (blob: Blob) => void; onBack: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -307,6 +433,8 @@ export default function PortraitStudio() {
   const [editedPrompts, setEditedPrompts] = useState<Record<number, string>>({});
   const [lightboxStage, setLightboxStage] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [published, setPublished] = useState(false);
 
   const compressedRef = useRef<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -477,6 +605,27 @@ export default function PortraitStudio() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
+  const publishToGallery = useCallback(async () => {
+    if (publishing || published) return;
+    setPublishing(true);
+    try {
+      const res = await fetch("/api/gallery/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          portraits,
+          traits: traitManifests.filter(Boolean),
+        }),
+      });
+      if (!res.ok) throw new Error("Publish failed");
+      setPublished(true);
+    } catch {
+      setError("Failed to publish. Please try again.");
+    } finally {
+      setPublishing(false);
+    }
+  }, [portraits, traitManifests, publishing, published]);
+
   const completedCount = portraits.filter((p) => p !== null).length;
   const allComplete = completedCount === 5;
   const isGenerating = generatingStages.size > 0;
@@ -576,7 +725,6 @@ export default function PortraitStudio() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  capture="user"
                   onChange={handleFileInput}
                   className="hidden"
                 />
@@ -717,12 +865,17 @@ export default function PortraitStudio() {
                       </p>
                       {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
                       {!generating && (portrait || stageError) && (
-                        <button
-                          onClick={() => generateStage(stage)}
-                          className="text-xs text-muted/50 hover:text-gold transition-colors cursor-pointer mt-1 min-h-[44px] font-body"
-                        >
-                          {stageError ? "Retry" : "Regenerate"}
-                        </button>
+                        <div className="flex items-center justify-center gap-3 mt-1">
+                          <button
+                            onClick={() => generateStage(stage)}
+                            className="text-xs text-muted/50 hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body"
+                          >
+                            {stageError ? "Retry" : "Regenerate"}
+                          </button>
+                          {portrait && (
+                            <ShareButton portrait={portrait} stage={stage} manifest={traitManifests[idx]} />
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -768,6 +921,22 @@ export default function PortraitStudio() {
                 >
                   Download All
                 </button>
+                {published ? (
+                  <Link
+                    href="/gallery"
+                    className="btn-ghost font-display tracking-wide"
+                  >
+                    View Gallery
+                  </Link>
+                ) : (
+                  <button
+                    onClick={publishToGallery}
+                    disabled={publishing}
+                    className="btn-ghost font-display tracking-wide disabled:opacity-50"
+                  >
+                    {publishing ? "Publishing..." : "Publish to Gallery"}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -814,13 +983,16 @@ export default function PortraitStudio() {
                       </p>
                       {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
                       {portrait && (
-                        <a
-                          href={portrait}
-                          download={`solazzo-stage-${stage}.jpg`}
-                          className="text-xs text-muted/50 hover:text-gold transition-colors mt-1 inline-flex items-center justify-center min-h-[44px] font-body"
-                        >
-                          Download
-                        </a>
+                        <div className="flex items-center justify-center gap-3 mt-1">
+                          <a
+                            href={portrait}
+                            download={`solazzo-stage-${stage}.jpg`}
+                            className="text-xs text-muted/50 hover:text-gold transition-colors inline-flex items-center justify-center min-h-[44px] font-body"
+                          >
+                            Download
+                          </a>
+                          <ShareButton portrait={portrait} stage={stage} manifest={traitManifests[idx]} />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -828,7 +1000,13 @@ export default function PortraitStudio() {
               })}
             </div>
 
-            <div className="flex justify-center">
+            <div className="flex justify-center gap-6">
+              <Link
+                href="/gallery"
+                className="text-sm text-muted/50 hover:text-gold transition-colors min-h-[44px] inline-flex items-center font-body"
+              >
+                Browse Gallery
+              </Link>
               <button
                 onClick={reset}
                 className="text-sm text-muted/50 hover:text-red-400 transition-colors cursor-pointer min-h-[44px] font-body"
@@ -864,6 +1042,13 @@ export default function PortraitStudio() {
             <p className="text-center mt-4 font-display text-foreground/80 text-lg">
               {lightboxStage}. {STAGE_NAMES[lightboxStage as StageNumber]}
             </p>
+            <div className="flex justify-center mt-3" onClick={(e) => e.stopPropagation()}>
+              <ShareButton
+                portrait={portraits[lightboxStage - 1]!}
+                stage={lightboxStage as StageNumber}
+                manifest={traitManifests[lightboxStage - 1]}
+              />
+            </div>
           </div>
         </div>
       )}
