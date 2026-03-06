@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { GalleryEntry, GalleryTraitRoll } from "@/lib/gallery-store";
@@ -13,7 +13,7 @@ const STAGE_NAMES: Record<number, string> = {
   5: "Reflective Maturity",
 };
 
-const STAGE_THRESHOLDS = [200, 400, 600, 800]; // SOL price boundaries
+const STAGE_THRESHOLDS = [200, 400, 600, 800];
 
 function priceToStage(price: number): number {
   for (let i = 0; i < STAGE_THRESHOLDS.length; i++) {
@@ -28,6 +28,8 @@ const RARITY_COLORS: Record<string, string> = {
   Rare: "#6a9fd8",
   Legendary: "#c9a84c",
 };
+
+type SortOption = "highest" | "lowest" | "slot";
 
 function BaroqueFrame({ children }: { children: React.ReactNode }) {
   return (
@@ -70,7 +72,7 @@ function CollectionLightbox({
   onClose,
   currentStage,
 }: {
-  entry: GalleryEntry;
+  entry: GalleryEntry & { slot: number };
   onClose: () => void;
   currentStage: number;
 }) {
@@ -90,6 +92,18 @@ function CollectionLightbox({
         >
           Close
         </button>
+
+        <div className="flex items-center justify-center gap-4 mb-5">
+          <span className="text-lg font-display font-bold text-foreground">
+            Slot #{entry.slot}
+          </span>
+          {entry.conviction != null && entry.conviction > 0 && (
+            <span className="text-sm font-body text-gold">
+              ◎ {entry.conviction.toFixed(1)}
+            </span>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {entry.portraits.map((url, i) => {
             const stage = i + 1;
@@ -148,9 +162,10 @@ function GalleryContent() {
   const [collections, setCollections] = useState<GalleryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<GalleryEntry | null>(null);
+  const [selected, setSelected] = useState<(GalleryEntry & { slot: number }) | null>(null);
   const [currentStage, setCurrentStage] = useState(1);
   const [solPrice, setSolPrice] = useState<number | null>(null);
+  const [sort, setSort] = useState<SortOption>("highest");
   const searchParams = useSearchParams();
   const newId = searchParams.get("new");
   const highlightedRef = useRef<HTMLDivElement>(null);
@@ -162,22 +177,9 @@ function GalleryContent() {
       .then((data) => {
         const items = data.collections ?? [];
         setCollections(items);
-        // Auto-open lightbox for newly published collection
-        if (newId && !didAutoOpen.current) {
-          const match = items.find((c: GalleryEntry) => c.id === newId);
-          if (match) {
-            setSelected(match);
-            didAutoOpen.current = true;
-          }
-        }
       })
       .catch(() => setError("Failed to load gallery."))
       .finally(() => setLoading(false));
-
-    // Scroll to highlighted collection after render
-    if (newId && highlightedRef.current) {
-      setTimeout(() => highlightedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 600);
-    }
 
     fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd")
       .then((res) => res.json())
@@ -188,44 +190,170 @@ function GalleryContent() {
           setCurrentStage(priceToStage(price));
         }
       })
-      .catch(() => {}); // Fall back to stage 1
+      .catch(() => {});
   }, []);
+
+  // Enrich entries with derived slot numbers (oldest = slot 1)
+  const entries = useMemo(() => {
+    const byTime = [...collections].sort((a, b) => a.publishedAt - b.publishedAt);
+    return byTime.map((entry, i) => ({
+      ...entry,
+      slot: entry.slot ?? i + 1,
+    }));
+  }, [collections]);
+
+  // Auto-open lightbox for newly published collection
+  useEffect(() => {
+    if (newId && !didAutoOpen.current && entries.length > 0) {
+      const match = entries.find((c) => c.id === newId);
+      if (match) {
+        setSelected(match);
+        didAutoOpen.current = true;
+      }
+    }
+  }, [newId, entries]);
+
+  // Scroll to highlighted entry
+  useEffect(() => {
+    if (newId && highlightedRef.current) {
+      setTimeout(() => highlightedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 600);
+    }
+  }, [newId, loading]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const convictions = entries
+      .map((e) => e.conviction ?? 0)
+      .filter((c) => c > 0);
+    return {
+      floor: convictions.length > 0 ? Math.min(...convictions) : null,
+      total: convictions.reduce((a, b) => a + b, 0),
+      holders: new Set(entries.map((e) => e.wallet).filter(Boolean)).size || entries.length,
+    };
+  }, [entries]);
+
+  // Sorted entries
+  const sorted = useMemo(() => {
+    const items = [...entries];
+    switch (sort) {
+      case "highest":
+        return items.sort((a, b) => (b.conviction ?? 0) - (a.conviction ?? 0) || a.slot - b.slot);
+      case "lowest":
+        return items.sort((a, b) => (a.conviction ?? 0) - (b.conviction ?? 0) || a.slot - b.slot);
+      case "slot":
+        return items.sort((a, b) => a.slot - b.slot);
+      default:
+        return items;
+    }
+  }, [entries, sort]);
+
+  const sortOptions: { key: SortOption; label: string }[] = [
+    { key: "highest", label: "Highest Conviction" },
+    { key: "lowest", label: "Lowest Conviction" },
+    { key: "slot", label: "Slot #" },
+  ];
 
   return (
     <main className="min-h-screen px-6 py-16 sm:py-24">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-12">
-          <div>
-            <Link
-              href="/"
-              className="text-sm text-muted hover:text-gold transition-colors font-body mb-4 inline-block"
-            >
-              &larr; Portrait Studio
-            </Link>
-            <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-wide text-foreground">
-              THE GALLERY
-            </h1>
-            <p className="text-muted text-sm mt-1 font-body">
-              {loading
-                ? "Loading..."
-                : `${collections.length} collection${collections.length !== 1 ? "s" : ""} published`}
-            </p>
+        <div className="mb-10">
+          <Link
+            href="/"
+            className="text-sm text-muted hover:text-gold transition-colors font-body mb-4 inline-block"
+          >
+            &larr; Portrait Studio
+          </Link>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-wide text-foreground">
+                THE GALLERY
+              </h1>
+              <p className="text-muted/40 text-sm mt-1 font-body">
+                {loading ? "Loading..." : `${entries.length} / 1,000 slots minted`}
+              </p>
+            </div>
             {solPrice !== null && (
-              <p className="text-gold/60 text-xs mt-1 font-body">
-                SOL ${solPrice.toFixed(0)} — Stage {currentStage}: {STAGE_NAMES[currentStage]}
+              <p className="text-muted/30 text-xs font-body">
+                SOL ${solPrice.toFixed(0)} — {STAGE_NAMES[currentStage]}
               </p>
             )}
           </div>
         </div>
 
+        {/* Stats */}
+        {!loading && entries.length > 0 && (
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-8">
+            <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
+              <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
+                Floor Conviction
+              </p>
+              <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
+                {stats.floor != null ? (
+                  <>
+                    <span className="text-gold">◎</span> {stats.floor.toFixed(1)}
+                  </>
+                ) : (
+                  "—"
+                )}
+              </p>
+            </div>
+            <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
+              <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
+                Total Conviction Locked
+              </p>
+              <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
+                {stats.total > 0 ? (
+                  <>
+                    <span className="text-gold">◎</span>{" "}
+                    {stats.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </>
+                ) : (
+                  "—"
+                )}
+              </p>
+            </div>
+            <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
+              <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
+                Unique Holders
+              </p>
+              <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
+                {stats.holders}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Sort controls */}
+        {!loading && entries.length > 0 && (
+          <div className="flex items-center gap-2 mb-6 flex-wrap">
+            <span className="text-xs text-muted/30 font-body mr-1">Sort</span>
+            {sortOptions.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setSort(opt.key)}
+                className={`text-xs font-body px-3 py-1.5 border transition-colors cursor-pointer min-h-[36px] ${
+                  sort === opt.key
+                    ? "border-gold text-gold bg-gold/10"
+                    : "border-gold-dim/20 text-muted/60 hover:text-gold hover:border-gold/50"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Empty state */}
-        {!loading && !error && collections.length === 0 && (
+        {!loading && !error && entries.length === 0 && (
           <div className="text-center py-24">
             <p className="text-muted/60 font-body">
               No collections published yet. Be the first.
             </p>
-            <Link href="/" className="text-gold text-sm font-body mt-4 inline-block hover:text-gold-bright transition-colors">
+            <Link
+              href="/"
+              className="text-gold text-sm font-body mt-4 inline-block hover:text-gold-bright transition-colors"
+            >
               Create your portraits &rarr;
             </Link>
           </div>
@@ -236,9 +364,9 @@ function GalleryContent() {
         )}
 
         {/* Grid */}
-        {collections.length > 0 && (
+        {sorted.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
-            {collections.map((entry, idx) => {
+            {sorted.map((entry, idx) => {
               const coverUrl = entry.portraits[currentStage - 1] ?? entry.portraits[0];
               const legendaryCount = entry.traits
                 ? entry.traits.reduce(
@@ -259,25 +387,34 @@ function GalleryContent() {
                   style={{ animationDelay: `${idx * 80}ms` }}
                   onClick={() => setSelected(entry)}
                 >
-                  <div className="transition-transform duration-300 group-hover:scale-[1.02]">
+                  <div className="relative transition-transform duration-300 group-hover:scale-[1.02]">
                     <BaroqueFrame>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={coverUrl}
-                        alt="Solazzo portrait"
+                        alt={`Slot #${entry.slot}`}
                         className="w-full aspect-square object-cover"
                       />
                     </BaroqueFrame>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between px-1">
-                    <span className="text-[11px] text-muted/40 font-body">
-                      {timeAgo(entry.publishedAt)}
+                    <span className="absolute top-3 left-3 bg-black/70 text-foreground/80 text-[10px] font-display font-semibold px-2 py-0.5 backdrop-blur-sm">
+                      #{entry.slot}
                     </span>
-                    {legendaryCount > 0 && (
-                      <span className="text-[11px] text-gold/60 font-body">
-                        {legendaryCount} legendary
+                  </div>
+                  <div className="mt-2 px-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-muted/40 font-body">
+                        {timeAgo(entry.publishedAt)}
                       </span>
-                    )}
+                      {entry.conviction != null && entry.conviction > 0 ? (
+                        <span className="text-[11px] text-gold font-body">
+                          ◎ {entry.conviction.toFixed(1)}
+                        </span>
+                      ) : legendaryCount > 0 ? (
+                        <span className="text-[11px] text-gold/60 font-body">
+                          {legendaryCount} legendary
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               );

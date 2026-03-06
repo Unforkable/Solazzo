@@ -15,6 +15,9 @@ export interface GalleryEntry {
     rolls: Record<string, GalleryTraitRoll>;
   }>;
   publishedAt: number;
+  slot?: number;
+  conviction?: number; // SOL locked
+  wallet?: string;     // wallet address
 }
 
 export async function publishCollection(

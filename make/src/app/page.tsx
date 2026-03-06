@@ -575,20 +575,40 @@ export default function PortraitStudio() {
     setError(null);
 
     try {
-      // 1. Compress for storage
-      const compressed = await Promise.all(
-        portraits.map((p) => compressForStorage(p!)),
-      );
+      // 1. Compress for storage (serialize to avoid mobile memory spikes)
+      const compressed: string[] = [];
+      for (const p of portraits) {
+        compressed.push(await compressForStorage(p!));
+      }
       const validTraits = traitManifests.filter((t): t is TraitManifest => t !== null);
       savePortraits(compressed, validTraits.length === 5 ? validTraits : undefined);
 
-      // 2. Download zip (don't block the rest if this fails)
+      // 2. Publish to gallery first (critical path — do before zip download)
+      let galleryId: string | null = null;
+      try {
+        const res = await fetch("/api/gallery/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            portraits: compressed,
+            traits: validTraits.length === 5 ? validTraits : undefined,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          galleryId = data.id;
+        }
+      } catch (pubErr) {
+        console.warn("Publish failed:", pubErr);
+      }
+
+      // 3. Download zip (optional — don't block if it fails)
       try {
         const { default: JSZipLib } = await import("jszip");
         const zip = new JSZipLib();
-        for (let i = 0; i < portraits.length; i++) {
-          const dataUrl = portraits[i]!;
-          const base64 = dataUrl.split(",")[1];
+        for (let i = 0; i < compressed.length; i++) {
+          const base64 = compressed[i].split(",")[1];
           if (base64) {
             zip.file(`solazzo-stage-${i + 1}.jpg`, base64, { base64: true });
           }
@@ -603,29 +623,13 @@ export default function PortraitStudio() {
         console.warn("Zip download failed:", zipErr);
       }
 
-      // 3. Publish to gallery + redirect
-      try {
-        const res = await fetch("/api/gallery/publish", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            portraits: compressed,
-            traits: validTraits.length === 5 ? validTraits : undefined,
-          }),
-        });
-
-        if (res.ok) {
-          const { id } = await res.json();
-          router.push(`/gallery?new=${id}`);
-          return;
-        }
-      } catch (pubErr) {
-        console.warn("Publish failed:", pubErr);
+      // 4. Redirect or fallback
+      if (galleryId) {
+        router.push(`/gallery?new=${galleryId}`);
+      } else {
+        setPortraits(compressed);
+        setAppStage("locked");
       }
-
-      // Fallback: stay on locked view
-      setPortraits(compressed);
-      setAppStage("locked");
     } catch {
       setError("Failed to save. Please try again.");
     } finally {
