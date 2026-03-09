@@ -253,17 +253,21 @@ export const HEADWEAR: TraitCategoryDef = {
   type: "optional",
   items: [
     // Stage I
-    { id: "nothing", name: "Nothing", stages: [1], weight: 45, rarity: "Common", fragment: "", isNothing: true },
-    { id: "mcdonalds-visor", name: "McDonald's visor", stages: [1], weight: 12, rarity: "Uncommon", fragment: "A faded red McDonald's visor sits on the head, the golden arches logo barely visible in the shadow — rendered with the same careful attention to fabric and form as any velvet cap in a Vermeer, the polyester sheen catching a thin edge of warm light." },
-    { id: "gas-station-trucker", name: "Gas station trucker hat", stages: [1], weight: 15, rarity: "Common", fragment: "A mesh-backed trucker hat from a gas station sits on the head, its foam front panel catching flat light while the mesh dissolves into shadow." },
-    { id: "backwards-snapback", name: "Worn-out backwards snapback", stages: [1], weight: 15, rarity: "Common", fragment: "A faded snapback worn backwards, its adjustment strap visible across the forehead, the brim a dark crescent behind the head." },
-    { id: "sweatband", name: "Sweatband", stages: [1], weight: 8, rarity: "Uncommon", fragment: "A terrycloth sweatband circles the forehead, its absorbent texture painted with visible brushstrokes, catching warm light on its raised loops." },
+    { id: "nothing", name: "Nothing", stages: [1], weight: 60, rarity: "Common", fragment: "", isNothing: true },
+    { id: "mcdonalds-visor", name: "McDonald's visor", stages: [1], weight: 4, rarity: "Legendary", fragment: "A faded red McDonald's visor sits on the head, the golden arches logo barely visible in the shadow — rendered with the same careful attention to fabric and form as any velvet cap in a Vermeer, the polyester sheen catching a thin edge of warm light." },
+    { id: "gas-station-trucker", name: "Gas station trucker hat", stages: [1], weight: 6, rarity: "Uncommon", fragment: "A mesh-backed trucker hat from a gas station sits on the head, its foam front panel catching flat light while the mesh dissolves into shadow." },
+    { id: "backwards-snapback", name: "Worn-out backwards snapback", stages: [1], weight: 10, rarity: "Uncommon", fragment: "A faded snapback worn backwards, its adjustment strap visible across the forehead, the brim a dark crescent behind the head." },
+    { id: "sweatband", name: "Sweatband", stages: [1], weight: 10, rarity: "Uncommon", fragment: "A terrycloth sweatband circles the forehead, its absorbent texture painted with visible brushstrokes, catching warm light on its raised loops." },
+    { id: "plastic-visor", name: "Plastic visor", stages: [1, 2], weight: 10, rarity: "Uncommon", fragment: "A plastic visor sits on the head, its curved brim catching a clean highlight along its edge while the open crown leaves the top of the head in shadow." },
+    { id: "earflap-hat", name: "Earflap hat", stages: [1, 5], weight: 6, rarity: "Rare", fragment: "A knitted earflap hat sits pulled down over the ears, its woolen surface catching soft diffused light on every raised stitch, the dangling ties hanging loose against the jaw." },
     // Stage II
     { id: "nothing-ii", name: "Nothing", stages: [2], weight: 50, rarity: "Common", fragment: "", isNothing: true },
     { id: "clean-fitted-cap", name: "Clean fitted cap", stages: [2], weight: 18, rarity: "Common", fragment: "A clean fitted cap sits low on the head, its structured crown catching a smooth curve of light, the brim casting a shadow across the forehead." },
     { id: "basic-beanie", name: "Basic beanie", stages: [2], weight: 15, rarity: "Common", fragment: "A dark beanie is pulled down to the brow, its ribbed knit texture visible in the light, softening the top of the composition." },
     { id: "dad-hat", name: "Dad hat", stages: [2], weight: 12, rarity: "Common", fragment: "A relaxed dad hat in a muted color sits casually on the head, its unstructured crown and curved brim catching soft light." },
     { id: "headband", name: "Headband", stages: [2], weight: 5, rarity: "Uncommon", fragment: "A simple athletic headband pushes hair back from the forehead, its stretch fabric catching a thin line of light." },
+    { id: "solana-baseball-cap", name: "Solana baseball cap", stages: [2, 3], weight: 10, rarity: "Rare", fragment: "A baseball cap sits on the head, its front panel bearing the Solana logo — the embroidered mark catching a point of warm light on the brim's edge, the cap's shadow falling across the upper face in the dramatic lighting." },
+    { id: "prada-bootleg-bucket-hat", name: "Prada bootleg bucket hat | Stage III | Uncommon", stages: [2, 3], weight: 8, rarity: "Rare", fragment: "A bucket hat sits low on the head, its surface printed with an approximate Prada logo — close enough to read as luxury, wrong enough to read as street. The brim casts a shadow across the upper face." },
     // Stage III
     { id: "nothing-iii", name: "Nothing", stages: [3], weight: 50, rarity: "Common", fragment: "", isNothing: true },
     { id: "designer-cap", name: "Designer cap", stages: [3], weight: 18, rarity: "Common", fragment: "A designer cap with visible branded hardware sits on the head, its premium fabric catching light differently from ordinary cotton." },
