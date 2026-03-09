@@ -32,7 +32,7 @@ export const BLOCK_9_TECHNICAL_FINISH =
 export const BLOCK_10_NEGATIVE_PROMPT =
   "CRITICAL — Avoid: bright images, overexposure, washed-out highlights, fill light, flat studio lighting, even illumination, high-key lighting, glowing skin. The image must NOT look bright or well-lit. Also avoid: plastic skin, over-sharpening, warped eyes, extra fingers/limbs, text, watermarks, logos, frame overlays. No hyper-real rendering, no 3D look, no cinematic color grading, no HDR effect, no anime influence, no cartoon aesthetics, no stock photo composition.";
 
-// ── Mandatory Wealth Markers ────────────────────────────────────────────────
+// ── Mandatory Wealth Markers ─────────────────────────────────────────────────
 
 export const WRIST: TraitCategoryDef = {
   id: "wrist",
@@ -43,7 +43,7 @@ export const WRIST: TraitCategoryDef = {
     { id: "nothing", name: "Nothing", stages: [1], weight: 55, rarity: "Common", fragment: "", isNothing: true },
     { id: "casio-f91w", name: "Casio F-91W", stages: [1], weight: 15, rarity: "Common", fragment: "A modest, inexpensive black digital watch is visible on the wrist — basic practical style, matte resin strap — partially swallowed by shadow with no shine, no luxury cues, and no emphasis." },
     { id: "mickey-mouse-watch", name: "Mickey Mouse watch", stages: [1], weight: 10, rarity: "Uncommon", fragment: "A novelty Mickey Mouse watch on the wrist, the cartoon face barely legible in the low light — cheap plastic rendered with the same gravitas as fine enamelwork." },
-    { id: "rubber-wristband", name: "Rubber wristband", stages: [1], weight: 10, rarity: "Common", fragment: "A thin rubber wristband circles the wrist, its faded color catching the barest edge of warm light against shadow-dark skin." },
+    { id: "rubber-wristband", name: "Swatch Watch", stages: [1], weight: 10, rarity: "Uncommon", fragment: "A colorful  plastic Swatch watch on the wrist — bright plastic case in a vivid pop color, its dial a small illuminated disc against the surrounding darkness, the cheap resin strap catching no light worth speaking of. No luxury, no weight, no shine." },
     { id: "friendship-bracelet", name: "Friendship bracelet (frayed)", stages: [1], weight: 10, rarity: "Uncommon", fragment: "A frayed friendship bracelet in faded thread hangs loose on the wrist, its handmade knots rendered with tender precision in oil." },
     // Stage II
     { id: "g-shock", name: "G-Shock", stages: [2], weight: 30, rarity: "Common", fragment: "A chunky G-Shock digital watch sits heavy on the wrist, its matte black case absorbing light while the crystal face catches a single point of reflection." },
@@ -184,26 +184,26 @@ export const GRILLZ: TraitCategoryDef = {
   displayName: "Grillz",
   type: "mandatory",
   items: [
-    // Stage I (optional)
+    // Stage I
     { id: "nothing-i", name: "Nothing", stages: [1], weight: 90, rarity: "Common", fragment: "", isNothing: true },
     { id: "single-gold-cap-one", name: "Single gold cap (one tooth)", stages: [1], weight: 10, rarity: "Uncommon", fragment: "A single gold cap on one tooth catches a glint of warm light when the mouth parts slightly — a seed of ambition." },
-    // Stage II (optional)
+    // Stage II
     { id: "nothing-ii", name: "Nothing", stages: [2], weight: 60, rarity: "Common", fragment: "", isNothing: true },
     { id: "single-gold-cap", name: "Single gold cap", stages: [2], weight: 20, rarity: "Common", fragment: "A gold cap on one visible tooth catches warm light, a small but deliberate assertion of style." },
     { id: "subtle-bottom-gold", name: "Subtle bottom row (gold)", stages: [2], weight: 20, rarity: "Uncommon", fragment: "A subtle gold set on the bottom row of teeth is barely visible, catching light only when the lips part — understated but present." },
-    // Stage III (mandatory)
+    // Stage III
     { id: "gold-bottom-set", name: "Gold bottom set", stages: [3], weight: 30, rarity: "Common", fragment: "A full gold bottom grillz set catches warm light across the lower teeth, each tooth rendered as an individual bar of polished gold." },
     { id: "silver-full-set", name: "Silver full set", stages: [3], weight: 25, rarity: "Common", fragment: "A full set of silver grillz covers both rows, the cool metal a striking contrast against warm skin tones in the oil paint." },
     { id: "diamond-accent-bottom", name: "Diamond accent bottom", stages: [3], weight: 25, rarity: "Uncommon", fragment: "Diamond-accented bottom grillz mix gold settings with scattered stones, each diamond a point of cold white light among warm gold." },
     { id: "gold-gap-design", name: "Gold with gap design", stages: [3], weight: 20, rarity: "Uncommon", fragment: "Gold grillz with deliberate gaps between caps create a pattern of gold and natural tooth, the design catching light in an interrupted rhythm." },
-    // Stage IV (mandatory)
+    // Stage IV
     { id: "full-diamond-top-bottom", name: "Full diamond top and bottom", stages: [4], weight: 25, rarity: "Rare", fragment: "A full set of diamond grillz covers upper and lower teeth, each stone individually rendered as a point of brilliant white light against the warm gold setting — the mouth becomes a constellation, overwhelming and theatrical, painted with the same precision a Dutch master would give to a string of pearls." },
     { id: "rainbow-grillz", name: "Rainbow grillz (multicolor gems)", stages: [4], weight: 20, rarity: "Rare", fragment: "Rainbow grillz set with rubies, emeralds, sapphires, and diamonds across both rows — each gem its own color of fire, the mouth a stained-glass window." },
     { id: "fanged-diamond-grillz", name: "Fanged diamond grillz", stages: [4], weight: 15, rarity: "Legendary", fragment: "Diamond grillz with extended fanged canines catch light in sharp points, the exaggerated teeth transforming the smile into something predatory and theatrical." },
     { id: "solana-logo-grillz", name: "Solana logo engraved in gold", stages: [4], weight: 15, rarity: "Legendary", fragment: "Gold grillz with the Solana logo engraved across the front teeth, the angular S catching dramatic side-light — corporate branding as dental architecture." },
     { id: "gold-emerald-set", name: "Gold and emerald set", stages: [4], weight: 15, rarity: "Rare", fragment: "Gold grillz set with emeralds create a rich combination of warm and cool light, the green stones glowing against polished gold settings." },
     { id: "open-face-diamond", name: "Open-face diamond grillz", stages: [4], weight: 10, rarity: "Rare", fragment: "Open-face grillz frame each tooth in diamond-set gold borders, the natural tooth visible through each window — framed like individual portraits." },
-    // Stage V (mandatory but restrained)
+    // Stage V
     { id: "single-gold-tooth-subtle", name: "Single gold tooth (subtle)", stages: [5], weight: 35, rarity: "Common", fragment: "A single gold cap on a lower canine catches the faintest edge of warm light — almost missed, a remnant of louder times, painted with one confident brushstroke." },
     { id: "subtle-platinum-set", name: "Subtle platinum set", stages: [5], weight: 30, rarity: "Uncommon", fragment: "A subtle platinum grillz set sits on the lower teeth, its cool metal nearly invisible, catching light only at certain angles." },
     { id: "refined-thin-gold-set", name: "Refined thin gold set", stages: [5], weight: 20, rarity: "Uncommon", fragment: "A thin gold grillz set outlines the lower teeth with minimal metal, the gold rendered as fine lines rather than heavy caps." },
@@ -211,7 +211,7 @@ export const GRILLZ: TraitCategoryDef = {
   ],
 };
 
-// ── Optional Flavor Traits ──────────────────────────────────────────────────
+// ── Optional Flavor Traits ───────────────────────────────────────────────────
 
 export const EYEWEAR: TraitCategoryDef = {
   id: "eyewear",
@@ -360,12 +360,12 @@ export const TATTOO: TraitCategoryDef = {
     { id: "nothing", name: "Nothing", stages: "all", weight: 70, rarity: "Common", fragment: "", isNothing: true },
     { id: "neck-tattoo-abstract", name: "Neck tattoo (abstract linework)", stages: "all", weight: 6, rarity: "Uncommon", fragment: "Abstract linework tattoo crawls up the side of the neck, its black ink visible through the oil paint texture like marks beneath varnish." },
     { id: "hand-knuckle-tattoo", name: "Hand/knuckle tattoo", stages: "all", weight: 5, rarity: "Uncommon", fragment: "Faded tattoo lettering across the knuckles, each letter rendered as ink embedded in painted skin, catching shadow in the creases." },
-    { id: "inner-lip-solana", name: 'Inner lip tattoo "SOLANA"', stages: "all", weight: 3, rarity: "Legendary", fragment: "The subject pulls down the lower lip with one hand, revealing SOLANA tattooed in blocky capitals on the inner lip — the wet pink tissue rendered with uncomfortable anatomical precision, the black ink crisp against flesh, painted as if the old master found this gesture as worthy of documentation as any nobleman's pose.", tags: ["lip-tattoo"] },
+    { id: "inner-lip-solana", name: "Inner lip tattoo \"SOLANA\"", stages: "all", weight: 3, rarity: "Legendary", fragment: "The subject pulls down the lower lip with one hand, revealing SOLANA tattooed in blocky capitals on the inner lip — the wet pink tissue rendered with uncomfortable anatomical precision, the black ink crisp against flesh, painted as if the old master found this gesture as worthy of documentation as any nobleman's pose.", tags: ["lip-tattoo"] },
     { id: "face-tattoo-subtle", name: "Face tattoo (subtle, small)", stages: "all", weight: 4, rarity: "Rare", fragment: "A small face tattoo near the cheekbone or temple, rendered as ink beneath oil-painted skin — subtle enough to require a second look." },
     { id: "face-tattoo-heavy", name: "Face tattoo (heavy, multiple)", stages: "all", weight: 2, rarity: "Legendary", fragment: "Heavy face tattoos cover portions of the cheeks and forehead, their dark ink a permanent mask rendered beneath the baroque oil surface." },
     { id: "tear-drop", name: "Tear drop tattoo", stages: "all", weight: 3, rarity: "Rare", fragment: "A single teardrop tattoo beneath one eye, painted with precise dark ink against skin, catching the faintest shadow in the light." },
     { id: "neck-tattoo-text", name: "Neck tattoo (text/script)", stages: "all", weight: 4, rarity: "Uncommon", fragment: "Script text tattooed across the throat, the lettering visible through painted skin where the light falls — words rendered as permanent marks." },
-    { id: "gm-knuckles", name: '"gm" on knuckles', stages: "all", weight: 3, rarity: "Legendary", fragment: "The letters 'gm' are tattooed across two knuckles in blocky capitals — crypto culture's greeting rendered as permanent body modification." },
+    { id: "gm-knuckles", name: "\"gm\" on knuckles", stages: "all", weight: 3, rarity: "Legendary", fragment: "The letters 'gm' are tattooed across two knuckles in blocky capitals — crypto culture's greeting rendered as permanent body modification." },
   ],
 };
 
@@ -409,7 +409,7 @@ export const CLOTHING: TraitCategoryDef = {
   ],
 };
 
-// ── Mood & Composition Layer ────────────────────────────────────────────────
+// ── Mood & Composition Layer ─────────────────────────────────────────────────
 
 export const LIGHTING: TraitCategoryDef = {
   id: "lighting",
@@ -521,7 +521,7 @@ export const ATMOSPHERE: TraitCategoryDef = {
   ],
 };
 
-// ── Master list (order matches prompt assembly block order) ─────────────────
+// ── Master list (order matches prompt assembly block order) ──────────────────
 
 export const ALL_CATEGORIES: TraitCategoryDef[] = [
   WRIST, CHAINS, EARRINGS, RINGS, GRILLZ,
