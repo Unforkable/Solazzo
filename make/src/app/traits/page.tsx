@@ -194,6 +194,70 @@ export default function TraitEditorPage() {
     setDirty((prev) => new Set(prev).add(`${catId}:${itemId}`));
   };
 
+  // ── Change item ID ──────────────────────────────────────────────────
+
+  const changeItemId = (catId: string, oldId: string, newId: string) => {
+    const sanitized = newId
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-");
+    setCategories((prev) =>
+      prev.map((cat) => {
+        if (cat.id !== catId) return cat;
+        return {
+          ...cat,
+          items: cat.items.map((item) =>
+            item.id === oldId ? { ...item, id: sanitized } : item,
+          ),
+        };
+      }),
+    );
+    setDirty((prev) => {
+      const next = new Set(prev);
+      next.delete(`${catId}:${oldId}`);
+      next.add(`${catId}:${sanitized}`);
+      return next;
+    });
+  };
+
+  // ── Add item ────────────────────────────────────────────────────────
+
+  const addItem = (catId: string) => {
+    const id = `new-${Date.now()}`;
+    const newItem: TraitItem = {
+      id,
+      name: "",
+      stages: stageFilter !== null ? [stageFilter] : [1],
+      weight: 10,
+      rarity: "Common",
+      fragment: "",
+    };
+    setCategories((prev) =>
+      prev.map((cat) => {
+        if (cat.id !== catId) return cat;
+        return { ...cat, items: [...cat.items, newItem] };
+      }),
+    );
+    setDirty((prev) => new Set(prev).add(`${catId}:${id}`));
+  };
+
+  // ── Delete item ────────────────────────────────────────────────────
+
+  const deleteItem = (catId: string, itemId: string) => {
+    setCategories((prev) =>
+      prev.map((cat) => {
+        if (cat.id !== catId) return cat;
+        return { ...cat, items: cat.items.filter((item) => item.id !== itemId) };
+      }),
+    );
+    setDirty((prev) => {
+      const next = new Set(prev);
+      next.delete(`${catId}:${itemId}`);
+      next.add(`${catId}:__deleted__`);
+      return next;
+    });
+  };
+
   // ── Collapse toggle ───────────────────────────────────────────────────
 
   const toggleCollapse = (catId: string) => {
@@ -400,8 +464,16 @@ export default function TraitEditorPage() {
                     catId={cat.id}
                     isDirty={dirty.has(`${cat.id}:${item.id}`)}
                     onUpdate={updateItem}
+                    onDelete={deleteItem}
+                    onChangeId={changeItemId}
                   />
                 ))}
+                <button
+                  onClick={() => addItem(cat.id)}
+                  className="w-full py-2 text-xs text-muted/50 border border-dashed border-gold-dim/20 hover:border-gold/40 hover:text-gold transition-colors cursor-pointer"
+                >
+                  + Add trait
+                </button>
               </div>
             )}
           </div>
@@ -492,6 +564,8 @@ function TraitCard({
   catId,
   isDirty,
   onUpdate,
+  onDelete,
+  onChangeId,
 }: {
   item: TraitItem;
   catId: string;
@@ -501,16 +575,18 @@ function TraitCard({
     itemId: string,
     updates: Partial<TraitItem>,
   ) => void;
+  onDelete: (catId: string, itemId: string) => void;
+  onChangeId: (catId: string, oldId: string, newId: string) => void;
 }) {
   const update = (updates: Partial<TraitItem>) =>
     onUpdate(catId, item.id, updates);
 
   return (
     <div
-      className="pl-3 py-2 pr-2 bg-surface/80"
+      className="pl-3 py-2 pr-2 bg-surface/80 group/card"
       style={{ borderLeft: `3px solid ${RARITY_COLORS[item.rarity]}` }}
     >
-      {/* Top row: name, stages, weight, rarity */}
+      {/* Top row: name, stages, weight, rarity, delete */}
       <div className="flex flex-wrap items-center gap-2 mb-1.5">
         {isDirty && (
           <span
@@ -524,6 +600,8 @@ function TraitCard({
           type="text"
           value={item.name}
           onChange={(e) => update({ name: e.target.value })}
+          placeholder="Trait name"
+          autoFocus={item.id.startsWith("new-")}
           className="bg-transparent border-b border-transparent hover:border-gold-dim/30 focus:border-gold text-foreground text-sm font-medium focus:outline-none min-w-[180px] flex-1"
         />
 
@@ -606,6 +684,24 @@ function TraitCard({
             </option>
           ))}
         </select>
+      </div>
+
+      {/* ID + delete row */}
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] text-muted/40">id:</span>
+        <input
+          type="text"
+          value={item.id}
+          onChange={(e) => onChangeId(catId, item.id, e.target.value)}
+          className="bg-transparent text-[10px] text-muted/60 border-b border-transparent hover:border-gold-dim/20 focus:border-gold/40 focus:outline-none font-mono flex-1"
+        />
+        <button
+          onClick={() => onDelete(catId, item.id)}
+          className="text-[10px] text-muted/30 hover:text-red-400 transition-colors opacity-0 group-hover/card:opacity-100 cursor-pointer px-1"
+          title="Delete trait"
+        >
+          delete
+        </button>
       </div>
 
       {/* Fragment textarea */}
