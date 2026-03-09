@@ -78,33 +78,35 @@ function CollectionLightbox({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8"
+      className="fixed inset-0 z-50 overflow-y-auto"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-6xl animate-fade-in"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute -top-10 right-0 text-muted hover:text-gold transition-colors cursor-pointer text-sm font-body min-h-[44px]"
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm" />
+      <div className="relative min-h-full flex items-start sm:items-center justify-center p-4 pt-6 sm:p-8">
+        <div
+          className="relative w-full max-w-6xl animate-fade-in"
+          onClick={(e) => e.stopPropagation()}
         >
-          Close
-        </button>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-4">
+              <span className="text-lg font-display font-bold text-foreground">
+                Slot #{entry.slot}
+              </span>
+              {entry.conviction != null && entry.conviction > 0 && (
+                <span className="text-sm font-body text-gold">
+                  ◎ {entry.conviction.toFixed(1)}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              className="text-muted hover:text-gold transition-colors cursor-pointer text-sm font-body min-h-[44px] min-w-[44px] flex items-center justify-center"
+            >
+              Close
+            </button>
+          </div>
 
-        <div className="flex items-center justify-center gap-4 mb-5">
-          <span className="text-lg font-display font-bold text-foreground">
-            Slot #{entry.slot}
-          </span>
-          {entry.conviction != null && entry.conviction > 0 && (
-            <span className="text-sm font-body text-gold">
-              ◎ {entry.conviction.toFixed(1)}
-            </span>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {entry.portraits.map((url, i) => {
             const stage = i + 1;
             const traits = entry.traits?.[i];
@@ -145,6 +147,7 @@ function CollectionLightbox({
             );
           })}
         </div>
+        </div>
       </div>
     </div>
   );
@@ -163,9 +166,10 @@ function GalleryContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<(GalleryEntry & { slot: number }) | null>(null);
-  const [currentStage, setCurrentStage] = useState(1);
+  const [sliderPrice, setSliderPrice] = useState(127);
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [sort, setSort] = useState<SortOption>("highest");
+  const currentStage = priceToStage(sliderPrice);
   const searchParams = useSearchParams();
   const newId = searchParams.get("new");
   const highlightedRef = useRef<HTMLDivElement>(null);
@@ -187,7 +191,7 @@ function GalleryContent() {
         const price = data?.solana?.usd;
         if (typeof price === "number") {
           setSolPrice(price);
-          setCurrentStage(priceToStage(price));
+          setSliderPrice(price);
         }
       })
       .catch(() => {});
@@ -273,11 +277,9 @@ function GalleryContent() {
                 {loading ? "Loading..." : `${entries.length} / 1,000 slots minted`}
               </p>
             </div>
-            {solPrice !== null && (
-              <p className="text-muted/30 text-xs font-body">
-                SOL ${solPrice.toFixed(0)} — {STAGE_NAMES[currentStage]}
-              </p>
-            )}
+            <p className="text-muted/30 text-xs font-body">
+              {solPrice !== null ? `Live: $${solPrice.toFixed(0)}` : ""}
+            </p>
           </div>
         </div>
 
@@ -320,6 +322,68 @@ function GalleryContent() {
               <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
                 {stats.holders}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Price slider */}
+        {!loading && entries.length > 0 && (
+          <div className="mb-8 bg-surface-raised/50 border border-gold-dim/20 p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-muted/50 font-body uppercase tracking-wider">
+                What if SOL hits...
+              </p>
+              <div className="flex items-center gap-3">
+                <span className="text-lg sm:text-xl font-display font-bold text-foreground">
+                  ${sliderPrice.toFixed(0)}
+                </span>
+                <span className="text-sm text-gold font-display">
+                  {STAGE_NAMES[currentStage]}
+                </span>
+                {solPrice !== null && Math.abs(sliderPrice - solPrice) > 5 && (
+                  <button
+                    onClick={() => setSliderPrice(solPrice)}
+                    className="text-[10px] text-muted/40 font-body border border-gold-dim/20 px-2 py-0.5 hover:text-gold hover:border-gold/50 transition-colors cursor-pointer"
+                  >
+                    Reset to live
+                  </button>
+                )}
+              </div>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={1200}
+              step={1}
+              value={sliderPrice}
+              onChange={(e) => setSliderPrice(Number(e.target.value))}
+              className="w-full h-1.5 appearance-none bg-gold-dim/30 cursor-pointer outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-gold [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(201,168,76,0.4)] [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-gold [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+            />
+            <div className="relative mt-1.5 h-4">
+              {[
+                { price: 0, label: "$0" },
+                { price: 200, label: "$200" },
+                { price: 400, label: "$400" },
+                { price: 600, label: "$600" },
+                { price: 800, label: "$800" },
+                { price: 1200, label: "$1.2k" },
+              ].map(({ price, label }, i, arr) => (
+                <span
+                  key={price}
+                  className="absolute text-[10px] text-muted/40 font-body"
+                  style={{
+                    left: `${(price / 1200) * 100}%`,
+                    transform:
+                      i === 0
+                        ? "none"
+                        : i === arr.length - 1
+                          ? "translateX(-100%)"
+                          : "translateX(-50%)",
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
             </div>
           </div>
         )}
