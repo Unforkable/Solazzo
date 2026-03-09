@@ -305,6 +305,8 @@ export const PROP: TraitCategoryDef = {
     { id: "rubber-duck-i", name: "Rubber duck", stages: [1], weight: 3, rarity: "Legendary", fragment: "A bright yellow rubber duck is held in one hand, its cheerful form rendered with absolute sincerity in oil paint — each molded seam catching light.", tags: ["held-object"] },
     { id: "fish-i", name: "A fish (just holding a fish)", stages: [1], weight: 3, rarity: "Legendary", fragment: "The subject holds a large fresh fish by the tail with one hand, arm extended slightly — the fish's scales rendered as individual points of iridescent light, its eye glassy and reflective. No explanation is offered. The fish is simply present, painted with the same gravity as any nobleman's scepter.", tags: ["held-object"] },
     { id: "baguette-i", name: "A baguette", stages: [1], weight: 3, rarity: "Rare", fragment: "A fresh baguette is held under one arm, its golden crust catching warm light along its ridged surface — bread as still life, rendered with bakery-window reverence.", tags: ["held-object"] },
+    { id: "vape-pen", name: "Vape pen", stages: [1, 2], weight: 8, rarity: "Rare", fragment: "A vape pen is held between two fingers or rests at the lip, its slim cylindrical body catching a single edge highlight — a thin modern object rendered with the same care as a Renaissance scepter." },
+    { id: "sony-walkman", name: "Sony Walkman", stages: [1, 5], weight: 4, rarity: "Legendary", fragment: "A Sony Walkman is clipped to clothing or held in hand, its rectangular plastic body catching flat warm light on its worn surface, foam headphone pads visible at the ears — nostalgia as object." },
     // Stage II
     { id: "nothing-ii", name: "Nothing", stages: [2], weight: 40, rarity: "Common", fragment: "", isNothing: true },
     { id: "smartphone", name: "Smartphone", stages: [2], weight: 12, rarity: "Common", fragment: "A smartphone is held in one hand, its dark glass screen reflecting the studio light as a bright rectangle.", tags: ["held-object"] },
@@ -317,7 +319,6 @@ export const PROP: TraitCategoryDef = {
     { id: "rubber-duck-ii", name: "Rubber duck", stages: [2], weight: 3, rarity: "Legendary", fragment: "A yellow rubber duck is held in one hand, its glossy surface catching a single bright highlight — absurd and dignified.", tags: ["held-object"] },
     { id: "baguette-ii", name: "A baguette", stages: [2], weight: 4, rarity: "Rare", fragment: "A fresh baguette is tucked under one arm, its flour-dusted crust catching warm light.", tags: ["held-object"] },
     { id: "nothing-iv", name: "Nothing", stages: [2], weight: 25, rarity: "Common", fragment: "", isNothing: true },
-    { id: "dom-perignon", name: "Bottle of Dom Perignon", stages: [2], weight: 12, rarity: "Uncommon", fragment: "A bottle of Dom Perignon is held by the neck, its dark green glass and gold label catching dramatic light — celebration as still life.", tags: ["held-object"] },
     { id: "diamond-phone", name: "Diamond-studded phone", stages: [2], weight: 10, rarity: "Rare", fragment: "A diamond-studded phone is held in one hand, its encrusted case scattering points of light like a handheld disco ball.", tags: ["held-object"] },
     // Stage III
     { id: "nothing-iii", name: "Nothing", stages: [3], weight: 35, rarity: "Common", fragment: "", isNothing: true },
@@ -364,6 +365,7 @@ export const TATTOO: TraitCategoryDef = {
     { id: "face-tattoo-subtle", name: "Face tattoo (subtle, small)", stages: "all", weight: 4, rarity: "Rare", fragment: "A small face tattoo near the cheekbone or temple, rendered as ink beneath oil-painted skin — subtle enough to require a second look." },
     { id: "neck-tattoo-text", name: "Neck tattoo (cursive)", stages: "all", weight: 4, rarity: "Uncommon", fragment: "Tattoo lettering is inked across the throat in a cursive style, visible where warm light falls across the skin — dense dark pigment beneath the surface, the individual letters indistinct, absorbed into the painting." },
     { id: "gm-knuckles", name: "\"gm\" on knuckles", stages: "all", weight: 3, rarity: "Legendary", fragment: "The letters 'gm' are tattooed across two knuckles in blocky capitals — crypto culture's greeting rendered as permanent body modification." },
+    { id: "ibrl-face-tattoo", name: "\"IBRL\" Face tattoo (subtle, small)", stages: "all", weight: 4, rarity: "Legendary", fragment: "A tiny tattoo reading 'IBRL' is marked on the face, its inked lettering visible where the light falls across the skin — the letters rendered as dark pigment beneath the surface, partially absorbed into shadow." },
     // Stage III
     { id: "face-tattoo-heavy", name: "Face tattoo (heavy, multiple)", stages: [3, 4, 5], weight: 2, rarity: "Legendary", fragment: "Heavy face tattoos cover portions of the cheeks and forehead, their dark ink a permanent mask rendered beneath the baroque oil surface." },
     { id: "tear-drop", name: "Tear drop tattoo", stages: [3, 4, 5], weight: 3, rarity: "Rare", fragment: "A single teardrop tattoo beneath one eye, painted with precise dark ink against skin, catching the faintest shadow in the light." },
@@ -451,6 +453,7 @@ export const EXPRESSION: TraitCategoryDef = {
     { id: "quiet-vulnerability", name: "Quiet vulnerability, brow slightly furrowed", stages: [1, 5], weight: 12, rarity: "Common", fragment: "Quiet vulnerability in the face — the brow slightly furrowed, the eyes soft, a moment of unguarded openness." },
     { id: "defiant-chin-forward", name: "Defiant, chin forward", stages: [3, 4], weight: 6, rarity: "Uncommon", fragment: "A defiant expression with the chin pushed slightly forward, the face daring the viewer to challenge." },
     { id: "wistful-longing", name: "Wistful, distant longing", stages: [5], weight: 4, rarity: "Rare", fragment: "A wistful expression of distant longing — the eyes unfocused, the face softened by memory or regret." },
+    { id: "new-1773067662881", name: "Composed, faintly smug", stages: [3], weight: 10, rarity: "Common", fragment: "Expression is composed and faintly smug — a controlled almost-smile held just below the surface, the kind that knows something the viewer doesn't." },
   ],
 };
 
@@ -488,6 +491,7 @@ export const POSE: TraitCategoryDef = {
     { id: "pulling-down-lower-lip", name: "Pulling down lower lip (inner tattoo)", stages: "all", weight: 3, rarity: "Legendary", fragment: "One hand pulls down the lower lip to reveal the inner surface — an invasive, confrontational gesture painted with anatomical precision." },
     { id: "holding-prop-up", name: "Holding prop up toward viewer", stages: "all", weight: 5, rarity: "Uncommon", fragment: "One hand holds a prop up toward the viewer, extending it slightly forward — presenting, offering, or confronting." },
     { id: "hands-in-pockets", name: "Hands in pockets", stages: [1, 2], weight: 8, rarity: "Common", fragment: "The hands are thrust into pockets, only the shoulders and head visible above the pocket line, the body language closed and guarded.", tags: ["no-hands-free"] },
+    { id: "hand-over-mouth", name: "Hand over mouth (concealed smile)", stages: [3], weight: 10, rarity: "Common", fragment: "One hand is raised to the mouth, fingers loosely curled, partially covering the lips — the gesture caught mid-thought, unhurried." },
   ],
 };
 
@@ -500,7 +504,7 @@ export const COMPOSITION: TraitCategoryDef = {
     { id: "off-center-negative-space", name: "Subject off-center, heavy negative space", stages: [1, 5], weight: 15, rarity: "Common", fragment: "The subject is placed off-center with heavy negative space on one side, the emptiness becoming a compositional weight." },
     { id: "extreme-close-crop", name: "Extreme close crop", stages: [4], weight: 10, rarity: "Uncommon", fragment: "Extreme close crop cuts off the top of the head and edges of the shoulders, creating an uncomfortable intimacy." },
     { id: "wider-than-expected", name: "Wider than expected", stages: [3], weight: 8, rarity: "Uncommon", fragment: "The framing is wider than expected for a portrait, revealing more of the environment and body, the subject placed within a context." },
-    { id: "half-face-shadow", name: "Subject partially obscured by shadow", stages: [1, 5], weight: 10, rarity: "Uncommon", fragment: "The subject is partially obscured by shadow, half the face dissolved into darkness, identity emerging from and returning to the void." },
+    { id: "half-face-shadow", name: "Subject partially obscured by shadow", stages: "all", weight: 10, rarity: "Uncommon", fragment: "The subject is partially obscured by shadow, half the face dissolved into darkness, identity emerging from and returning to the void." },
     { id: "foreground-out-of-focus", name: "Foreground element slightly out of focus", stages: [3, 4], weight: 6, rarity: "Rare", fragment: "A foreground element — a hand, a prop, a shoulder — is slightly out of focus, creating depth between the viewer and the subject." },
     { id: "paint-drip", name: "Visible paint drip or run", stages: "all", weight: 5, rarity: "Rare", fragment: "A visible paint drip or run descends from one edge of the composition, the painted surface acknowledging its own materiality." },
     { id: "canvas-heavier-one-side", name: "Canvas texture heavier on one side", stages: [5], weight: 5, rarity: "Rare", fragment: "The canvas texture is heavier on one side of the composition, as if the painting is deteriorating unevenly — age as aesthetic." },
