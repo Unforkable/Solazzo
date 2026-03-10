@@ -6,9 +6,15 @@ import Link from "next/link";
 import { STAGE_NAMES, STAGE_PRICES, type StageNumber } from "@/lib/prompt";
 import type { TraitManifest, TraitRoll } from "@/lib/traits/types";
 import { savePortraits, loadPortraits, clearPortraits } from "@/lib/storage";
+import {
+  useComingSoon,
+  ComingSoonToast,
+} from "@/components/coming-soon-toast";
 
-type AppStage = "intro" | "capture" | "preview" | "gallery" | "locked";
+type AppStage = "intro" | "capture" | "preview" | "gallery" | "commit" | "locked";
 type CaptureMode = "upload" | "camera";
+
+const LOCK_PRESETS = [0.5, 1, 2, 5, 10];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -435,6 +441,8 @@ export default function PortraitStudio() {
   const [lightboxStage, setLightboxStage] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [lockingIn, setLockingIn] = useState(false);
+  const [lockAmount, setLockAmount] = useState<number>(1);
+  const [customAmount, setCustomAmount] = useState<string>("");
   const [focusedStage, setFocusedStage] = useState<StageNumber>(1);
 
   const compressedRef = useRef<Blob | null>(null);
@@ -442,6 +450,7 @@ export default function PortraitStudio() {
   const swipeTouchStart = useRef<number>(0);
   const swipeTouchEnd = useRef<number>(0);
   const router = useRouter();
+  const comingSoon = useComingSoon();
 
   // Auto-advance focused stage to whichever is currently generating
   useEffect(() => {
@@ -694,8 +703,8 @@ export default function PortraitStudio() {
   const isGenerating = generatingStages.size > 0;
 
   return (
-    <main className={`min-h-screen flex justify-center px-4 py-10 sm:px-6 sm:py-16 ${appStage === "intro" ? "items-start" : "items-center"}`}>
-      <div className={`w-full ${appStage === "gallery" || appStage === "locked" ? "max-w-[1200px]" : "max-w-[640px]"}`}>
+    <main className={`min-h-screen flex justify-center px-4 py-10 sm:px-6 sm:py-16 ${appStage === "intro" || appStage === "commit" ? "items-start" : "items-center"}`}>
+      <div className={`w-full ${appStage === "gallery" || appStage === "locked" ? "max-w-[1200px]" : appStage === "commit" ? "max-w-[720px]" : "max-w-[640px]"}`}>
         {/* ── Intro / Onboarding ── */}
         {appStage === "intro" && (
           <div className="animate-fade-in">
@@ -972,11 +981,10 @@ export default function PortraitStudio() {
               </div>
               {allComplete && (
                 <button
-                  onClick={lockIn}
-                  disabled={lockingIn}
-                  className="btn-gold font-display tracking-wide disabled:opacity-50 hidden sm:inline-flex"
+                  onClick={() => setAppStage("commit")}
+                  className="btn-gold font-display tracking-wide hidden sm:inline-flex"
                 >
-                  {lockingIn ? "Locking in..." : "Lock In Collection"}
+                  Lock In Collection
                 </button>
               )}
             </div>
@@ -1196,14 +1204,126 @@ export default function PortraitStudio() {
             {allComplete && (
               <div className="fixed bottom-0 left-0 right-0 sm:hidden z-30 bg-gradient-to-t from-background via-background to-transparent pt-6 pb-5 px-4">
                 <button
-                  onClick={lockIn}
-                  disabled={lockingIn}
-                  className="btn-gold font-display tracking-wide w-full disabled:opacity-50"
+                  onClick={() => setAppStage("commit")}
+                  className="btn-gold font-display tracking-wide w-full"
                 >
-                  {lockingIn ? "Locking in..." : "Lock In Collection"}
+                  Lock In Collection
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Commit (choose SOL amount) ── */}
+        {appStage === "commit" && (
+          <div className="animate-stage-enter space-y-8">
+            <button
+              onClick={() => setAppStage("gallery")}
+              className="text-sm text-muted hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body"
+            >
+              &larr; Back to portraits
+            </button>
+
+            <div className="text-center">
+              <h2 className="text-2xl sm:text-3xl font-display font-bold text-foreground">
+                Lock your SOL
+              </h2>
+              <p className="text-base text-foreground/50 font-body mt-3 max-w-md mx-auto leading-relaxed">
+                Choose how much SOL to lock with your collection.
+                You get every coin back when SOL crosses $1,000.
+              </p>
+            </div>
+
+            {/* Portrait preview strip */}
+            <div className="flex gap-2 justify-center">
+              {ALL_STAGES.map((stage) => {
+                const portrait = portraits[stage - 1];
+                return (
+                  <div key={stage} className="w-14 h-14 sm:w-16 sm:h-16 border border-gold-dim/30 overflow-hidden">
+                    {portrait && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={portrait} alt={`Stage ${stage}`} className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* SOL amount selector */}
+            <div className="bg-surface-raised/50 border border-gold-dim/20 p-5 sm:p-8 max-w-md mx-auto">
+              <p className="text-xs uppercase tracking-[0.2em] text-gold font-body mb-5 text-center">
+                Your conviction
+              </p>
+
+              {/* Preset buttons */}
+              <div className="grid grid-cols-5 gap-2 mb-4">
+                {LOCK_PRESETS.map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => {
+                      setLockAmount(amount);
+                      setCustomAmount("");
+                    }}
+                    className={`py-3 text-sm font-display font-semibold transition-all cursor-pointer ${
+                      lockAmount === amount && !customAmount
+                        ? "bg-gold text-background border border-gold"
+                        : "bg-transparent text-foreground/70 border border-gold-dim/30 hover:border-gold/50 hover:text-foreground"
+                    }`}
+                  >
+                    {amount}
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom input */}
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  placeholder="Custom amount"
+                  value={customAmount}
+                  onChange={(e) => {
+                    setCustomAmount(e.target.value);
+                    const val = parseFloat(e.target.value);
+                    if (val > 0) setLockAmount(val);
+                  }}
+                  onFocus={() => {
+                    if (!customAmount) setCustomAmount(String(lockAmount));
+                  }}
+                  className="w-full bg-black/30 border border-gold-dim/30 text-foreground font-display text-sm px-4 py-3 pr-14 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 transition-colors placeholder:text-muted/30"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted/50 font-display">
+                  SOL
+                </span>
+              </div>
+
+              {/* Amount context */}
+              <p className="text-xs text-foreground/40 font-body mt-3 text-center leading-relaxed">
+                Higher amounts are harder to outbid.
+                {lockAmount >= 5 && " Serious conviction."}
+                {lockAmount >= 10 && " Legendary tier."}
+              </p>
+            </div>
+
+            {/* Wallet + Lock CTA */}
+            <div className="max-w-md mx-auto space-y-3">
+              <button
+                onClick={() => comingSoon.show("Wallet connection coming soon")}
+                className="w-full btn-gold font-display tracking-wide text-base py-3.5"
+              >
+                Connect Wallet &amp; Lock {lockAmount} SOL
+              </button>
+              <button
+                onClick={lockIn}
+                disabled={lockingIn}
+                className="w-full text-sm text-foreground/40 hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body disabled:opacity-50"
+              >
+                {lockingIn ? "Saving..." : "Skip wallet for now — save collection"}
+              </button>
+            </div>
+
+            {error && <p className="text-red-400 text-sm text-center font-body">{error}</p>}
           </div>
         )}
 
@@ -1464,6 +1584,8 @@ export default function PortraitStudio() {
           </div>
         </div>
       )}
+
+      <ComingSoonToast visible={comingSoon.visible} message={comingSoon.message} />
 
       {promptViewStage !== null && traitManifests[promptViewStage - 1] && (
         <PromptModal
