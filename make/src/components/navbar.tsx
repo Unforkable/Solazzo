@@ -34,6 +34,16 @@ export function Navbar() {
             >
               Gallery
             </Link>
+            <Link
+              href="/leaderboard"
+              className={`text-xs font-body tracking-wide transition-colors hidden sm:block ${
+                pathname === "/leaderboard"
+                  ? "text-gold"
+                  : "text-foreground/40 hover:text-foreground/70"
+              }`}
+            >
+              Leaderboard
+            </Link>
           </div>
           <button
             onClick={handleConnect}

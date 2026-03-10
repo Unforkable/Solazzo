@@ -1298,12 +1298,26 @@ export default function PortraitStudio() {
                 </span>
               </div>
 
-              {/* Amount context */}
-              <p className="text-xs text-foreground/40 font-body mt-3 text-center leading-relaxed">
-                Higher amounts are harder to outbid.
-                {lockAmount >= 5 && " Serious conviction."}
-                {lockAmount >= 10 && " Legendary tier."}
-              </p>
+              {/* Points earning rate */}
+              <div className="mt-4 pt-4 border-t border-gold-dim/15">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-foreground/40 font-body">Solazzo Points per day</span>
+                  <span className="text-sm font-display font-bold text-gold">
+                    {(lockAmount * 24).toFixed(0)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-1.5">
+                  <span className="text-xs text-foreground/40 font-body">Points after 30 days</span>
+                  <span className="text-sm font-display font-semibold text-foreground/70">
+                    {(lockAmount * 720).toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-[11px] text-foreground/30 font-body mt-2 leading-relaxed">
+                  Points = SOL &times; Hours. They accrue while you hold your slot and can never be erased.
+                  {lockAmount >= 5 && " Serious conviction."}
+                  {lockAmount >= 10 && " Legendary tier."}
+                </p>
+              </div>
             </div>
 
             {/* Wallet + Lock CTA */}
