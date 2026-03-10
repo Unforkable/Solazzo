@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, Suspense } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { GalleryEntry, GalleryTraitRoll } from "@/lib/gallery-store";
@@ -86,116 +86,271 @@ function CollectionLightbox({
   const minBid = currentConviction > 0
     ? Math.round(Math.max(currentConviction * 1.01, currentConviction + 0.1) * 10) / 10
     : 0.1;
+  const [zoomedStage, setZoomedStage] = useState<number | null>(null);
+
+  // Mobile swipe carousel state
+  const [carouselIdx, setCarouselIdx] = useState(currentStage - 1);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipingRef = useRef(false);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    swipingRef.current = false;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartRef.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStartRef.current.y);
+    if (dx > dy && dx > 10) swipingRef.current = true;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+    touchStartRef.current = null;
+    if (Math.abs(dx) < 40) return;
+    if (dx < 0 && carouselIdx < 4) setCarouselIdx((p) => p + 1);
+    if (dx > 0 && carouselIdx > 0) setCarouselIdx((p) => p - 1);
+  }, [carouselIdx]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 overflow-y-auto"
-      onClick={onClose}
-    >
-      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm" />
-      <div className="relative min-h-full flex items-start sm:items-center justify-center p-4 pt-6 sm:p-8">
-        <div
-          className="relative w-full max-w-6xl animate-fade-in"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-4">
-              <span className="text-lg font-display font-bold text-foreground">
-                Slot #{entry.slot}
-              </span>
-              {currentConviction > 0 && (
-                <span className="text-sm font-body text-gold">
-                  ◎ {currentConviction.toFixed(1)} locked
+    <>
+      <div
+        className="fixed inset-0 z-50 overflow-y-auto"
+        onClick={onClose}
+      >
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm" />
+        <div className="relative min-h-full flex items-start sm:items-center justify-center p-3 pt-5 sm:p-8">
+          <div
+            className="relative w-full max-w-6xl animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4 sm:mb-5">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <span className="text-base sm:text-lg font-display font-bold text-foreground">
+                  Slot #{entry.slot}
                 </span>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              className="text-muted hover:text-gold transition-colors cursor-pointer text-sm font-body min-h-[44px] min-w-[44px] flex items-center justify-center"
-            >
-              Close
-            </button>
-          </div>
-
-          {/* Portraits grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-            {entry.portraits.map((url, i) => {
-              const stage = i + 1;
-              const traits = entry.traits?.[i];
-              const visible = traits
-                ? Object.values(traits.rolls).filter((r: GalleryTraitRoll) => !r.isNothing)
-                : [];
-
-              return (
-                <div key={stage} className={stage === currentStage ? "ring-1 ring-gold/40 ring-offset-2 ring-offset-black" : "opacity-50"}>
-                  <BaroqueFrame>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={url}
-                      alt={`Stage ${stage}`}
-                      className="w-full aspect-square object-cover"
-                    />
-                  </BaroqueFrame>
-                  <div className="mt-2 text-center">
-                    <p className={`text-xs font-display font-semibold ${stage === currentStage ? "text-gold" : "text-foreground/80"}`}>
-                      {stage}. {STAGE_NAMES[stage]}
-                      {stage === currentStage && " (current)"}
-                    </p>
-                    {visible.length > 0 && (
-                      <div className="mt-1 space-y-px">
-                        {visible.map((r: GalleryTraitRoll) => (
-                          <p
-                            key={r.category}
-                            className="text-[10px] leading-tight"
-                            style={{ color: RARITY_COLORS[r.rarity] ?? "#8a7f72" }}
-                          >
-                            {r.itemName}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Challenge / Takeover section */}
-          <div className="mt-6 border-t border-gold-dim/20 pt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <p className="text-xs text-foreground/40 font-body uppercase tracking-wider mb-1">
-                Challenge this slot
-              </p>
-              <p className="text-sm text-foreground/60 font-body">
-                Lock <span className="text-gold font-medium">◎ {minBid.toFixed(1)}</span> or more to take over this position.
-                The current holder gets their full SOL back.
-              </p>
-            </div>
-            <button
-              onClick={onChallenge}
-              className="btn-ghost font-display tracking-wide flex-shrink-0 gap-2"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                {currentConviction > 0 && (
+                  <span className="text-xs sm:text-sm font-body text-gold">
+                    ◎ {currentConviction.toFixed(1)} locked
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={onClose}
+                className="text-muted hover:text-gold transition-colors cursor-pointer text-sm font-body min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
-                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
-                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
-                <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
-              </svg>
-              Outbid — ◎ {minBid.toFixed(1)}+
-            </button>
+                Close
+              </button>
+            </div>
+
+            {/* Mobile: Swipeable carousel */}
+            <div className="sm:hidden">
+              <div
+                className="overflow-hidden"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div
+                  className="flex transition-transform duration-300 ease-out"
+                  style={{ transform: `translateX(-${carouselIdx * 100}%)` }}
+                >
+                  {entry.portraits.map((url, i) => {
+                    const stage = i + 1;
+                    const traits = entry.traits?.[i];
+                    const visible = traits
+                      ? Object.values(traits.rolls).filter((r: GalleryTraitRoll) => !r.isNothing)
+                      : [];
+
+                    return (
+                      <div key={stage} className="w-full flex-shrink-0 px-2">
+                        <div
+                          className="cursor-pointer"
+                          onClick={() => setZoomedStage(stage)}
+                        >
+                          <BaroqueFrame>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={url}
+                              alt={`Stage ${stage}`}
+                              className="w-full aspect-square object-cover"
+                            />
+                          </BaroqueFrame>
+                        </div>
+                        <div className="mt-3 text-center">
+                          <p className={`text-sm font-display font-semibold ${stage === currentStage ? "text-gold" : "text-foreground"}`}>
+                            {stage}. {STAGE_NAMES[stage]}
+                            {stage === currentStage && " (current)"}
+                          </p>
+                          {visible.length > 0 && (
+                            <div className="mt-1.5 space-y-px">
+                              {visible.map((r: GalleryTraitRoll) => (
+                                <p
+                                  key={r.category}
+                                  className="text-xs leading-tight"
+                                  style={{ color: RARITY_COLORS[r.rarity] ?? "#8a7f72" }}
+                                >
+                                  {r.itemName}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Dots */}
+              <div className="flex justify-center gap-2 mt-4">
+                {entry.portraits.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCarouselIdx(i)}
+                    className={`w-2 h-2 rounded-full transition-colors cursor-pointer ${
+                      i === carouselIdx ? "bg-gold" : "bg-foreground/20"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop: 5-column grid */}
+            <div className="hidden sm:grid sm:grid-cols-5 gap-4">
+              {entry.portraits.map((url, i) => {
+                const stage = i + 1;
+                const traits = entry.traits?.[i];
+                const visible = traits
+                  ? Object.values(traits.rolls).filter((r: GalleryTraitRoll) => !r.isNothing)
+                  : [];
+
+                return (
+                  <div key={stage}>
+                    <div
+                      className={`cursor-pointer transition-all duration-200 hover:scale-[1.03] ${
+                        stage === currentStage ? "ring-1 ring-gold/40 ring-offset-2 ring-offset-black" : ""
+                      }`}
+                      onClick={() => setZoomedStage(stage)}
+                    >
+                      <BaroqueFrame>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt={`Stage ${stage}`}
+                          className="w-full aspect-square object-cover"
+                        />
+                      </BaroqueFrame>
+                    </div>
+                    <div className="mt-2 text-center">
+                      <p className={`text-xs font-display font-semibold ${stage === currentStage ? "text-gold" : "text-foreground/80"}`}>
+                        {stage}. {STAGE_NAMES[stage]}
+                        {stage === currentStage && " (current)"}
+                      </p>
+                      {visible.length > 0 && (
+                        <div className="mt-1 space-y-px">
+                          {visible.map((r: GalleryTraitRoll) => (
+                            <p
+                              key={r.category}
+                              className="text-[10px] leading-tight"
+                              style={{ color: RARITY_COLORS[r.rarity] ?? "#8a7f72" }}
+                            >
+                              {r.itemName}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Challenge / Takeover section */}
+            <div className="mt-6 border-t border-gold-dim/20 pt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="text-xs text-foreground/40 font-body uppercase tracking-wider mb-1">
+                  Challenge this slot
+                </p>
+                <p className="text-sm text-foreground/60 font-body">
+                  Lock <span className="text-gold font-medium">◎ {minBid.toFixed(1)}</span> or more to take over this position.
+                  The current holder gets their full SOL back.
+                </p>
+              </div>
+              <button
+                onClick={onChallenge}
+                className="btn-ghost font-display tracking-wide flex-shrink-0 gap-2"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                  <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                  <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+                </svg>
+                Outbid — ◎ {minBid.toFixed(1)}+
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Zoomed single portrait */}
+      {zoomedStage !== null && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-8"
+          onClick={() => setZoomedStage(null)}
+        >
+          <div className="absolute inset-0 bg-black/95" />
+          <div className="relative max-w-2xl w-full animate-fade-in">
+            <BaroqueFrame>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={entry.portraits[zoomedStage - 1]}
+                alt={`Stage ${zoomedStage}`}
+                className="w-full object-contain"
+              />
+            </BaroqueFrame>
+            <p className="text-center mt-3 font-display text-foreground/80 text-base sm:text-lg">
+              {zoomedStage}. {STAGE_NAMES[zoomedStage]}
+            </p>
+            {/* Prev/Next arrows */}
+            <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 flex justify-between pointer-events-none px-1 sm:-mx-12">
+              {zoomedStage > 1 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setZoomedStage(zoomedStage - 1); }}
+                  className="pointer-events-auto w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-black/60 hover:bg-black/80 text-foreground/60 hover:text-gold transition-colors cursor-pointer rounded-full"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
+                </button>
+              )}
+              {zoomedStage <= 1 && <span />}
+              {zoomedStage < 5 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setZoomedStage(zoomedStage + 1); }}
+                  className="pointer-events-auto w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-black/60 hover:bg-black/80 text-foreground/60 hover:text-gold transition-colors cursor-pointer rounded-full"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
