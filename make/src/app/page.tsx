@@ -1320,6 +1320,45 @@ export default function PortraitStudio() {
               </div>
             </div>
 
+            {/* Objections */}
+            <div className="max-w-md mx-auto space-y-3">
+              <details className="group border border-gold-dim/15 bg-surface-raised/30">
+                <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
+                  What if SOL never hits $1,000?
+                  <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
+                </summary>
+                <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
+                  Then it stays locked. That&rsquo;s the bet. Your portraits
+                  remain yours regardless, but the SOL only unlocks at $1,000.
+                  No exceptions, no admin keys, no backdoors.
+                </p>
+              </details>
+              <details className="group border border-gold-dim/15 bg-surface-raised/30">
+                <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
+                  What if I lose access to my wallet?
+                  <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
+                </summary>
+                <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
+                  Your locked SOL and portraits are soulbound &mdash; tied to
+                  your wallet, non-transferable. If you lose access, those are
+                  gone. However, your Solazzo Points token can be freely sent
+                  and traded.
+                </p>
+              </details>
+              <details className="group border border-gold-dim/15 bg-surface-raised/30">
+                <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
+                  Can someone take my slot?
+                  <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
+                </summary>
+                <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
+                  Only once all 1,000 slots are filled. After that, anyone can
+                  outbid the lowest slot. If you&rsquo;re displaced, you get
+                  your full SOL back instantly. You don&rsquo;t lose money
+                  &mdash; you lose position.
+                </p>
+              </details>
+            </div>
+
             {/* Lock CTA */}
             <div className="max-w-md mx-auto">
               <button
