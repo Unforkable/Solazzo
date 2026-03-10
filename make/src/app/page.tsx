@@ -1320,21 +1320,18 @@ export default function PortraitStudio() {
               </div>
             </div>
 
-            {/* Wallet + Lock CTA */}
-            <div className="max-w-md mx-auto space-y-3">
-              <button
-                onClick={() => comingSoon.show("Wallet connection coming soon")}
-                className="w-full btn-gold font-display tracking-wide text-base py-3.5"
-              >
-                Connect Wallet &amp; Lock {lockAmount} SOL
-              </button>
+            {/* Lock CTA */}
+            <div className="max-w-md mx-auto">
               <button
                 onClick={lockIn}
                 disabled={lockingIn}
-                className="w-full text-sm text-foreground/40 hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body disabled:opacity-50"
+                className="w-full btn-gold font-display tracking-wide text-base py-3.5 disabled:opacity-50"
               >
-                {lockingIn ? "Saving..." : "Skip wallet for now — save collection"}
+                {lockingIn ? "Locking in..." : `Lock ${lockAmount} SOL & Save`}
               </button>
+              <p className="text-[11px] text-foreground/30 font-body mt-2 text-center">
+                Wallet connection coming soon. Your collection will be saved locally for now.
+              </p>
             </div>
 
             {error && <p className="text-red-400 text-sm text-center font-body">{error}</p>}
