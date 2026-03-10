@@ -644,12 +644,12 @@ function GalleryContent() {
               {settled && (
                 <div className="mt-4 pt-4 border-t border-gold/30 animate-fade-in">
                   <p className="text-base sm:text-lg font-display font-bold text-gold leading-snug">
-                    Settlement reached
+                    Settlement reached &mdash; you made it.
                   </p>
                   <p className="text-sm text-foreground/60 font-body mt-1.5 leading-relaxed">
                     SOL crossed the $1,000 threshold. All locked SOL is now
-                    available for withdrawal. Portraits remain permanently
-                    in the collection at their final stage.
+                    available for withdrawal. Your portraits remain permanently
+                    in the collection at their final stage. Conviction rewarded.
                   </p>
                 </div>
               )}
