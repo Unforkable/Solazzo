@@ -507,6 +507,7 @@ export const CLOTHING: TraitCategoryDef = {
     { id: "monastic-robe", name: "Robe (simple, monastic feel)", stages: [5], weight: 15, rarity: "Rare", fragment: "A simple robe in natural linen wraps the shoulders, its unadorned folds catching soft light — monastic in its simplicity." },
     { id: "silk-kimono-collar", name: "Silk kimono collar", stages: [5], weight: 8, rarity: "Uncommon", fragment: "A silk kimono collar falls open at the neck, its fabric catching light with a liquid warmth — the pattern visible only where the light grazes the surface, the garment suggesting a different relationship with time." },
     { id: "heavy-metal-band-vest", name: "Heavy metal band vest", stages: "all", weight: 8, rarity: "Uncommon", fragment: "\nA denim vest with the sleeves cut off sits on the shoulders, its back panel covered in sewn-on patches barely legible in the low light — dark fabric absorbing shadow, the stitched edges of each patch catching the faintest thread of warm light." },
+    { id: "dragon-wings-costume", name: "Dragon wings costume", stages: "all", weight: 3, rarity: "Legendary", fragment: "Dramatic fabric wings extend from the shoulders, their dark membrane catching directional light along each ridge — theatrical, unexplained, painted with absolute seriousness." },
   ],
 };
 
