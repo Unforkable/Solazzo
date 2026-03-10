@@ -258,7 +258,7 @@ function GalleryContent() {
   ];
 
   return (
-    <main className="min-h-screen px-6 py-16 sm:py-24">
+    <main className="min-h-screen px-4 py-10 sm:px-6 sm:py-24">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-10">
@@ -329,15 +329,15 @@ function GalleryContent() {
         {/* Price slider */}
         {!loading && entries.length > 0 && (
           <div className="mb-8 bg-surface-raised/50 border border-gold-dim/20 p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 mb-3">
               <p className="text-xs text-muted/50 font-body uppercase tracking-wider">
                 What if SOL hits...
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <span className="text-lg sm:text-xl font-display font-bold text-foreground">
                   ${sliderPrice.toFixed(0)}
                 </span>
-                <span className="text-sm text-gold font-display">
+                <span className="text-xs sm:text-sm text-gold font-display">
                   {STAGE_NAMES[currentStage]}
                 </span>
                 {solPrice !== null && Math.abs(sliderPrice - solPrice) > 5 && (
@@ -345,7 +345,7 @@ function GalleryContent() {
                     onClick={() => setSliderPrice(solPrice)}
                     className="text-[10px] text-muted/40 font-body border border-gold-dim/20 px-2 py-0.5 hover:text-gold hover:border-gold/50 transition-colors cursor-pointer"
                   >
-                    Reset to live
+                    Reset
                   </button>
                 )}
               </div>

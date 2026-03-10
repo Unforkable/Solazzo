@@ -663,27 +663,139 @@ export default function PortraitStudio() {
   const isGenerating = generatingStages.size > 0;
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6 py-16">
+    <main className={`min-h-screen flex justify-center px-4 py-10 sm:px-6 sm:py-16 ${appStage === "intro" ? "items-start" : "items-center"}`}>
       <div className={`w-full ${appStage === "gallery" || appStage === "locked" ? "max-w-[1200px]" : "max-w-[640px]"}`}>
-        {/* ── Intro ── */}
+        {/* ── Intro / Onboarding ── */}
         {appStage === "intro" && (
-          <div className="flex flex-col items-center text-center space-y-8 animate-fade-in">
-            <div className="space-y-5">
-              <h1 className="text-4xl sm:text-5xl font-display font-bold tracking-wide text-foreground hover:animate-shimmer transition-all duration-500 cursor-default">
+          <div className="animate-fade-in">
+            {/* Hero */}
+            <div className="text-center pt-8 sm:pt-16 pb-14 sm:pb-20">
+              <h1 className="text-5xl sm:text-6xl font-display font-bold tracking-wide text-foreground hover:animate-shimmer transition-all duration-500 cursor-default">
                 SOLAZZO
               </h1>
-              <div className="w-24 h-px mx-auto bg-gradient-to-r from-transparent via-gold to-transparent" />
-              <p className="text-muted leading-relaxed max-w-md mx-auto font-body">
-                Upload a selfie. Receive five Baroque oil portraits tracing the
-                Solazzo journey — from humble believer to reflective maturity.
+              <div className="w-24 h-px mx-auto mt-5 bg-gradient-to-r from-transparent via-gold to-transparent" />
+              <p className="text-lg sm:text-xl text-foreground/80 font-display mt-6 max-w-lg mx-auto leading-snug">
+                The bet is simple. SOL hits $1,000 &mdash; you get every coin back.
+              </p>
+              <p className="text-muted text-sm font-body mt-4 max-w-md mx-auto leading-relaxed">
+                While you wait, your face gets painted into five Baroque oil
+                portraits that evolve as the price climbs. One for each stage of
+                the ride.
               </p>
             </div>
-            <button
-              onClick={() => setAppStage("capture")}
-              className="btn-gold font-display tracking-wide"
-            >
-              Create Your Portraits
-            </button>
+
+            {/* How it works */}
+            <div className="border-t border-gold-dim/20 pt-10 pb-12 sm:pb-16">
+              <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-gold-dim font-body text-center mb-3">
+                Here&rsquo;s how it works
+              </p>
+              <p className="text-muted/60 text-sm font-body text-center max-w-md mx-auto leading-relaxed mb-8">
+                You lock SOL. Not spend it &mdash; lock it. The contract holds
+                your coins and paints you into the collection. As SOL moves, your
+                portrait transforms. When it crosses $1,000, the game ends and
+                every single SOL goes back to its owner. No fees. No catch. Just
+                conviction with a receipt.
+              </p>
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-md mx-auto text-center">
+                <div className="py-3 sm:py-4">
+                  <p className="text-lg sm:text-2xl font-display font-bold text-foreground">Lock</p>
+                  <p className="text-[10px] sm:text-xs text-muted/40 font-body mt-1">
+                    Commit SOL to a slot
+                  </p>
+                </div>
+                <div className="py-3 sm:py-4 border-x border-gold-dim/15">
+                  <p className="text-lg sm:text-2xl font-display font-bold text-foreground">Hold</p>
+                  <p className="text-[10px] sm:text-xs text-muted/40 font-body mt-1">
+                    Watch it evolve
+                  </p>
+                </div>
+                <div className="py-3 sm:py-4">
+                  <p className="text-lg sm:text-2xl font-display font-bold text-gold">Settle</p>
+                  <p className="text-[10px] sm:text-xs text-muted/40 font-body mt-1">
+                    Get every SOL back
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* The Five Stages */}
+            <div className="border-t border-gold-dim/20 pt-10 pb-12 sm:pb-16">
+              <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-gold-dim font-body text-center mb-3">
+                Five stages &mdash; One journey
+              </p>
+              <p className="text-muted/60 text-sm font-body text-center max-w-md mx-auto leading-relaxed mb-8">
+                Every $200 move in SOL advances the entire collection. Your
+                portrait starts humble and ends wise. The five stages mirror what
+                every believer actually goes through.
+              </p>
+              <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-5 sm:gap-3 max-w-2xl mx-auto">
+                {ALL_STAGES.map((stage) => (
+                  <div
+                    key={stage}
+                    className="flex sm:flex-col items-center sm:items-center gap-3 sm:gap-1.5 sm:text-center px-3 py-2.5 sm:py-4 sm:px-2 bg-surface-raised/40 border border-gold-dim/10"
+                  >
+                    <span className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gold/15 flex items-center justify-center text-gold text-xs sm:text-sm font-display font-bold">
+                      {stage}
+                    </span>
+                    <div className="sm:mt-1">
+                      <p className="text-xs sm:text-[11px] font-display font-semibold text-foreground/80 leading-tight">
+                        {STAGE_NAMES[stage]}
+                      </p>
+                      <p className="text-[10px] text-muted/40 font-body mt-0.5">
+                        {STAGE_PRICES[stage]} SOL
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Scarcity */}
+            <div className="border-t border-gold-dim/20 pt-10 pb-12 sm:pb-16">
+              <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 max-w-lg mx-auto">
+                <div className="flex-1 text-center sm:text-left">
+                  <p className="text-2xl sm:text-3xl font-display font-bold text-foreground">
+                    1,000
+                  </p>
+                  <p className="text-xs text-muted/50 font-body mt-1">
+                    slots total. That&rsquo;s it. There will never be 1,001.
+                  </p>
+                </div>
+                <div className="hidden sm:block w-px bg-gold-dim/20" />
+                <div className="flex-1 text-center sm:text-left">
+                  <p className="text-2xl sm:text-3xl font-display font-bold text-gold">
+                    $1,000
+                  </p>
+                  <p className="text-xs text-muted/50 font-body mt-1">
+                    SOL. That&rsquo;s the number. Hit it and every locker gets made whole.
+                  </p>
+                </div>
+              </div>
+              <p className="text-muted/50 text-xs font-body text-center mt-8 max-w-md mx-auto leading-relaxed">
+                Someone can always outbid you for your slot &mdash; but even then, you
+                get your full SOL back instantly. You don&rsquo;t lose money here.
+                You lose position.
+              </p>
+            </div>
+
+            {/* CTA */}
+            <div className="border-t border-gold-dim/20 pt-10 pb-4 flex flex-col items-center gap-5">
+              <p className="text-foreground/70 text-sm font-body text-center max-w-xs leading-relaxed">
+                Preview your five portraits for free. No wallet needed &mdash; just a selfie.
+              </p>
+              <button
+                onClick={() => setAppStage("capture")}
+                className="btn-gold font-display tracking-wide text-base px-8 py-3"
+              >
+                Create Your Portraits
+              </button>
+              <Link
+                href="/gallery"
+                className="text-sm text-muted/50 hover:text-gold transition-colors font-body"
+              >
+                Browse the Gallery
+              </Link>
+            </div>
           </div>
         )}
 
@@ -747,7 +859,8 @@ export default function PortraitStudio() {
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                   <p className="text-muted text-sm font-body">
-                    Drag &amp; drop a selfie here, or click to browse
+                    <span className="hidden sm:inline">Drag &amp; drop a selfie here, or click to browse</span>
+                    <span className="sm:hidden">Tap to choose a photo</span>
                   </p>
                   <p className="text-muted/40 text-xs mt-2 font-body">
                     JPEG, PNG, or WebP — max 10 MB
@@ -808,7 +921,7 @@ export default function PortraitStudio() {
 
         {/* ── Gallery (generating + results) ── */}
         {appStage === "gallery" && (
-          <div className="space-y-8 animate-stage-enter">
+          <div className={`space-y-8 animate-stage-enter ${allComplete ? "pb-20 sm:pb-0" : ""}`}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h2 className="text-xl sm:text-2xl font-display font-bold text-foreground">Your Solazzo Collection</h2>
@@ -824,7 +937,7 @@ export default function PortraitStudio() {
                 <button
                   onClick={lockIn}
                   disabled={lockingIn}
-                  className="btn-gold font-display tracking-wide disabled:opacity-50"
+                  className="btn-gold font-display tracking-wide disabled:opacity-50 hidden sm:inline-flex"
                 >
                   {lockingIn ? "Locking in..." : "Lock In Collection"}
                 </button>
@@ -838,7 +951,7 @@ export default function PortraitStudio() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
               {ALL_STAGES.map((stage) => {
                 const idx = stage - 1;
                 const portrait = portraits[idx];
@@ -848,7 +961,7 @@ export default function PortraitStudio() {
                 return (
                   <div
                     key={stage}
-                    className="gallery-panel"
+                    className={`gallery-panel ${stage === 5 ? "col-span-2 sm:col-span-2 lg:col-span-1 max-w-[50%] sm:max-w-none mx-auto lg:mx-0" : ""}`}
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
                     <BaroqueFrame>
@@ -889,14 +1002,16 @@ export default function PortraitStudio() {
                         )}
                       </div>
                     </BaroqueFrame>
-                    <div className="mt-3 text-center">
-                      <p className="text-sm font-display font-semibold text-foreground/80 leading-tight">
+                    <div className="mt-2 sm:mt-3 text-center">
+                      <p className="text-xs sm:text-sm font-display font-semibold text-foreground/80 leading-tight">
                         {stage}. {STAGE_NAMES[stage]}
                       </p>
-                      <p className="text-[11px] text-muted/40 font-body mt-0.5">
+                      <p className="text-[10px] sm:text-[11px] text-muted/40 font-body mt-0.5">
                         {STAGE_PRICES[stage]}
                       </p>
-                      {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
+                      <div className="hidden sm:block">
+                        {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
+                      </div>
                       {!generating && (portrait || stageError) && (
                         <div className="flex items-center justify-center gap-3 mt-1">
                           <button
@@ -923,6 +1038,19 @@ export default function PortraitStudio() {
                   className="text-sm text-muted hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body"
                 >
                   &larr; Try a different photo
+                </button>
+              </div>
+            )}
+
+            {/* Sticky mobile CTA when all portraits are done */}
+            {allComplete && (
+              <div className="fixed bottom-0 left-0 right-0 sm:hidden z-30 bg-gradient-to-t from-background via-background to-transparent pt-6 pb-5 px-4">
+                <button
+                  onClick={lockIn}
+                  disabled={lockingIn}
+                  className="btn-gold font-display tracking-wide w-full disabled:opacity-50"
+                >
+                  {lockingIn ? "Locking in..." : "Lock In Collection"}
                 </button>
               </div>
             )}
@@ -981,14 +1109,14 @@ export default function PortraitStudio() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
               {ALL_STAGES.map((stage) => {
                 const idx = stage - 1;
                 const portrait = portraits[idx];
                 return (
                   <div
                     key={stage}
-                    className="gallery-panel"
+                    className={`gallery-panel ${stage === 5 ? "col-span-2 sm:col-span-2 lg:col-span-1 max-w-[50%] sm:max-w-none mx-auto lg:mx-0" : ""}`}
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
                     <BaroqueFrame>
@@ -1015,14 +1143,16 @@ export default function PortraitStudio() {
                         )}
                       </div>
                     </BaroqueFrame>
-                    <div className="mt-3 text-center">
-                      <p className="text-sm font-display font-semibold text-foreground/80 leading-tight">
+                    <div className="mt-2 sm:mt-3 text-center">
+                      <p className="text-xs sm:text-sm font-display font-semibold text-foreground/80 leading-tight">
                         {stage}. {STAGE_NAMES[stage]}
                       </p>
-                      <p className="text-[11px] text-muted/40 font-body mt-0.5">
+                      <p className="text-[10px] sm:text-[11px] text-muted/40 font-body mt-0.5">
                         {STAGE_PRICES[stage]}
                       </p>
-                      {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
+                      <div className="hidden sm:block">
+                        {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
+                      </div>
                       {portrait && (
                         <div className="flex items-center justify-center gap-3 mt-1">
                           <a
@@ -1067,7 +1197,7 @@ export default function PortraitStudio() {
       {/* ── Lightbox ── */}
       {lightboxStage !== null && portraits[lightboxStage - 1] && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center p-4 sm:p-8"
+          className="fixed inset-0 z-40 flex items-center justify-center p-2 sm:p-8"
           onClick={() => setLightboxStage(null)}
         >
           <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
@@ -1080,10 +1210,10 @@ export default function PortraitStudio() {
                 className="w-full object-contain"
               />
             </BaroqueFrame>
-            <p className="text-center mt-4 font-display text-foreground/80 text-lg">
+            <p className="text-center mt-3 sm:mt-4 font-display text-foreground/80 text-base sm:text-lg">
               {lightboxStage}. {STAGE_NAMES[lightboxStage as StageNumber]}
             </p>
-            <div className="flex justify-center mt-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-center mt-2 sm:mt-3" onClick={(e) => e.stopPropagation()}>
               <ShareButton
                 portrait={portraits[lightboxStage - 1]!}
                 stage={lightboxStage as StageNumber}
