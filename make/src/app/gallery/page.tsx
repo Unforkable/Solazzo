@@ -644,14 +644,12 @@ function GalleryContent() {
               {settled && (
                 <div className="mt-4 pt-4 border-t border-gold/30 animate-fade-in">
                   <p className="text-base sm:text-lg font-display font-bold text-gold leading-snug">
-                    The bet paid off. Every SOL goes home.
+                    The collection has settled.
                   </p>
                   <p className="text-sm text-foreground/60 font-body mt-1.5 leading-relaxed">
-                    SOL crossed $1,000. The collection is settled. Every single
-                    locker can now withdraw their full principal &mdash; no fees,
-                    no haircut, no fine print. You locked it at ${solPrice != null ? solPrice.toFixed(0) : "~127"}.
-                    You&rsquo;re getting it back at $1,000. That&rsquo;s not yield.
-                    That&rsquo;s conviction.
+                    SOL crossed $1,000. Every locker can now withdraw their
+                    full principal &mdash; no fees, no haircut, no fine print.
+                    The portraits remain. The SOL goes home.
                   </p>
                 </div>
               )}
