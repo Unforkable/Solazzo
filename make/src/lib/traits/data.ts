@@ -459,6 +459,7 @@ export const EXPRESSION: TraitCategoryDef = {
     { id: "defiant-chin-forward", name: "Defiant, chin forward", stages: [3, 4], weight: 6, rarity: "Uncommon", fragment: "A defiant expression with the chin pushed slightly forward, the face daring the viewer to challenge." },
     { id: "wistful-longing", name: "Wistful, distant longing", stages: [5], weight: 4, rarity: "Rare", fragment: "A wistful expression of distant longing — the eyes unfocused, the face softened by memory or regret." },
     { id: "new-1773067662881", name: "Composed, faintly smug", stages: [3], weight: 10, rarity: "Common", fragment: "Expression is composed and faintly smug — a controlled almost-smile held just below the surface, the kind that knows something the viewer doesn't." },
+    { id: "wide-open-grin-teeth-fully-visible", name: "Wide open grin (teeth fully visible)", stages: [4], weight: 20, rarity: "Common", fragment: "Expression is an unguarded, full-teeth grin — jaw open, head slightly tilted back, eyes creased, the kind of smile that isn't performed for anyone, caught in a moment of pure satisfaction." },
   ],
 };
 
@@ -497,6 +498,7 @@ export const POSE: TraitCategoryDef = {
     { id: "holding-prop-up", name: "Holding prop up toward viewer", stages: "all", weight: 5, rarity: "Uncommon", fragment: "One hand holds a prop up toward the viewer, extending it slightly forward — presenting, offering, or confronting." },
     { id: "hands-in-pockets", name: "Hands in pockets", stages: [1, 2], weight: 8, rarity: "Common", fragment: "The hands are thrust into pockets, only the shoulders and head visible above the pocket line, the body language closed and guarded.", tags: ["no-hands-free"] },
     { id: "hand-over-mouth", name: "Hand over mouth (concealed smile)", stages: [3], weight: 10, rarity: "Common", fragment: "One hand is raised to the mouth, fingers loosely curled, partially covering the lips — the gesture caught mid-thought, unhurried." },
+    { id: "hand-raised-to-mouth-bust-down", name: "Hand raised to mouth (bust down)", stages: [4], weight: 20, rarity: "Common", fragment: "One hand is raised to the mouth, fingers loosely curled, knuckles grazing the lips — the arm angled inward, the gesture equal parts celebration and restraint, jewelry on full display at the wrist." },
   ],
 };
 
