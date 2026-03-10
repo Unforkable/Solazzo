@@ -3,6 +3,8 @@ import {
   BLOCK_1_IDENTITY_LOCK,
   BLOCK_9_TECHNICAL_FINISH,
   BLOCK_10_NEGATIVE_PROMPT,
+  BLOCK_SILHOUETTE_OVERRIDE,
+  BLOCK_STAGE4_WEALTH_AMPLIFIER,
   PALETTE_DIRECTIVES,
   SHADOW_RATIOS,
 } from "./data";
@@ -45,8 +47,16 @@ export function assemblePrompt(
 ): { prompt: string } {
   const blocks: string[] = [];
 
+  const isSilhouette = rolls.lighting?.tags?.includes("silhouette") ?? false;
+
   // 1. Identity lock (primacy position)
-  blocks.push(BLOCK_1_IDENTITY_LOCK);
+  if (isSilhouette) {
+    blocks.push(
+      "IDENTITY LOCK — SILHOUETTE MODE: Preserve the subject's body proportions, hair shape, and outline only. The face is intentionally obscured — do NOT render eyes, nose, mouth, or any facial features. Identity is expressed through form and outline, not facial detail."
+    );
+  } else {
+    blocks.push(BLOCK_1_IDENTITY_LOCK);
+  }
 
   // 2. Style directive
   blocks.push(
@@ -135,6 +145,11 @@ export function assemblePrompt(
     }
   }
 
+  // 7b. Stage 4 jewelry amplifier
+  if (stage === 4) {
+    blocks.push(BLOCK_STAGE4_WEALTH_AMPLIFIER);
+  }
+
   // 8. Optional Flavor Traits
   {
     const flavorCategories: TraitCategory[] = [
@@ -163,6 +178,11 @@ export function assemblePrompt(
 
   // 11. Technical Finish
   blocks.push(BLOCK_9_TECHNICAL_FINISH);
+
+  // 11b. Silhouette override (before negative prompt)
+  if (isSilhouette) {
+    blocks.push(BLOCK_SILHOUETTE_OVERRIDE);
+  }
 
   // 12. Negative Prompt
   blocks.push(BLOCK_10_NEGATIVE_PROMPT);

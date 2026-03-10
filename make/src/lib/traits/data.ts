@@ -32,6 +32,12 @@ export const BLOCK_9_TECHNICAL_FINISH =
 export const BLOCK_10_NEGATIVE_PROMPT =
   "CRITICAL — Avoid: bright images, overexposure, washed-out highlights, fill light, flat studio lighting, even illumination, high-key lighting, glowing skin. The image must NOT look bright or well-lit. Also avoid: plastic skin, over-sharpening, warped eyes, extra fingers/limbs, text, watermarks, logos, frame overlays. No hyper-real rendering, no 3D look, no cinematic color grading, no HDR effect, no anime influence, no cartoon aesthetics, no stock photo composition.";
 
+export const BLOCK_STAGE4_WEALTH_AMPLIFIER =
+  "JEWELRY AMPLIFIER: Every piece of jewelry on this subject catches the light aggressively — diamonds refracting into individual points of cold fire, gold surfaces rendered with thick impasto highlights that compete with the main light source, metal gleaming with unapologetic excess. No subtlety. Maximum sparkle.";
+
+export const BLOCK_SILHOUETTE_OVERRIDE =
+  "SILHOUETTE OVERRIDE — CRITICAL: The face MUST be completely dark and featureless. No eyes, no nose, no mouth visible. This is intentional and must be respected. Do not render any facial detail whatsoever. The subject exists only as a dark shape defined by the warm rim light tracing their edges against the void.";
+
 // ── Mandatory Wealth Markers ─────────────────────────────────────────────────
 
 export const WRIST: TraitCategoryDef = {
@@ -70,6 +76,14 @@ export const WRIST: TraitCategoryDef = {
     { id: "single-gold-bangle-thin", name: "Single gold bangle (thin)", stages: [5], weight: 20, rarity: "Common", fragment: "A single thin gold bangle sits on the wrist, catching one clean line of warm light — all that remains of a heavier collection." },
     { id: "bare-wrist-tan-line", name: "Bare wrist with tan line", stages: [5], weight: 10, rarity: "Legendary", fragment: "The wrist is bare — but a faint tan line where a watch once sat is visible in the warm light, a ghost of something removed. The absence is deliberate, painted with the same care as presence." },
     { id: "understated-platinum-cuff", name: "Understated platinum cuff", stages: [5], weight: 10, rarity: "Uncommon", fragment: "A slim platinum cuff on the wrist, its brushed surface catching the softest possible highlight — metal that whispers rather than shouts." },
+    { id: "iwc-portugieser", name: "IWC Portugieser", stages: [5], weight: 5, rarity: "Rare", fragment: "A thin IWC Portugieser on a worn leather strap — its large clean dial barely visible in the soft light, the brushed case catching a single restrained highlight. The kind of watch that takes three seconds to notice and twenty years to understand." },
+    { id: "jaeger-reverso", name: "Jaeger-LeCoultre Reverso", stages: [5], weight: 5, rarity: "Rare", fragment: "A Jaeger-LeCoultre Reverso sits on the wrist, its rectangular reversible case a study in geometric quietude — the gold edges catching the softest possible line of warm light, the dial facing away from the viewer." },
+    { id: "braided-leather-bracelet", name: "Braided leather bracelet", stages: [5], weight: 12, rarity: "Common", fragment: "A worn braided leather bracelet circles the wrist, its three strands darkened by years of wear — catching no light worth speaking of, present only as texture against skin." },
+    { id: "oxidised-silver-cuff", name: "Single oxidised silver cuff", stages: [5], weight: 8, rarity: "Uncommon", fragment: "A single oxidised silver cuff sits heavy on the wrist, its darkened surface absorbing light rather than reflecting it — wealth that has stopped trying to announce itself." },
+    { id: "mala-bracelet", name: "Beaded mala bracelet", stages: [5], weight: 8, rarity: "Uncommon", fragment: "A mala bracelet of dark wooden beads circles the wrist, each sphere catching a small point of warm light — contemplative, worn, the kind of thing acquired somewhere that mattered." },
+    { id: "silver-casio", name: "Silver Casio F-91W", stages: [5], weight: 8, rarity: "Uncommon", fragment: "A silver-toned Casio digital watch sits quietly on the wrist — the same modest form as its black counterpart but with a brushed metal casing that catches a single thin line of cool light. No luxury, no statement. The watch of someone who has forgotten what they paid for it." },
+    { id: "rubber-band-wrist", name: "Single rubber band", stages: [5], weight: 3, rarity: "Legendary", fragment: "A plain rubber band circles the wrist — beige, utilitarian, the kind taken off a bunch of broccoli. Painted with the same care as a Cartier cuff. No explanation offered." },
+    { id: "hospital-wristband", name: "Hospital wristband", stages: [5], weight: 3, rarity: "Legendary", fragment: "A white hospital identification wristband is still on the wrist, its plastic surface catching flat cool light — the printed text illegible, the reason for wearing it unknown. Painted without comment." },
   ],
 };
 
@@ -438,6 +452,7 @@ export const LIGHTING: TraitCategoryDef = {
     { id: "fire-glow", name: "Fire glow (flickering, orange)", stages: [1, 2], weight: 8, rarity: "Uncommon", fragment: "Flickering firelight paints the face in unstable orange warmth, shadows dancing at the edges as if the light source is alive and moving." },
     { id: "narrow-beam-single-eye", name: "Narrow concentrated beam (single eye lit)", stages: [1, 5], weight: 6, rarity: "Rare", fragment: "A narrow concentrated beam of light illuminates only one eye and a sliver of cheekbone — the rest of the face lost in absolute darkness." },
     { id: "overhead-downlight", name: "Overhead downlight", stages: [3, 4], weight: 6, rarity: "Uncommon", fragment: "Overhead downlight creates dramatic under-eye shadows and illuminates the top of the head and shoulders, the face falling into partial shadow." },
+    { id: "backlit-silhouette", name: "Backlit silhouette", stages: [5], weight: 4, rarity: "Legendary", fragment: "Extreme backlighting from directly behind the subject — the face entirely consumed by shadow, featureless and dark. A thin rim of warm amber light traces the outline of the head, hair, and shoulders, each strand of hair catching individual filaments of gold light against the void. The face is unreadable. Only the outline remains.", tags: ["silhouette"] },
   ],
 };
 

@@ -192,6 +192,20 @@ function resolveCouplings(
     }
   }
 
+  // 8. Silhouette lighting → suppress all wealth marker fragments except chains
+  if (rolls.lighting?.tags?.includes("silhouette")) {
+    const wealthCategories = ["wrist", "earrings", "rings", "grillz"];
+    for (const cat of wealthCategories) {
+      if (rolls[cat as TraitCategory]) {
+        rolls[cat as TraitCategory] = {
+          ...rolls[cat as TraitCategory],
+          fragment: "",
+        };
+      }
+    }
+    fired.push("silhouette→wealth-markers-suppressed-except-chain");
+  }
+
   return fired;
 }
 
