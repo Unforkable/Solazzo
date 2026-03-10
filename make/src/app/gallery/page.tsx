@@ -545,66 +545,119 @@ function GalleryContent() {
         )}
 
         {/* Price slider */}
-        {!loading && entries.length > 0 && (
-          <div className="mb-8 bg-surface-raised/50 border border-gold-dim/20 p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 mb-3">
-              <p className="text-xs text-muted/50 font-body uppercase tracking-wider">
-                What if SOL hits...
-              </p>
-              <div className="flex items-center gap-2 sm:gap-3">
-                <span className="text-lg sm:text-xl font-display font-bold text-foreground">
-                  ${sliderPrice.toFixed(0)}
-                </span>
-                <span className="text-xs sm:text-sm text-gold font-display">
-                  {STAGE_NAMES[currentStage]}
-                </span>
-                {solPrice !== null && Math.abs(sliderPrice - solPrice) > 5 && (
-                  <button
-                    onClick={() => setSliderPrice(solPrice)}
-                    className="text-[10px] text-muted/40 font-body border border-gold-dim/20 px-2 py-0.5 hover:text-gold hover:border-gold/50 transition-colors cursor-pointer"
-                  >
-                    Reset
-                  </button>
-                )}
+        {!loading && entries.length > 0 && (() => {
+          const settled = sliderPrice >= 1000;
+          return (
+            <div className={`mb-8 border p-4 sm:p-6 transition-all duration-700 ${
+              settled
+                ? "bg-gold/10 border-gold/40 shadow-[0_0_30px_rgba(201,168,76,0.15)]"
+                : "bg-surface-raised/50 border-gold-dim/20"
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 mb-3">
+                <p className={`text-xs font-body uppercase tracking-wider transition-colors duration-500 ${
+                  settled ? "text-gold" : "text-muted/50"
+                }`}>
+                  {settled ? "Settlement reached" : "What if SOL hits..."}
+                </p>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <span className={`text-lg sm:text-xl font-display font-bold transition-colors duration-500 ${
+                    settled ? "text-gold animate-shimmer" : "text-foreground"
+                  }`}>
+                    ${sliderPrice.toFixed(0)}
+                  </span>
+                  <span className={`text-xs sm:text-sm font-display transition-colors duration-500 ${
+                    settled ? "text-gold-bright" : "text-gold"
+                  }`}>
+                    {settled ? "Settled" : STAGE_NAMES[currentStage]}
+                  </span>
+                  {solPrice !== null && Math.abs(sliderPrice - solPrice) > 5 && (
+                    <button
+                      onClick={() => setSliderPrice(solPrice)}
+                      className="text-[10px] text-muted/40 font-body border border-gold-dim/20 px-2 py-0.5 hover:text-gold hover:border-gold/50 transition-colors cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={1200}
-              step={1}
-              value={sliderPrice}
-              onChange={(e) => setSliderPrice(Number(e.target.value))}
-              className="w-full h-1.5 appearance-none bg-gold-dim/30 cursor-pointer outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-gold [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(201,168,76,0.4)] [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-gold [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
-            />
-            <div className="relative mt-1.5 h-4">
-              {[
-                { price: 0, label: "$0" },
-                { price: 200, label: "$200" },
-                { price: 400, label: "$400" },
-                { price: 600, label: "$600" },
-                { price: 800, label: "$800" },
-                { price: 1200, label: "$1.2k" },
-              ].map(({ price, label }, i, arr) => (
-                <span
-                  key={price}
-                  className="absolute text-[10px] text-muted/40 font-body"
-                  style={{
-                    left: `${(price / 1200) * 100}%`,
-                    transform:
-                      i === 0
-                        ? "none"
-                        : i === arr.length - 1
-                          ? "translateX(-100%)"
-                          : "translateX(-50%)",
-                  }}
+
+              {/* Slider track with $1k marker */}
+              <div className="relative">
+                <input
+                  type="range"
+                  min={0}
+                  max={1200}
+                  step={1}
+                  value={sliderPrice}
+                  onChange={(e) => setSliderPrice(Number(e.target.value))}
+                  className={`w-full h-1.5 appearance-none cursor-pointer outline-none transition-all duration-500 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer ${
+                    settled
+                      ? "bg-gold/30 [&::-webkit-slider-thumb]:bg-gold-bright [&::-webkit-slider-thumb]:shadow-[0_0_12px_rgba(226,201,126,0.6)] [&::-moz-range-thumb]:bg-gold-bright"
+                      : "bg-gold-dim/30 [&::-webkit-slider-thumb]:bg-gold [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(201,168,76,0.4)] [&::-moz-range-thumb]:bg-gold"
+                  }`}
+                />
+                {/* $1,000 milestone marker */}
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ left: `${(1000 / 1200) * 100}%` }}
                 >
-                  {label}
-                </span>
-              ))}
+                  <div className={`w-px h-4 transition-colors duration-500 ${
+                    settled ? "bg-gold" : "bg-gold-dim/50"
+                  }`} />
+                </div>
+              </div>
+
+              {/* Scale labels */}
+              <div className="relative mt-1.5 h-4">
+                {[
+                  { price: 0, label: "$0" },
+                  { price: 200, label: "$200" },
+                  { price: 400, label: "$400" },
+                  { price: 600, label: "$600" },
+                  { price: 800, label: "$800" },
+                  { price: 1000, label: "$1k" },
+                  { price: 1200, label: "$1.2k" },
+                ].map(({ price, label }, i, arr) => (
+                  <span
+                    key={price}
+                    className={`absolute font-body transition-colors duration-500 ${
+                      price === 1000
+                        ? `text-[11px] font-medium ${settled ? "text-gold" : "text-gold-dim"}`
+                        : "text-[10px] text-muted/40"
+                    }`}
+                    style={{
+                      left: `${(price / 1200) * 100}%`,
+                      transform:
+                        i === 0
+                          ? "none"
+                          : i === arr.length - 1
+                            ? "translateX(-100%)"
+                            : "translateX(-50%)",
+                    }}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+
+              {/* Settlement banner */}
+              {settled && (
+                <div className="mt-4 pt-4 border-t border-gold/30 animate-fade-in">
+                  <p className="text-base sm:text-lg font-display font-bold text-gold leading-snug">
+                    The bet paid off. Every SOL goes home.
+                  </p>
+                  <p className="text-sm text-foreground/60 font-body mt-1.5 leading-relaxed">
+                    SOL crossed $1,000. The collection is settled. Every single
+                    locker can now withdraw their full principal &mdash; no fees,
+                    no haircut, no fine print. You locked it at ${solPrice != null ? solPrice.toFixed(0) : "~127"}.
+                    You&rsquo;re getting it back at $1,000. That&rsquo;s not yield.
+                    That&rsquo;s conviction.
+                  </p>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Sort controls */}
         {!loading && entries.length > 0 && (
