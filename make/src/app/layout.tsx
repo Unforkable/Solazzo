@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import { Navbar } from "@/components/navbar";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -36,7 +37,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${cormorant.variable} ${dmSans.variable}`}>
+      <body className={`${cormorant.variable} ${dmSans.variable} pt-14`}>
+        <Navbar />
         {children}
       </body>
     </html>

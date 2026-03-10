@@ -4,6 +4,10 @@ import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { GalleryEntry, GalleryTraitRoll } from "@/lib/gallery-store";
+import {
+  useComingSoon,
+  ComingSoonToast,
+} from "@/components/coming-soon-toast";
 
 const STAGE_NAMES: Record<number, string> = {
   1: "Humble Believer",
@@ -71,11 +75,18 @@ function CollectionLightbox({
   entry,
   onClose,
   currentStage,
+  onChallenge,
 }: {
   entry: GalleryEntry & { slot: number };
   onClose: () => void;
   currentStage: number;
+  onChallenge: () => void;
 }) {
+  const currentConviction = entry.conviction ?? 0;
+  const minBid = currentConviction > 0
+    ? Math.round(Math.max(currentConviction * 1.01, currentConviction + 0.1) * 10) / 10
+    : 0.1;
+
   return (
     <div
       className="fixed inset-0 z-50 overflow-y-auto"
@@ -87,14 +98,15 @@ function CollectionLightbox({
           className="relative w-full max-w-6xl animate-fade-in"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Header */}
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-4">
               <span className="text-lg font-display font-bold text-foreground">
                 Slot #{entry.slot}
               </span>
-              {entry.conviction != null && entry.conviction > 0 && (
+              {currentConviction > 0 && (
                 <span className="text-sm font-body text-gold">
-                  ◎ {entry.conviction.toFixed(1)}
+                  ◎ {currentConviction.toFixed(1)} locked
                 </span>
               )}
             </div>
@@ -106,47 +118,81 @@ function CollectionLightbox({
             </button>
           </div>
 
+          {/* Portraits grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          {entry.portraits.map((url, i) => {
-            const stage = i + 1;
-            const traits = entry.traits?.[i];
-            const visible = traits
-              ? Object.values(traits.rolls).filter((r: GalleryTraitRoll) => !r.isNothing)
-              : [];
+            {entry.portraits.map((url, i) => {
+              const stage = i + 1;
+              const traits = entry.traits?.[i];
+              const visible = traits
+                ? Object.values(traits.rolls).filter((r: GalleryTraitRoll) => !r.isNothing)
+                : [];
 
-            return (
-              <div key={stage} className={stage === currentStage ? "ring-1 ring-gold/40 ring-offset-2 ring-offset-black" : "opacity-50"}>
-                <BaroqueFrame>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
-                    alt={`Stage ${stage}`}
-                    className="w-full aspect-square object-cover"
-                  />
-                </BaroqueFrame>
-                <div className="mt-2 text-center">
-                  <p className={`text-xs font-display font-semibold ${stage === currentStage ? "text-gold" : "text-foreground/80"}`}>
-                    {stage}. {STAGE_NAMES[stage]}
-                    {stage === currentStage && " (current)"}
-                  </p>
-                  {visible.length > 0 && (
-                    <div className="mt-1 space-y-px">
-                      {visible.map((r: GalleryTraitRoll) => (
-                        <p
-                          key={r.category}
-                          className="text-[10px] leading-tight"
-                          style={{ color: RARITY_COLORS[r.rarity] ?? "#8a7f72" }}
-                        >
-                          {r.itemName}
-                        </p>
-                      ))}
-                    </div>
-                  )}
+              return (
+                <div key={stage} className={stage === currentStage ? "ring-1 ring-gold/40 ring-offset-2 ring-offset-black" : "opacity-50"}>
+                  <BaroqueFrame>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={`Stage ${stage}`}
+                      className="w-full aspect-square object-cover"
+                    />
+                  </BaroqueFrame>
+                  <div className="mt-2 text-center">
+                    <p className={`text-xs font-display font-semibold ${stage === currentStage ? "text-gold" : "text-foreground/80"}`}>
+                      {stage}. {STAGE_NAMES[stage]}
+                      {stage === currentStage && " (current)"}
+                    </p>
+                    {visible.length > 0 && (
+                      <div className="mt-1 space-y-px">
+                        {visible.map((r: GalleryTraitRoll) => (
+                          <p
+                            key={r.category}
+                            className="text-[10px] leading-tight"
+                            style={{ color: RARITY_COLORS[r.rarity] ?? "#8a7f72" }}
+                          >
+                            {r.itemName}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* Challenge / Takeover section */}
+          <div className="mt-6 border-t border-gold-dim/20 pt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p className="text-xs text-foreground/40 font-body uppercase tracking-wider mb-1">
+                Challenge this slot
+              </p>
+              <p className="text-sm text-foreground/60 font-body">
+                Lock <span className="text-gold font-medium">◎ {minBid.toFixed(1)}</span> or more to take over this position.
+                The current holder gets their full SOL back.
+              </p>
+            </div>
+            <button
+              onClick={onChallenge}
+              className="btn-ghost font-display tracking-wide flex-shrink-0 gap-2"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+              </svg>
+              Outbid — ◎ {minBid.toFixed(1)}+
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -171,6 +217,7 @@ function GalleryContent() {
   const [sort, setSort] = useState<SortOption>("highest");
   const currentStage = priceToStage(sliderPrice);
   const searchParams = useSearchParams();
+  const toast = useComingSoon();
   const newId = searchParams.get("new");
   const highlightedRef = useRef<HTMLDivElement>(null);
   const didAutoOpen = useRef(false);
@@ -514,8 +561,11 @@ function GalleryContent() {
           entry={selected}
           onClose={() => setSelected(null)}
           currentStage={currentStage}
+          onChallenge={() => toast.show("Wallet connection required. Coming soon.")}
         />
       )}
+
+      <ComingSoonToast visible={toast.visible} message={toast.message} />
     </main>
   );
 }
