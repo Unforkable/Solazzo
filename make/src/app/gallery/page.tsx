@@ -644,12 +644,13 @@ function GalleryContent() {
               {settled && (
                 <div className="mt-4 pt-4 border-t border-gold/30 animate-fade-in">
                   <p className="text-base sm:text-lg font-display font-bold text-gold leading-snug">
-                    The collection has settled.
+                    $1,000. Conviction paid off.
                   </p>
                   <p className="text-sm text-foreground/60 font-body mt-1.5 leading-relaxed">
-                    SOL crossed $1,000. Every locker can now withdraw their
-                    full principal &mdash; no fees, no haircut, no fine print.
-                    The portraits remain. The SOL goes home.
+                    Congratulations to every holder. Your locked SOL is now
+                    available to withdraw in full &mdash; no fees, no haircut.
+                    You believed, you held, and the collection settled.
+                    The portraits stay yours forever.
                   </p>
                 </div>
               )}
