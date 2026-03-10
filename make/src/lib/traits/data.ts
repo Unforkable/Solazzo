@@ -142,6 +142,7 @@ export const EARRINGS: TraitCategoryDef = {
     { id: "small-refined-hoop", name: "Small refined gold hoop", stages: [5], weight: 30, rarity: "Common", fragment: "A small refined gold hoop sits close to the earlobe, its polished surface catching a gentle arc of warm light." },
     { id: "pearl-stud", name: "Pearl stud", stages: [5], weight: 20, rarity: "Uncommon", fragment: "A pearl stud in one ear glows with soft warm luster, its organic surface absorbing and reflecting light in equal measure." },
     { id: "bare-ear-piercing", name: "Bare ear with piercing hole visible", stages: [5], weight: 15, rarity: "Legendary", fragment: "The ear is bare, but a tiny piercing hole is visible in the lobe — a detail painted with surgical precision, the absence louder than presence." },
+    { id: "cherry-earrings", name: "Cherry earrings", stages: "all", weight: 7, rarity: "Uncommon", fragment: "Small cherry earrings hang from the earlobe — two red spheres on short stems, their polished surface catching a point of warm light each, vivid red against the dark surrounding shadow." },
   ],
 };
 
