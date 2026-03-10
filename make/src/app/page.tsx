@@ -674,22 +674,28 @@ export default function PortraitStudio() {
                 SOLAZZO
               </h1>
               <div className="w-24 h-px mx-auto mt-5 bg-gradient-to-r from-transparent via-gold to-transparent" />
-              <p className="text-lg sm:text-xl text-foreground/80 font-display mt-6 max-w-lg mx-auto leading-snug">
+              <p className="text-lg sm:text-xl text-foreground font-display mt-6 max-w-lg mx-auto leading-snug">
                 The bet is simple. SOL hits $1,000 &mdash; you get every coin back.
               </p>
-              <p className="text-muted text-sm font-body mt-4 max-w-md mx-auto leading-relaxed">
+              <p className="text-foreground/60 text-base font-body mt-4 max-w-md mx-auto leading-relaxed">
                 While you wait, your face gets painted into five Baroque oil
                 portraits that evolve as the price climbs. One for each stage of
                 the ride.
               </p>
+              <button
+                onClick={() => setAppStage("capture")}
+                className="btn-gold font-display tracking-wide mt-8"
+              >
+                Create Your Portraits
+              </button>
             </div>
 
             {/* How it works */}
-            <div className="border-t border-gold-dim/20 pt-10 pb-12 sm:pb-16">
-              <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-gold-dim font-body text-center mb-3">
+            <div className="border-t border-gold-dim/30 pt-10 pb-12 sm:pb-16">
+              <p className="text-xs uppercase tracking-[0.2em] text-gold font-body text-center mb-4">
                 Here&rsquo;s how it works
               </p>
-              <p className="text-muted/60 text-sm font-body text-center max-w-md mx-auto leading-relaxed mb-8">
+              <p className="text-foreground/50 text-base font-body text-center max-w-md mx-auto leading-relaxed mb-8">
                 You lock SOL. Not spend it &mdash; lock it. The contract holds
                 your coins and paints you into the collection. As SOL moves, your
                 portrait transforms. When it crosses $1,000, the game ends and
@@ -698,20 +704,20 @@ export default function PortraitStudio() {
               </p>
               <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-md mx-auto text-center">
                 <div className="py-3 sm:py-4">
-                  <p className="text-lg sm:text-2xl font-display font-bold text-foreground">Lock</p>
-                  <p className="text-[10px] sm:text-xs text-muted/40 font-body mt-1">
+                  <p className="text-xl sm:text-2xl font-display font-bold text-foreground">Lock</p>
+                  <p className="text-xs text-foreground/40 font-body mt-1">
                     Commit SOL to a slot
                   </p>
                 </div>
-                <div className="py-3 sm:py-4 border-x border-gold-dim/15">
-                  <p className="text-lg sm:text-2xl font-display font-bold text-foreground">Hold</p>
-                  <p className="text-[10px] sm:text-xs text-muted/40 font-body mt-1">
+                <div className="py-3 sm:py-4 border-x border-gold-dim/20">
+                  <p className="text-xl sm:text-2xl font-display font-bold text-foreground">Hold</p>
+                  <p className="text-xs text-foreground/40 font-body mt-1">
                     Watch it evolve
                   </p>
                 </div>
                 <div className="py-3 sm:py-4">
-                  <p className="text-lg sm:text-2xl font-display font-bold text-gold">Settle</p>
-                  <p className="text-[10px] sm:text-xs text-muted/40 font-body mt-1">
+                  <p className="text-xl sm:text-2xl font-display font-bold text-gold">Settle</p>
+                  <p className="text-xs text-foreground/40 font-body mt-1">
                     Get every SOL back
                   </p>
                 </div>
@@ -719,29 +725,29 @@ export default function PortraitStudio() {
             </div>
 
             {/* The Five Stages */}
-            <div className="border-t border-gold-dim/20 pt-10 pb-12 sm:pb-16">
-              <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-gold-dim font-body text-center mb-3">
+            <div className="border-t border-gold-dim/30 pt-10 pb-12 sm:pb-16">
+              <p className="text-xs uppercase tracking-[0.2em] text-gold font-body text-center mb-4">
                 Five stages &mdash; One journey
               </p>
-              <p className="text-muted/60 text-sm font-body text-center max-w-md mx-auto leading-relaxed mb-8">
+              <p className="text-foreground/50 text-base font-body text-center max-w-md mx-auto leading-relaxed mb-8">
                 Every $200 move in SOL advances the entire collection. Your
                 portrait starts humble and ends wise. The five stages mirror what
                 every believer actually goes through.
               </p>
-              <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-5 sm:gap-3 max-w-2xl mx-auto">
+              <div className="space-y-2.5 sm:space-y-0 sm:grid sm:grid-cols-5 sm:gap-3 max-w-2xl mx-auto">
                 {ALL_STAGES.map((stage) => (
                   <div
                     key={stage}
-                    className="flex sm:flex-col items-center sm:items-center gap-3 sm:gap-1.5 sm:text-center px-3 py-2.5 sm:py-4 sm:px-2 bg-surface-raised/40 border border-gold-dim/10"
+                    className="flex sm:flex-col items-center sm:items-center gap-3 sm:gap-1.5 sm:text-center px-4 py-3 sm:py-4 sm:px-2 bg-surface-raised/50 border border-gold-dim/15"
                   >
-                    <span className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gold/15 flex items-center justify-center text-gold text-xs sm:text-sm font-display font-bold">
+                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-gold/15 flex items-center justify-center text-gold text-sm font-display font-bold">
                       {stage}
                     </span>
                     <div className="sm:mt-1">
-                      <p className="text-xs sm:text-[11px] font-display font-semibold text-foreground/80 leading-tight">
+                      <p className="text-sm sm:text-xs font-display font-semibold text-foreground leading-tight">
                         {STAGE_NAMES[stage]}
                       </p>
-                      <p className="text-[10px] text-muted/40 font-body mt-0.5">
+                      <p className="text-xs sm:text-[11px] text-foreground/40 font-body mt-0.5">
                         {STAGE_PRICES[stage]} SOL
                       </p>
                     </div>
@@ -751,27 +757,27 @@ export default function PortraitStudio() {
             </div>
 
             {/* Scarcity */}
-            <div className="border-t border-gold-dim/20 pt-10 pb-12 sm:pb-16">
+            <div className="border-t border-gold-dim/30 pt-10 pb-12 sm:pb-16">
               <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 max-w-lg mx-auto">
                 <div className="flex-1 text-center sm:text-left">
-                  <p className="text-2xl sm:text-3xl font-display font-bold text-foreground">
+                  <p className="text-3xl sm:text-4xl font-display font-bold text-foreground">
                     1,000
                   </p>
-                  <p className="text-xs text-muted/50 font-body mt-1">
+                  <p className="text-sm text-foreground/50 font-body mt-1">
                     slots total. That&rsquo;s it. There will never be 1,001.
                   </p>
                 </div>
-                <div className="hidden sm:block w-px bg-gold-dim/20" />
+                <div className="hidden sm:block w-px bg-gold-dim/30" />
                 <div className="flex-1 text-center sm:text-left">
-                  <p className="text-2xl sm:text-3xl font-display font-bold text-gold">
+                  <p className="text-3xl sm:text-4xl font-display font-bold text-gold">
                     $1,000
                   </p>
-                  <p className="text-xs text-muted/50 font-body mt-1">
+                  <p className="text-sm text-foreground/50 font-body mt-1">
                     SOL. That&rsquo;s the number. Hit it and every locker gets made whole.
                   </p>
                 </div>
               </div>
-              <p className="text-muted/50 text-xs font-body text-center mt-8 max-w-md mx-auto leading-relaxed">
+              <p className="text-foreground/40 text-sm font-body text-center mt-8 max-w-md mx-auto leading-relaxed">
                 Someone can always outbid you for your slot &mdash; but even then, you
                 get your full SOL back instantly. You don&rsquo;t lose money here.
                 You lose position.
@@ -779,8 +785,8 @@ export default function PortraitStudio() {
             </div>
 
             {/* CTA */}
-            <div className="border-t border-gold-dim/20 pt-10 pb-4 flex flex-col items-center gap-5">
-              <p className="text-foreground/70 text-sm font-body text-center max-w-xs leading-relaxed">
+            <div className="border-t border-gold-dim/30 pt-10 pb-4 flex flex-col items-center gap-5">
+              <p className="text-foreground/60 text-base font-body text-center max-w-xs leading-relaxed">
                 Preview your five portraits for free. No wallet needed &mdash; just a selfie.
               </p>
               <button
@@ -791,7 +797,7 @@ export default function PortraitStudio() {
               </button>
               <Link
                 href="/gallery"
-                className="text-sm text-muted/50 hover:text-gold transition-colors font-body"
+                className="text-sm text-foreground/40 hover:text-gold transition-colors font-body"
               >
                 Browse the Gallery
               </Link>
