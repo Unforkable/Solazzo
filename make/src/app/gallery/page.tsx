@@ -232,7 +232,6 @@ function GalleryContent() {
     return {
       floor: convictions.length > 0 ? Math.min(...convictions) : null,
       total: convictions.reduce((a, b) => a + b, 0),
-      holders: new Set(entries.map((e) => e.wallet).filter(Boolean)).size || entries.length,
     };
   }, [entries]);
 
@@ -273,13 +272,30 @@ function GalleryContent() {
               <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-wide text-foreground">
                 THE GALLERY
               </h1>
-              <p className="text-muted/40 text-sm mt-1 font-body">
-                {loading ? "Loading..." : `${entries.length} / 1,000 slots minted`}
-              </p>
+              {!loading && (
+                <div className="mt-2">
+                  <div className="flex items-center gap-3 mb-1.5">
+                    <span className="text-sm font-body text-foreground/70">
+                      {entries.length} <span className="text-muted/40">/ 1,000 claimed</span>
+                    </span>
+                    {solPrice !== null && (
+                      <span className="text-xs text-muted/30 font-body">
+                        SOL ${solPrice.toFixed(0)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="h-1 w-48 sm:w-64 bg-surface-raised rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-gold-dim to-gold rounded-full transition-all duration-700"
+                      style={{ width: `${Math.max((entries.length / 1000) * 100, 0.5)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {loading && (
+                <p className="text-muted/40 text-sm mt-1 font-body">Loading...</p>
+              )}
             </div>
-            <p className="text-muted/30 text-xs font-body">
-              {solPrice !== null ? `Live: $${solPrice.toFixed(0)}` : ""}
-            </p>
           </div>
         </div>
 
@@ -317,10 +333,10 @@ function GalleryContent() {
             </div>
             <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
               <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
-                Unique Holders
+                Slots Available
               </p>
               <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
-                {stats.holders}
+                {(1000 - entries.length).toLocaleString()}
               </p>
             </div>
           </div>
@@ -410,15 +426,20 @@ function GalleryContent() {
 
         {/* Empty state */}
         {!loading && !error && entries.length === 0 && (
-          <div className="text-center py-24">
-            <p className="text-muted/60 font-body">
-              No collections published yet. Be the first.
+          <div className="text-center py-20 sm:py-28 max-w-md mx-auto">
+            <p className="text-xl sm:text-2xl font-display font-bold text-foreground/80 mb-3">
+              1,000 empty frames.
+            </p>
+            <p className="text-muted/50 text-sm font-body leading-relaxed mb-6">
+              The gallery is waiting. Every slot that gets claimed is one fewer
+              slot that&rsquo;s available. No one has moved yet &mdash; which
+              means every position is open.
             </p>
             <Link
               href="/"
-              className="text-gold text-sm font-body mt-4 inline-block hover:text-gold-bright transition-colors"
+              className="btn-gold font-display tracking-wide"
             >
-              Create your portraits &rarr;
+              Claim your slot &rarr;
             </Link>
           </div>
         )}
