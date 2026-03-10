@@ -435,10 +435,41 @@ export default function PortraitStudio() {
   const [lightboxStage, setLightboxStage] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [lockingIn, setLockingIn] = useState(false);
+  const [focusedStage, setFocusedStage] = useState<StageNumber>(1);
 
   const compressedRef = useRef<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const swipeTouchStart = useRef<number>(0);
+  const swipeTouchEnd = useRef<number>(0);
   const router = useRouter();
+
+  // Auto-advance focused stage to whichever is currently generating
+  useEffect(() => {
+    if (generatingStages.size > 0) {
+      const current = ALL_STAGES.find((s) => generatingStages.has(s));
+      if (current) setFocusedStage(current);
+    }
+  }, [generatingStages]);
+
+  const handleSwipeStart = useCallback((e: React.TouchEvent) => {
+    swipeTouchStart.current = e.targetTouches[0].clientX;
+    swipeTouchEnd.current = e.targetTouches[0].clientX;
+  }, []);
+
+  const handleSwipeMove = useCallback((e: React.TouchEvent) => {
+    swipeTouchEnd.current = e.targetTouches[0].clientX;
+  }, []);
+
+  const handleSwipeEnd = useCallback(() => {
+    const diff = swipeTouchStart.current - swipeTouchEnd.current;
+    if (Math.abs(diff) > 50) {
+      setFocusedStage((prev) => {
+        if (diff > 0 && prev < 5) return (prev + 1) as StageNumber;
+        if (diff < 0 && prev > 1) return (prev - 1) as StageNumber;
+        return prev;
+      });
+    }
+  }, []);
 
   useEffect(() => {
     const saved = loadPortraits();
@@ -957,7 +988,122 @@ export default function PortraitStudio() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            {/* ── Mobile: single portrait + thumbnail strip ── */}
+            <div className="sm:hidden">
+              <div
+                onTouchStart={handleSwipeStart}
+                onTouchMove={handleSwipeMove}
+                onTouchEnd={handleSwipeEnd}
+              >
+                {(() => {
+                  const idx = focusedStage - 1;
+                  const portrait = portraits[idx];
+                  const stageError = stageErrors[idx];
+                  const generating = generatingStages.has(focusedStage);
+                  return (
+                    <div className="max-w-[360px] mx-auto">
+                      <BaroqueFrame>
+                        <div className="relative">
+                          {portrait ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={portrait}
+                                alt={`Stage ${focusedStage}: ${STAGE_NAMES[focusedStage]}`}
+                                className="aspect-square w-full object-cover animate-fade-in cursor-pointer"
+                                onClick={() => setLightboxStage(focusedStage)}
+                              />
+                              {traitManifests[idx] && (
+                                <button
+                                  onClick={() => setPromptViewStage(focusedStage)}
+                                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-gold/60 hover:text-gold text-[10px] font-mono px-2 py-1 transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+                                  title="View prompt"
+                                >
+                                  {"{…}"}
+                                </button>
+                              )}
+                            </>
+                          ) : generating ? (
+                            <div className="aspect-square flex flex-col items-center justify-center gap-3 relative overflow-hidden">
+                              <div className="animate-brush-stroke absolute inset-0 bg-gradient-to-r from-gold-dim/10 via-gold/5 to-transparent" />
+                              <PaintbrushIcon />
+                              <p className="text-gold/50 text-xs text-center px-2 font-body">Painting…</p>
+                            </div>
+                          ) : stageError ? (
+                            <div className="aspect-square flex items-center justify-center">
+                              <p className="text-red-400 text-xs text-center px-2 font-body">{stageError}</p>
+                            </div>
+                          ) : (
+                            <div className="aspect-square flex items-center justify-center">
+                              <p className="text-muted/30 text-xs font-body">Waiting…</p>
+                            </div>
+                          )}
+                        </div>
+                      </BaroqueFrame>
+                      <div className="mt-3 text-center">
+                        <p className="text-sm font-display font-semibold text-foreground/80 leading-tight">
+                          {focusedStage}. {STAGE_NAMES[focusedStage]}
+                        </p>
+                        <p className="text-[11px] text-muted/40 font-body mt-0.5">
+                          {STAGE_PRICES[focusedStage]}
+                        </p>
+                        {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
+                        {!generating && (portrait || stageError) && (
+                          <div className="flex items-center justify-center gap-3 mt-1">
+                            <button
+                              onClick={() => generateStage(focusedStage)}
+                              className="text-xs text-muted/50 hover:text-gold transition-colors cursor-pointer min-h-[44px] font-body"
+                            >
+                              {stageError ? "Retry" : "Regenerate"}
+                            </button>
+                            {portrait && (
+                              <ShareButton portrait={portrait} stage={focusedStage} manifest={traitManifests[idx]} />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Thumbnail strip */}
+              <div className="flex gap-2 mt-5 justify-center">
+                {ALL_STAGES.map((stage) => {
+                  const idx = stage - 1;
+                  const portrait = portraits[idx];
+                  const generating = generatingStages.has(stage);
+                  const isFocused = stage === focusedStage;
+                  return (
+                    <button
+                      key={stage}
+                      onClick={() => setFocusedStage(stage)}
+                      className={`w-14 h-14 flex-shrink-0 border-2 transition-all duration-300 overflow-hidden ${
+                        isFocused
+                          ? "border-gold shadow-[0_0_8px_rgba(201,168,76,0.3)]"
+                          : "border-gold-dim/20 opacity-60"
+                      }`}
+                    >
+                      {portrait ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={portrait} alt={`Stage ${stage}`} className="w-full h-full object-cover" />
+                      ) : generating ? (
+                        <div className="w-full h-full bg-surface-raised flex items-center justify-center">
+                          <div className="w-3 h-3 rounded-full bg-gold/40 animate-pulse" />
+                        </div>
+                      ) : (
+                        <div className="w-full h-full bg-surface-raised flex items-center justify-center">
+                          <span className="text-[10px] text-muted/30 font-display">{stage}</span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Desktop: grid view ── */}
+            <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {ALL_STAGES.map((stage) => {
                 const idx = stage - 1;
                 const portrait = portraits[idx];
@@ -967,7 +1113,7 @@ export default function PortraitStudio() {
                 return (
                   <div
                     key={stage}
-                    className={`gallery-panel ${stage === 5 ? "col-span-2 sm:col-span-2 lg:col-span-1 max-w-[50%] sm:max-w-none mx-auto lg:mx-0" : ""}`}
+                    className={`gallery-panel ${stage === 5 ? "sm:col-span-2 lg:col-span-1 max-w-none" : ""}`}
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
                     <BaroqueFrame>
@@ -1008,16 +1154,14 @@ export default function PortraitStudio() {
                         )}
                       </div>
                     </BaroqueFrame>
-                    <div className="mt-2 sm:mt-3 text-center">
-                      <p className="text-xs sm:text-sm font-display font-semibold text-foreground/80 leading-tight">
+                    <div className="mt-3 text-center">
+                      <p className="text-sm font-display font-semibold text-foreground/80 leading-tight">
                         {stage}. {STAGE_NAMES[stage]}
                       </p>
-                      <p className="text-[10px] sm:text-[11px] text-muted/40 font-body mt-0.5">
+                      <p className="text-[11px] text-muted/40 font-body mt-0.5">
                         {STAGE_PRICES[stage]}
                       </p>
-                      <div className="hidden sm:block">
-                        {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
-                      </div>
+                      {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
                       {!generating && (portrait || stageError) && (
                         <div className="flex items-center justify-center gap-3 mt-1">
                           <button
@@ -1115,14 +1259,107 @@ export default function PortraitStudio() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            {/* ── Mobile: single portrait + thumbnail strip ── */}
+            <div className="sm:hidden">
+              <div
+                onTouchStart={handleSwipeStart}
+                onTouchMove={handleSwipeMove}
+                onTouchEnd={handleSwipeEnd}
+              >
+                {(() => {
+                  const idx = focusedStage - 1;
+                  const portrait = portraits[idx];
+                  return (
+                    <div className="max-w-[360px] mx-auto">
+                      <BaroqueFrame>
+                        <div className="relative">
+                          {portrait && (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={portrait}
+                                alt={`Stage ${focusedStage}: ${STAGE_NAMES[focusedStage]}`}
+                                className="aspect-square w-full object-cover cursor-pointer"
+                                onClick={() => setLightboxStage(focusedStage)}
+                              />
+                              {traitManifests[idx] && (
+                                <button
+                                  onClick={() => setPromptViewStage(focusedStage)}
+                                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-gold/60 hover:text-gold text-[10px] font-mono px-2 py-1 transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+                                  title="View prompt"
+                                >
+                                  {"{…}"}
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </BaroqueFrame>
+                      <div className="mt-3 text-center">
+                        <p className="text-sm font-display font-semibold text-foreground/80 leading-tight">
+                          {focusedStage}. {STAGE_NAMES[focusedStage]}
+                        </p>
+                        <p className="text-[11px] text-muted/40 font-body mt-0.5">
+                          {STAGE_PRICES[focusedStage]}
+                        </p>
+                        {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
+                        {portrait && (
+                          <div className="flex items-center justify-center gap-3 mt-1">
+                            <a
+                              href={portrait}
+                              download={`solazzo-stage-${focusedStage}.jpg`}
+                              className="text-xs text-muted/50 hover:text-gold transition-colors inline-flex items-center justify-center min-h-[44px] font-body"
+                            >
+                              Download
+                            </a>
+                            <ShareButton portrait={portrait} stage={focusedStage} manifest={traitManifests[idx]} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Thumbnail strip */}
+              <div className="flex gap-2 mt-5 justify-center">
+                {ALL_STAGES.map((stage) => {
+                  const idx = stage - 1;
+                  const portrait = portraits[idx];
+                  const isFocused = stage === focusedStage;
+                  return (
+                    <button
+                      key={stage}
+                      onClick={() => setFocusedStage(stage)}
+                      className={`w-14 h-14 flex-shrink-0 border-2 transition-all duration-300 overflow-hidden ${
+                        isFocused
+                          ? "border-gold shadow-[0_0_8px_rgba(201,168,76,0.3)]"
+                          : "border-gold-dim/20 opacity-60"
+                      }`}
+                    >
+                      {portrait ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={portrait} alt={`Stage ${stage}`} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-surface-raised flex items-center justify-center">
+                          <span className="text-[10px] text-muted/30 font-display">{stage}</span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Desktop: grid view ── */}
+            <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {ALL_STAGES.map((stage) => {
                 const idx = stage - 1;
                 const portrait = portraits[idx];
                 return (
                   <div
                     key={stage}
-                    className={`gallery-panel ${stage === 5 ? "col-span-2 sm:col-span-2 lg:col-span-1 max-w-[50%] sm:max-w-none mx-auto lg:mx-0" : ""}`}
+                    className={`gallery-panel ${stage === 5 ? "sm:col-span-2 lg:col-span-1 max-w-none" : ""}`}
                     style={{ animationDelay: `${idx * 100}ms` }}
                   >
                     <BaroqueFrame>
@@ -1149,16 +1386,14 @@ export default function PortraitStudio() {
                         )}
                       </div>
                     </BaroqueFrame>
-                    <div className="mt-2 sm:mt-3 text-center">
-                      <p className="text-xs sm:text-sm font-display font-semibold text-foreground/80 leading-tight">
+                    <div className="mt-3 text-center">
+                      <p className="text-sm font-display font-semibold text-foreground/80 leading-tight">
                         {stage}. {STAGE_NAMES[stage]}
                       </p>
-                      <p className="text-[10px] sm:text-[11px] text-muted/40 font-body mt-0.5">
+                      <p className="text-[11px] text-muted/40 font-body mt-0.5">
                         {STAGE_PRICES[stage]}
                       </p>
-                      <div className="hidden sm:block">
-                        {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
-                      </div>
+                      {traitManifests[idx] && <TraitSummary manifest={traitManifests[idx]} />}
                       {portrait && (
                         <div className="flex items-center justify-center gap-3 mt-1">
                           <a
