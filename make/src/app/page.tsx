@@ -183,7 +183,12 @@ function compressForStorage(dataUrl: string): Promise<string> {
       canvas.height = 512;
       const ctx = canvas.getContext("2d");
       if (!ctx) return reject(new Error("Canvas not supported"));
-      ctx.drawImage(img, 0, 0, 512, 512);
+
+      // Preserve aspect ratio: center-crop to square before downscaling.
+      const srcSize = Math.min(img.naturalWidth, img.naturalHeight);
+      const sx = Math.floor((img.naturalWidth - srcSize) / 2);
+      const sy = Math.floor((img.naturalHeight - srcSize) / 2);
+      ctx.drawImage(img, sx, sy, srcSize, srcSize, 0, 0, 512, 512);
       resolve(canvas.toDataURL("image/jpeg", 0.8));
     };
     img.onerror = () => reject(new Error("Failed to compress"));
@@ -927,7 +932,16 @@ export default function PortraitStudio() {
       // 2. Check if ClaimableBalance PDA exists
       const hasCB = await hasClaimableBalance(connection, publicKey);
 
-      // 3. Build transaction
+      // 3. Cache a local recovery draft before any wallet/on-chain interaction.
+      // This prevents users from losing portraits if tx/publish fails mid-flow.
+      const compressed: string[] = [];
+      for (const p of portraits) {
+        compressed.push(await compressForStorage(p!));
+      }
+      const validTraits = traitManifests.filter((t): t is TraitManifest => t !== null);
+      savePortraits(compressed, validTraits.length === 5 ? validTraits : undefined);
+
+      // 4. Build transaction
       setClaimStep("signing");
       const lockLamports = BigInt(Math.round(lockAmount * SOL_DECIMALS));
       const instructions = buildClaimInstructions(
@@ -938,10 +952,10 @@ export default function PortraitStudio() {
       );
       const tx = new Transaction().add(...instructions);
 
-      // 4. Send via wallet
+      // 5. Send via wallet
       const sig = await sendTransaction(tx, connection);
 
-      // 5. Confirm
+      // 6. Confirm
       setClaimStep("confirming");
       const result = await connection.confirmTransaction(sig, "confirmed");
       if (result.value.err) {
@@ -950,7 +964,7 @@ export default function PortraitStudio() {
 
       setClaimTxSig(sig);
 
-      // 6. Request publish challenge and sign it
+      // 7. Request publish challenge and sign it
       setClaimStep("authorizing");
 
       const walletAddr = publicKey.toBase58();
@@ -981,13 +995,8 @@ export default function PortraitStudio() {
       const sigBytes = await signMessage(messageBytes);
       const walletSignature = bs58.encode(sigBytes);
 
-      // 7. Compress and publish with auth proof
+      // 8. Publish with auth proof
       setClaimStep("publishing");
-      const compressed: string[] = [];
-      for (const p of portraits) {
-        compressed.push(await compressForStorage(p!));
-      }
-      const validTraits = traitManifests.filter((t): t is TraitManifest => t !== null);
       savePortraits(compressed, validTraits.length === 5 ? validTraits : undefined);
 
       let galleryId: string | null = null;
@@ -1038,7 +1047,7 @@ export default function PortraitStudio() {
         return;
       }
 
-      // 8. Download zip (optional)
+      // 9. Download zip (optional)
       try {
         const { default: JSZipLib } = await import("jszip");
         const zip = new JSZipLib();
@@ -1058,7 +1067,7 @@ export default function PortraitStudio() {
         // Non-blocking
       }
 
-      // 9. Persist claim metadata & redirect
+      // 10. Persist claim metadata & redirect
       const publishStatus = galleryId ? "published" : "local-only";
       const meta: ClaimMeta = { wallet: walletAddr, slotId: parsedSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus };
       saveClaimMeta(meta);

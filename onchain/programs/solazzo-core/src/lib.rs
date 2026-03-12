@@ -13,7 +13,7 @@ use constants::{
 use error::SolazzoError;
 use state::{ClaimableBalance, ProtocolConfig, Slot, SlotBook, Vault};
 
-declare_id!("52xHAYaQW1ywhdhNjxg1LvJvsEHpPBrK1J9Aud371hHC");
+declare_id!("3zYyfExhUGd8dh3wZZP285iwdjdnSphpqWks4x8L1gvy");
 
 // ---------------------------------------------------------------------------
 // Pyth oracle helper (outside #[program] — not an instruction)

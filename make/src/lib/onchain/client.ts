@@ -40,6 +40,16 @@ const CLAIMABLE_BALANCE_DISCRIMINATOR = Buffer.from([
   211, 2, 251, 123, 91, 61, 146, 116,
 ]);
 
+function writeU16LE(dst: Uint8Array, offset: number, value: number): void {
+  const view = new DataView(dst.buffer, dst.byteOffset, dst.byteLength);
+  view.setUint16(offset, value, true);
+}
+
+function writeU64LE(dst: Uint8Array, offset: number, value: bigint): void {
+  const view = new DataView(dst.buffer, dst.byteOffset, dst.byteLength);
+  view.setBigUint64(offset, value, true);
+}
+
 // ── Account types ─────────────────────────────────────────────────────
 
 export interface SlotAccount {
@@ -417,10 +427,10 @@ export function buildClaimUnfilledSlotIx(
   const [slot] = getSlotPDA(slotId);
 
   // discriminator (8) + slot_id u16 LE (2) + lock_lamports u64 LE (8)
-  const data = Buffer.alloc(18);
-  CLAIM_UNFILLED_SLOT_DISC.copy(data, 0);
-  data.writeUInt16LE(slotId, 8);
-  data.writeBigUInt64LE(lockLamports, 10);
+  const data = new Uint8Array(18);
+  data.set(CLAIM_UNFILLED_SLOT_DISC, 0);
+  writeU16LE(data, 8, slotId);
+  writeU64LE(data, 10, lockLamports);
 
   return new TransactionInstruction({
     keys: [
@@ -469,11 +479,11 @@ export function buildDisplaceLowestIx(
 
   // discriminator (8) + expected_slot_id u16 LE (2) +
   // expected_lowest_lamports u64 LE (8) + new_lock_lamports u64 LE (8) = 26
-  const data = Buffer.alloc(26);
-  DISPLACE_LOWEST_DISC.copy(data, 0);
-  data.writeUInt16LE(expectedSlotId, 8);
-  data.writeBigUInt64LE(expectedLowestLamports, 10);
-  data.writeBigUInt64LE(newLockLamports, 18);
+  const data = new Uint8Array(26);
+  data.set(DISPLACE_LOWEST_DISC, 0);
+  writeU16LE(data, 8, expectedSlotId);
+  writeU64LE(data, 10, expectedLowestLamports);
+  writeU64LE(data, 18, newLockLamports);
 
   return new TransactionInstruction({
     keys: [

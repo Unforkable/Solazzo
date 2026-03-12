@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-solazzo_core = "52xHAYaQW1ywhdhNjxg1LvJvsEHpPBrK1J9Aud371hHC"
+solazzo_core = "3zYyfExhUGd8dh3wZZP285iwdjdnSphpqWks4x8L1gvy"
 
 [registry]
 url = "https://api.apr.dev"
