@@ -15,7 +15,7 @@ The protocol enables users to:
 - lock SOL to claim one of 1,000 slots,
 - compete for ownership after all slots are full by displacing the current lowest slot,
 - reclaim principal via a unified claim mechanism,
-- settle the system when SOL/USD reaches $1,000 under strict oracle conditions.
+- settle the system when SOL/USD reaches $1,000 under strict oracle conditions, or at a fixed timeout deadline.
 
 v1 prioritizes safety, simplicity, and verifiability over feature breadth.
 
@@ -29,7 +29,7 @@ v1 prioritizes safety, simplicity, and verifiability over feature breadth.
 - Lock/claim mechanics for unfilled slots.
 - Lowest-slot-only displacement once full.
 - Unified claim ledger for all principal payouts.
-- Settlement mechanism using Pyth SOL/USD and a sustained window check.
+- Settlement mechanism using Pyth SOL/USD sustained-window checks OR a fixed timeout deadline.
 - Internal points leaderboard (off-chain indexer from on-chain events).
 - Server-side portrait storage and user download support.
 
@@ -76,6 +76,8 @@ Displacement must satisfy:
 - Settlement threshold: `price >= 1000`.
 - Must satisfy freshness and confidence safety limits.
 - Must remain valid for `>= 3600 seconds`.
+- Fixed timeout deadline: `2030-03-16T00:00:00Z` (`1899849600` Unix seconds).
+- Settlement trigger is OR logic: sustained threshold condition OR timeout deadline, whichever occurs first.
 - Settlement is one-way and irreversible.
 
 ### 3.5 Operational controls
@@ -109,6 +111,7 @@ Fields:
 - `settle_threshold_price_e8: i64` (1000 * 1e8)
 - `settle_window_sec: u32` (3600)
 - `first_valid_settle_ts: i64` (0 if inactive)
+- `settle_deadline_ts: i64` (`1899849600`, fixed v1 timeout)
 
 ### 4.2 `Slot` (PDA per slot ID)
 
@@ -213,6 +216,14 @@ If transfer fails, transaction reverts atomically.
 Checks:
 
 - not already settled,
+- timeout reached OR oracle threshold path valid.
+
+Timeout path:
+
+- if `now >= settle_deadline_ts`, settle immediately (no oracle requirement).
+
+Oracle threshold path (pre-timeout):
+
 - oracle data is fresh (`age <= max_staleness`),
 - oracle confidence ratio is valid (`conf/price <= max_conf_bps`),
 - oracle price >= threshold.
@@ -434,6 +445,7 @@ Emit structured events for every state change:
 - `DISPLACEMENT_FEE = 0.1 SOL`
 - `SETTLE_THRESHOLD = $1000 SOL/USD`
 - `SETTLE_WINDOW = 3600 sec`
+- `SETTLE_DEADLINE_TS = 1899849600` (`2030-03-16T00:00:00Z`)
 - `LOWEST_TIE_BREAK = lowest slot id`
 - `CLAIM_MODEL = unified wallet claim ledger`
 
@@ -451,7 +463,7 @@ Contract and security:
 - Deterministic lowest-slot logic with tie-break by slot ID.
 - No self-displacement.
 - Unified claim ledger with atomic zero-then-transfer claim flow.
-- Settlement checks: threshold + freshness + confidence + sustained window.
+- Settlement checks: timeout OR (threshold + freshness + confidence + sustained window).
 - `claim()` callable even when paused.
 - Multisig-controlled admin and treasury paths.
 

@@ -1,0 +1,1473 @@
+{
+  "address": "52xHAYaQW1ywhdhNjxg1LvJvsEHpPBrK1J9Aud371hHC",
+  "metadata": {
+    "name": "solazzo_core",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Solazzo on-chain program"
+  },
+  "instructions": [
+    {
+      "name": "claim",
+      "docs": [
+        "Withdraw claimable balance from the vault.",
+        "",
+        "Always available (not blocked by pause or settlement)."
+      ],
+      "discriminator": [
+        62,
+        198,
+        214,
+        193,
+        213,
+        159,
+        108,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "claimable_balance",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  105,
+                  109,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  98,
+                  97,
+                  108,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_unfilled_slot",
+      "docs": [
+        "Claim an unfilled slot during the fill phase.",
+        "",
+        "Transfers `lock_lamports` from the claimer to the vault PDA,",
+        "marks the slot as occupied, and updates the slot book."
+      ],
+      "discriminator": [
+        227,
+        27,
+        177,
+        192,
+        4,
+        75,
+        201,
+        176
+      ],
+      "accounts": [
+        {
+          "name": "claimer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "slot_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  108,
+                  111,
+                  116,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "slot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  108,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "slot_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "slot_id",
+          "type": "u16"
+        },
+        {
+          "name": "lock_lamports",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "displace_lowest",
+      "docs": [
+        "Displace the lowest-conviction slot holder.",
+        "",
+        "Deterministically scans the SlotBook for the lowest lock (tie-break: lowest slot_id).",
+        "Uses optimistic concurrency via `expected_slot_id` and `expected_lowest_lamports`.",
+        "Credits the displaced owner's ClaimableBalance with their principal.",
+        "Routes the displacement fee to the treasury."
+      ],
+      "discriminator": [
+        50,
+        157,
+        36,
+        45,
+        137,
+        137,
+        102,
+        0
+      ],
+      "accounts": [
+        {
+          "name": "challenger",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "slot_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  108,
+                  111,
+                  116,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "slot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  108,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "expected_slot_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "writable": true
+        },
+        {
+          "name": "claimable_balance",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  105,
+                  109,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  98,
+                  97,
+                  108,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "slot.owner",
+                "account": "Slot"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "expected_slot_id",
+          "type": "u16"
+        },
+        {
+          "name": "expected_lowest_lamports",
+          "type": "u64"
+        },
+        {
+          "name": "new_lock_lamports",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "init_claimable_balance",
+      "docs": [
+        "Create a claimable balance account for a wallet.",
+        "",
+        "Anyone can call this (and pay rent) for any owner.",
+        "Must be created before the owner can be displaced."
+      ],
+      "discriminator": [
+        205,
+        181,
+        126,
+        228,
+        221,
+        72,
+        186,
+        215
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner"
+        },
+        {
+          "name": "claimable_balance",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  105,
+                  109,
+                  97,
+                  98,
+                  108,
+                  101,
+                  95,
+                  98,
+                  97,
+                  108,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_protocol",
+      "docs": [
+        "Initialize the Solazzo protocol with canonical v1 parameters.",
+        "",
+        "Creates the singleton protocol config PDA, vault PDA, and slot book PDA.",
+        "Can only be called once (PDA init enforces singleton)."
+      ],
+      "discriminator": [
+        188,
+        233,
+        252,
+        106,
+        134,
+        146,
+        202,
+        91
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "slot_book",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  108,
+                  111,
+                  116,
+                  95,
+                  98,
+                  111,
+                  111,
+                  107
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitializeProtocolParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_paused",
+      "docs": [
+        "Toggle emergency pause (admin-only, spec §5.7).",
+        "",
+        "Pausing blocks new claims and displacements but never blocks claim()."
+      ],
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true
+        },
+        {
+          "name": "protocol_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "settle_if_threshold_met",
+      "docs": [
+        "Attempt settlement if oracle price meets threshold for sustained window.",
+        "",
+        "Permissionless: anyone can call. Reads the external Pyth oracle account,",
+        "validates freshness/confidence, and runs the sustained-window state machine.",
+        "",
+        "Any invalid observation (stale, non-positive, wide confidence, below threshold,",
+        "bad data format) resets the window and returns Ok — errors would revert state",
+        "on Solana, preventing the reset from persisting.",
+        "",
+        "Only AlreadySettled is a hard error (no state to revert)."
+      ],
+      "discriminator": [
+        206,
+        168,
+        2,
+        84,
+        22,
+        7,
+        74,
+        219
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "protocol_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle_feed",
+          "docs": [
+            "Data parsed as Pyth v2 price account in the handler."
+          ]
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ClaimableBalance",
+      "discriminator": [
+        211,
+        2,
+        251,
+        123,
+        91,
+        61,
+        146,
+        116
+      ]
+    },
+    {
+      "name": "ProtocolConfig",
+      "discriminator": [
+        207,
+        91,
+        250,
+        28,
+        152,
+        179,
+        215,
+        209
+      ]
+    },
+    {
+      "name": "Slot",
+      "discriminator": [
+        140,
+        54,
+        3,
+        187,
+        53,
+        189,
+        250,
+        230
+      ]
+    },
+    {
+      "name": "SlotBook",
+      "discriminator": [
+        174,
+        179,
+        156,
+        123,
+        56,
+        7,
+        117,
+        186
+      ]
+    },
+    {
+      "name": "Vault",
+      "discriminator": [
+        211,
+        8,
+        232,
+        43,
+        2,
+        152,
+        117,
+        119
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "ClaimCredited",
+      "discriminator": [
+        5,
+        157,
+        31,
+        220,
+        221,
+        107,
+        191,
+        9
+      ]
+    },
+    {
+      "name": "Claimed",
+      "discriminator": [
+        217,
+        192,
+        123,
+        72,
+        108,
+        150,
+        248,
+        33
+      ]
+    },
+    {
+      "name": "Settled",
+      "discriminator": [
+        232,
+        210,
+        40,
+        17,
+        142,
+        124,
+        145,
+        238
+      ]
+    },
+    {
+      "name": "SettlementWindowReset",
+      "discriminator": [
+        232,
+        228,
+        153,
+        9,
+        93,
+        177,
+        18,
+        102
+      ]
+    },
+    {
+      "name": "SettlementWindowStarted",
+      "discriminator": [
+        155,
+        209,
+        176,
+        79,
+        75,
+        182,
+        216,
+        252
+      ]
+    },
+    {
+      "name": "SlotClaimed",
+      "discriminator": [
+        100,
+        230,
+        68,
+        178,
+        203,
+        212,
+        207,
+        30
+      ]
+    },
+    {
+      "name": "SlotDisplaced",
+      "discriminator": [
+        255,
+        159,
+        167,
+        202,
+        31,
+        140,
+        1,
+        67
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NonCanonicalSlotCount",
+      "msg": "Slot count must equal 1000"
+    },
+    {
+      "code": 6001,
+      "name": "NonCanonicalMinLock",
+      "msg": "Minimum lock must equal 1_000_000_000 lamports (1 SOL)"
+    },
+    {
+      "code": 6002,
+      "name": "NonCanonicalMinIncrement",
+      "msg": "Minimum increment must equal 1_000_000_000 lamports (1 SOL)"
+    },
+    {
+      "code": 6003,
+      "name": "NonCanonicalDisplacementFee",
+      "msg": "Displacement fee must equal 100_000_000 lamports (0.1 SOL)"
+    },
+    {
+      "code": 6004,
+      "name": "NonCanonicalSettleWindow",
+      "msg": "Settle window must equal 3600 seconds"
+    },
+    {
+      "code": 6005,
+      "name": "NonCanonicalSettleThreshold",
+      "msg": "Settlement threshold must equal 100_000_000_000 (Pyth e8 for $1000)"
+    },
+    {
+      "code": 6006,
+      "name": "NonCanonicalOracleStaleness",
+      "msg": "Oracle max staleness must equal 90 seconds"
+    },
+    {
+      "code": 6007,
+      "name": "NonCanonicalOracleConfidence",
+      "msg": "Oracle max confidence must equal 100 BPS (1%)"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidAdminMultisig",
+      "msg": "Admin multisig pubkey must not be the default address"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidTreasuryAccount",
+      "msg": "Treasury account pubkey must not be the default address"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidOracleFeed",
+      "msg": "Oracle feed pubkey must not be the default address"
+    },
+    {
+      "code": 6011,
+      "name": "ProtocolPaused",
+      "msg": "Protocol is paused"
+    },
+    {
+      "code": 6012,
+      "name": "ProtocolSettled",
+      "msg": "Protocol is already settled"
+    },
+    {
+      "code": 6013,
+      "name": "SlotsAlreadyFull",
+      "msg": "All slots are already filled"
+    },
+    {
+      "code": 6014,
+      "name": "InvalidSlotId",
+      "msg": "Slot ID is out of range (must be < slot_count)"
+    },
+    {
+      "code": 6015,
+      "name": "SlotAlreadyOccupied",
+      "msg": "Slot is already occupied"
+    },
+    {
+      "code": 6016,
+      "name": "LockBelowMinimum",
+      "msg": "Lock amount is below the minimum"
+    },
+    {
+      "code": 6017,
+      "name": "Unauthorized",
+      "msg": "Signer is not the admin authority"
+    },
+    {
+      "code": 6018,
+      "name": "CollectionNotFull",
+      "msg": "All slots must be filled before displacement"
+    },
+    {
+      "code": 6019,
+      "name": "ExpectedLowestMismatch",
+      "msg": "Expected lowest slot_id does not match actual lowest"
+    },
+    {
+      "code": 6020,
+      "name": "ExpectedLowestLockMismatch",
+      "msg": "Expected lowest lock_lamports does not match actual lowest"
+    },
+    {
+      "code": 6021,
+      "name": "InsufficientDisplacementIncrement",
+      "msg": "New lock must exceed lowest lock + min_increment"
+    },
+    {
+      "code": 6022,
+      "name": "SelfDisplacementNotAllowed",
+      "msg": "Cannot displace yourself"
+    },
+    {
+      "code": 6023,
+      "name": "ClaimableBalanceOwnerMismatch",
+      "msg": "Claimable balance owner does not match displaced slot owner"
+    },
+    {
+      "code": 6024,
+      "name": "NoClaimableBalance",
+      "msg": "No claimable balance to withdraw"
+    },
+    {
+      "code": 6025,
+      "name": "AlreadySettled",
+      "msg": "Protocol is already settled"
+    },
+    {
+      "code": 6026,
+      "name": "InvalidOracleFeedAccount",
+      "msg": "Oracle feed account does not match protocol config"
+    },
+    {
+      "code": 6027,
+      "name": "FeeTooHigh",
+      "msg": "Displacement fee must be less than minimum lock amount"
+    },
+    {
+      "code": 6028,
+      "name": "ArithmeticOverflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "ClaimCredited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClaimableBalance",
+      "docs": [
+        "Per-wallet claimable balance ledger (PDA per owner).",
+        "",
+        "Seeds: [\"claimable_balance\", owner.as_ref()]",
+        "Size: 8 (discriminator) + 49 = 57 bytes"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "docs": [
+              "Wallet that owns this balance."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "claimable_lamports",
+            "docs": [
+              "Lamports available to withdraw via claim()."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_updated_at",
+            "docs": [
+              "Last time this balance was updated."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Claimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeProtocolParams",
+      "docs": [
+        "Parameters for `initialize_protocol`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin_multisig",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle_feed_pubkey",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot_count",
+            "type": "u16"
+          },
+          {
+            "name": "min_lock_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "min_increment_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "displacement_fee_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "oracle_max_staleness_sec",
+            "type": "u32"
+          },
+          {
+            "name": "oracle_max_conf_bps",
+            "type": "u16"
+          },
+          {
+            "name": "settle_threshold_price_e8",
+            "type": "i64"
+          },
+          {
+            "name": "settle_window_sec",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolConfig",
+      "docs": [
+        "Global protocol configuration (singleton PDA).",
+        "",
+        "Seeds: [\"protocol_config\"]",
+        "Size: 8 (discriminator) + 153 = 161 bytes"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin_multisig",
+            "docs": [
+              "Multisig authority for admin operations (pause, parameter changes)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury_account",
+            "docs": [
+              "Treasury account that receives displacement fees."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle_feed_pubkey",
+            "docs": [
+              "Pyth SOL/USD oracle feed address."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "slot_count",
+            "docs": [
+              "Total slot count (must be 1000 in v1)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "slots_filled",
+            "docs": [
+              "Number of currently occupied slots."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "min_lock_lamports",
+            "docs": [
+              "Minimum lamports to lock when claiming a slot."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "min_increment_lamports",
+            "docs": [
+              "Minimum lamports above current lowest required for displacement."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "displacement_fee_lamports",
+            "docs": [
+              "Fee in lamports paid to treasury on each displacement."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "is_paused",
+            "docs": [
+              "Emergency pause flag (blocks new claims/displacements, never blocks claim())."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "is_settled",
+            "docs": [
+              "Settlement latch (irreversible once set)."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "oracle_max_staleness_sec",
+            "docs": [
+              "Max seconds an oracle observation can be stale."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "oracle_max_conf_bps",
+            "docs": [
+              "Max oracle confidence as basis points of price."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "settle_threshold_price_e8",
+            "docs": [
+              "Settlement price threshold in Pyth e8 format ($1000 = 100_000_000_000)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "settle_window_sec",
+            "docs": [
+              "Seconds oracle must sustain threshold before settlement triggers."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "first_valid_settle_ts",
+            "docs": [
+              "Timestamp when oracle first met threshold (0 if inactive)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Settled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettlementWindowReset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettlementWindowStarted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Slot",
+      "docs": [
+        "Per-slot conviction account (PDA per slot ID).",
+        "",
+        "Seeds: [\"slot\", slot_id.to_le_bytes()]",
+        "Size: 8 (discriminator) + 52 = 60 bytes"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "slot_id",
+            "docs": [
+              "Slot index (0..999)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "owner",
+            "docs": [
+              "Current owner wallet (Pubkey::default() when empty)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "locked_lamports",
+            "docs": [
+              "SOL locked in this slot (lamports)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "lock_started_at",
+            "docs": [
+              "Unix timestamp when current lock began."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "is_occupied",
+            "docs": [
+              "Whether this slot is currently occupied."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SlotBook",
+      "docs": [
+        "Singleton slot book tracking all slot lock amounts and occupancy.",
+        "",
+        "Seeds: [\"slot_book\"]",
+        "Size: 8 (discriminator) + 4 + 8*1000 + 4 + 1*1000 + 1 = 9017 bytes"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "locks",
+            "docs": [
+              "Lock amount (lamports) for each slot. 0 = empty."
+            ],
+            "type": {
+              "vec": "u64"
+            }
+          },
+          {
+            "name": "occupied",
+            "docs": [
+              "1 = occupied, 0 = empty for each slot."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SlotClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "slot_id",
+            "type": "u16"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "lock_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SlotDisplaced",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "slot_id",
+            "type": "u16"
+          },
+          {
+            "name": "old_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_lock_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "new_lock_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "fee_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vault",
+      "docs": [
+        "Vault account for principal custody (singleton PDA).",
+        "",
+        "Seeds: [\"vault\"]",
+        "Size: 8 (discriminator) + 1 = 9 bytes"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed (needed for signing transfers out)."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

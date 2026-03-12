@@ -65,6 +65,10 @@ export default function TraitEditorPage() {
       if (passwordRef.current) {
         headers.set("x-editor-password", passwordRef.current);
       }
+      const testKey = process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY;
+      if (testKey) {
+        headers.set("x-internal-test-key", testKey);
+      }
       return fetch(url, { ...options, headers });
     },
     [],
@@ -78,6 +82,8 @@ export default function TraitEditorPage() {
 
     const headers: HeadersInit = {};
     if (saved) headers["x-editor-password"] = saved;
+    const testKey = process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY;
+    if (testKey) headers["x-internal-test-key"] = testKey;
 
     fetch("/api/traits", { headers }).then(async (res) => {
       if (res.ok) {
@@ -94,7 +100,12 @@ export default function TraitEditorPage() {
   const handleLogin = async (pw: string) => {
     setLoginError(false);
     const res = await fetch("/api/traits", {
-      headers: { "x-editor-password": pw },
+      headers: {
+        "x-editor-password": pw,
+        ...(process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY && {
+          "x-internal-test-key": process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY,
+        }),
+      },
     });
     if (res.ok) {
       passwordRef.current = pw;

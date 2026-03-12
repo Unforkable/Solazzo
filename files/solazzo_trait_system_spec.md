@@ -22,6 +22,8 @@ The system is designed so that each portrait is unique, visually interesting, an
 
 **Stage V pulls back, it does not escalate.** The final stage replaces excess with restraint. Wealth markers are understated but clearly expensive. The mood shifts to contemplation. The absence of spectacle is the statement.
 
+**The background is a fixed constant, not a variable.** Every portrait sits against a near-black void by default. No background traits are rolled. The darkness behind the subject is the canvas itself — unbroken, undecorated, absolute. Any environmental atmosphere (smoke, craquelure, surface texture) comes from the Atmosphere / Surface Texture layer, not from a background element.
+
 ---
 
 ## 2. Trait Categories
@@ -246,7 +248,7 @@ Headwear changes the silhouette of the portrait significantly. In Baroque compos
 |------|--------|----------|-------|
 | Nothing | N/A | 45% | I |
 | McDonald's visor | Uncommon | 12% | I |
-| Gas station trucker hat | Common | 15% | I |
+| Solana branded baseball hat | Common | 15% | I |
 | Worn-out backwards snapback | Common | 15% | I |
 | Sweatband | Uncommon | 8% | I |
 | Hard hat (construction) | Uncommon | 5% | I |
@@ -362,45 +364,7 @@ Tattoos are stage-independent in availability but vary in type and intensity. Th
 | Neck tattoo (text/script) | Uncommon | 4% | All |
 | "gm" on knuckles | Legendary | 3% | All |
 
-#### 2.2.5 Background Element
-
-Background elements add depth and atmosphere beyond the default near-black void. These should be subtle and partially obscured by shadow — they create an impression rather than a clear scene.
-
-| Item | Rarity | Weight % | Stage |
-|------|--------|----------|-------|
-| Nothing (pure dark) | N/A | 55% | I |
-| Faint brick wall texture | Common | 15% | I |
-| Fluorescent light leak | Uncommon | 10% | I |
-| Rain on window behind | Uncommon | 10% | I |
-| Steam/breath in cold air | Uncommon | 10% | I |
-| Nothing (pure dark) | N/A | 50% | II |
-| Blurred city lights | Common | 15% | II |
-| Smoke/haze drifting | Common | 15% | II |
-| Neon sign glow (color) | Uncommon | 10% | II |
-| Window light spill | Uncommon | 10% | II |
-| Nothing (pure dark) | N/A | 40% | III |
-| Warm interior (out of focus) | Common | 15% | III |
-| Smoke/haze | Common | 15% | III |
-| Gold leaf flaking | Uncommon | 10% | III |
-| Blurred figures in background | Rare | 10% | III |
-| Art hanging on wall (blurred) | Uncommon | 10% | III |
-| Nothing (pure dark) | N/A | 25% | IV |
-| Neon glow (multiple colors) | Common | 15% | IV |
-| Stacked cash (blurred) | Uncommon | 10% | IV |
-| Floating Solana logos | Rare | 10% | IV |
-| LED ring light reflection | Uncommon | 10% | IV |
-| Smoke/haze (heavy) | Common | 10% | IV |
-| Confetti/sparkle particles | Uncommon | 8% | IV |
-| A second smaller portrait within portrait | Legendary | 5% | IV |
-| Fireworks | Rare | 7% | IV |
-| Nothing (pure dark) | N/A | 55% | V |
-| Aged canvas texture (heavy) | Common | 15% | V |
-| Single candle flame (distant) | Uncommon | 10% | V |
-| Rain on glass (blurred) | Uncommon | 10% | V |
-| Faint landscape (barely visible) | Rare | 5% | V |
-| Empty room receding into dark | Rare | 5% | V |
-
-#### 2.2.6 Clothing Detail
+#### 2.2.5 Clothing Detail
 
 Clothing detail adds texture and context to the torso area. Most clothing is swallowed by shadow in the Baroque lighting — these details catch just enough light to register.
 
@@ -424,7 +388,7 @@ Clothing detail adds texture and context to the torso area. Most clothing is swa
 | Fur-lined collar/coat | Uncommon | 20% | IV |
 | Designer leather (exotic) | Rare | 18% | IV |
 | Sequined/embellished jacket | Rare | 15% | IV |
-| Headphones around neck (Beats) | Uncommon | 12% | IV |
+| AirPod Max around neck | Uncommon | 12% | IV |
 | Open shirt showing chest | Common | 15% | IV |
 | Custom embroidered robe | Rare | 10% | IV |
 | Towel over shoulder (boxing) | Legendary | 10% | IV |
@@ -565,7 +529,7 @@ Every prompt is assembled in this exact order:
 | 4. Lighting Setup | Rolled (within stage shadow ratio) | Per portrait |
 | 5. Mandatory Wealth Traits | Rolled (wrist, chains, earrings, rings, grillz) | Per portrait |
 | 6. Optional Flavor Traits | Rolled (eyewear, headwear, prop, tattoo, clothing) | Per portrait |
-| 7. Background & Atmosphere | Rolled (background element + atmosphere) | Per portrait |
+| 7. Atmosphere | Rolled (atmosphere / surface texture) | Per portrait |
 | 8. Palette Directive | Stage-determined | Per stage |
 | 9. Technical Finish | Mostly constant (minor stage variation) | Minimal |
 | 10. Negative Prompt / Avoid List | Constant | Never changes |
@@ -608,9 +572,9 @@ Each trait item has a pre-written prompt fragment in Baroque painting language. 
 
 Same fragment structure as mandatory traits. See individual category sections above for examples.
 
-#### Block 7: Background & Atmosphere (Rolled)
+#### Block 7: Atmosphere (Rolled)
 
-Combined from background element roll + atmosphere roll.
+The atmosphere / surface texture roll (craquelure, smoke across frame, gold leaf in varnish, wet paint look, etc.) is applied to the painting's surface. The background is always a near-black void and is not rolled.
 
 #### Block 8: Palette Directive (Stage-Determined)
 

@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { ALL_CATEGORIES } from "@/lib/traits/data";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
+import { testGate, traitEditorGate } from "@/lib/test-gate";
 
 // ── Auth ────────────────────────────────────────────────────────────────────
 
 function checkPassword(request: Request): boolean {
   const password = process.env.TRAIT_EDITOR_PASSWORD;
-  if (!password) return true; // no password configured = open access
+  if (!password) {
+    // Fail-closed: only allow open access in local development
+    return process.env.NODE_ENV !== "production";
+  }
   return request.headers.get("x-editor-password") === password;
 }
 
@@ -18,6 +22,10 @@ function unauthorized() {
 // ── GET ─────────────────────────────────────────────────────────────────────
 
 export async function GET(request: Request) {
+  const blocked = testGate(request, "GET /api/traits");
+  if (blocked) return blocked;
+  const editorBlocked = traitEditorGate();
+  if (editorBlocked) return editorBlocked;
   if (!checkPassword(request)) return unauthorized();
   return NextResponse.json(ALL_CATEGORIES);
 }
@@ -25,6 +33,10 @@ export async function GET(request: Request) {
 // ── PUT ─────────────────────────────────────────────────────────────────────
 
 export async function PUT(request: Request) {
+  const blocked = testGate(request, "PUT /api/traits");
+  if (blocked) return blocked;
+  const editorBlocked = traitEditorGate();
+  if (editorBlocked) return editorBlocked;
   if (!checkPassword(request)) return unauthorized();
 
   try {

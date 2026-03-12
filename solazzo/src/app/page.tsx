@@ -9,7 +9,7 @@ export default function Home() {
       <div className="mb-20 sm:mb-28">
         <p className="text-2xl sm:text-3xl font-normal leading-snug text-foreground mb-8">
           Solana is trading under $100. This collection settles when it
-          hits $1,000.
+          hits $1,000 or at protocol end date (Mar 16, 2030 UTC), whichever comes first.
         </p>
         <p className="text-base text-muted leading-relaxed">
           Lock SOL into one of 1,000 slots. Receive an AI-generated Baroque oil
@@ -282,7 +282,8 @@ export default function Home() {
       <Section id="settlement" number={6} title="Settlement Condition">
         <P>
           Solazzo defines a terminal milestone: SOL reaching $1,000, as
-          determined by a specified oracle feed.
+          determined by a specified oracle feed, or the protocol end date of
+          March 16, 2030 UTC &mdash; whichever comes first.
         </P>
         <P>
           This is not an arbitrary number. It is a psychological and economic
@@ -495,7 +496,7 @@ export default function Home() {
           and no token. Staking yield is the sole revenue model. Your return is
           not denominated in yield. It is denominated in conviction. You lock SOL
           at today&rsquo;s prices, and when the thesis resolves &mdash; either
-          through displacement or settlement at $1,000 &mdash; you receive that
+          through displacement, settlement at $1,000, or the protocol end date &mdash; you receive that
           same SOL back, at whatever it is then worth. The opportunity cost of
           foregone staking rewards is real, but it is small relative to the
           magnitude of the underlying bet. Solana&rsquo;s current staking yield
@@ -506,9 +507,10 @@ export default function Home() {
         </FaqItem>
 
         <FaqItem question="Can I get my SOL back at any time?">
-          No. That is the point. Your SOL is locked until one of two things
+          No. That is the point. Your SOL is locked until one of three things
           happens: someone displaces you by locking a greater amount into your
-          slot, or SOL reaches $1,000 and the collection settles. In either
+          slot, SOL reaches $1,000, or the protocol end date
+          (Mar 16, 2030 UTC) arrives. In any
           case, you receive exactly the amount you originally locked &mdash; no
           penalties, no slippage, no reductions. But you cannot simply decide to
           withdraw because you got nervous. The mechanism is designed to make
@@ -517,15 +519,12 @@ export default function Home() {
         </FaqItem>
 
         <FaqItem question="What happens if SOL never reaches $1,000?">
-          Your SOL remains locked until you are displaced. If no one ever
-          outbids you and SOL never reaches $1,000, your capital stays in the
-          contract. This is the real cost of conviction &mdash; not the SOL
-          itself (which is never consumed), but the liquidity you forfeit while
-          holding the position. The system does not pretend this risk away. It
-          prices it in. You are making a bet, and the bet has duration. The
-          question is not whether you can afford to lose the SOL &mdash; you
-          cannot lose it. The question is whether you can afford to have it
-          locked while the world changes around you.
+          If SOL never reaches $1,000, the protocol settles automatically on
+          March 16, 2030 UTC. At that point all locked SOL is returned to
+          current holders regardless of price. You cannot lose your SOL &mdash;
+          the maximum lockup duration is bounded by the protocol end date.
+          Before that deadline, displacement remains the other path to
+          principal return.
         </FaqItem>
 
         <FaqItem question="Why only 1,000 slots?">
@@ -586,7 +585,7 @@ export default function Home() {
         <FaqItem question="Is this a security? Am I investing?">
           Solazzo is not an investment product and does not promise financial
           returns. You lock SOL and receive it back in exactly the same quantity
-          upon displacement or settlement. There is no token, no equity, no
+          upon displacement or settlement (at $1,000 or protocol end date). There is no token, no equity, no
           profit-sharing arrangement, and no expectation of profit derived from
           the efforts of others. Staking yield accrues to the
           treasury as payment for the infrastructure, portrait generation, and
@@ -610,7 +609,8 @@ export default function Home() {
           oracle feed. Settlement requires the price to be sustained above
           $1,000 for a confirmation window &mdash; multiple consecutive oracle
           updates &mdash; to prevent flash spikes or manipulation from triggering
-          a premature conclusion.
+          a premature conclusion. Alternatively, the protocol settles
+          unconditionally on March 16, 2030 UTC, regardless of price.
         </FaqItem>
       </Section>
 

@@ -3,11 +3,21 @@
 import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { Transaction, PublicKey } from "@solana/web3.js";
 import type { GalleryEntry, GalleryTraitRoll } from "@/lib/gallery-store";
 import {
-  useComingSoon,
-  ComingSoonToast,
-} from "@/components/coming-soon-toast";
+  fetchProtocolConfig,
+  fetchLowestSlotInfo,
+  fetchClaimableBalance,
+  buildDisplaceLowestIx,
+  buildClaimWithdrawIx,
+  type ProtocolConfigAccount,
+  type LowestSlotInfo,
+} from "@/lib/onchain/client";
+import { SOL_DECIMALS } from "@/lib/onchain/constants";
 
 const STAGE_NAMES: Record<number, string> = {
   1: "Humble Believer",
@@ -71,6 +81,526 @@ function timeAgo(timestamp: number): string {
   return `${months}mo ago`;
 }
 
+function lamportsToSol(lamports: bigint): number {
+  return Number(lamports) / SOL_DECIMALS;
+}
+
+// ── Displacement Modal ───────────────────────────────────────────────
+
+type DisplaceStep = "idle" | "loading" | "ready" | "signing" | "confirming" | "success" | "error";
+
+function DisplacementModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const { publicKey, connected, sendTransaction } = useWallet();
+  const { setVisible: openWalletModal } = useWalletModal();
+  const { connection } = useConnection();
+
+  const [step, setStep] = useState<DisplaceStep>("idle");
+  const [config, setConfig] = useState<ProtocolConfigAccount | null>(null);
+  const [lowest, setLowest] = useState<(LowestSlotInfo & { owner: PublicKey }) | null>(null);
+  const [lockInput, setLockInput] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [txSig, setTxSig] = useState<string | null>(null);
+
+  // Fetch on-chain state on open
+  const fetchState = useCallback(async () => {
+    setStep("loading");
+    setErrorMsg(null);
+    try {
+      const [cfg, low] = await Promise.all([
+        fetchProtocolConfig(connection),
+        fetchLowestSlotInfo(connection),
+      ]);
+      setConfig(cfg);
+      setLowest(low);
+
+      if (!low) {
+        setErrorMsg("No occupied slots found.");
+        setStep("error");
+        return;
+      }
+
+      if (cfg.isSettled) {
+        setErrorMsg("Protocol has settled. Displacement is no longer possible.");
+        setStep("error");
+        return;
+      }
+
+      if (cfg.isPaused) {
+        setErrorMsg("Protocol is paused. Try again later.");
+        setStep("error");
+        return;
+      }
+
+      if (cfg.slotsFilled < cfg.slotCount) {
+        setErrorMsg(`Only ${cfg.slotsFilled}/${cfg.slotCount} slots filled. Claim an empty slot instead.`);
+        setStep("error");
+        return;
+      }
+
+      // Pre-fill min lock
+      const minRequired = low.lockedLamports + cfg.minIncrementLamports;
+      setLockInput(lamportsToSol(minRequired).toString());
+      setStep("ready");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to fetch on-chain state.");
+      setStep("error");
+    }
+  }, [connection]);
+
+  useEffect(() => {
+    if (connected) {
+      fetchState();
+    }
+  }, [connected, fetchState]);
+
+  const minRequiredLamports = useMemo(() => {
+    if (!config || !lowest) return BigInt(0);
+    const minByIncrement = lowest.lockedLamports + config.minIncrementLamports;
+    return minByIncrement > config.minLockLamports ? minByIncrement : config.minLockLamports;
+  }, [config, lowest]);
+
+  const lockSol = parseFloat(lockInput) || 0;
+  const lockLamports = BigInt(Math.round(lockSol * SOL_DECIMALS));
+  const feeSol = config ? lamportsToSol(config.displacementFeeLamports) : 0;
+  const totalCostSol = lockSol + feeSol;
+  const isAmountValid = lockLamports >= minRequiredLamports;
+  const isSelfDisplace = publicKey && lowest?.owner ? publicKey.equals(lowest.owner) : false;
+
+  const handleDisplace = useCallback(async () => {
+    if (!publicKey || !sendTransaction || !config || !lowest) return;
+
+    // Refetch freshest state to prevent stale-data race
+    setStep("loading");
+    setErrorMsg(null);
+    try {
+      const [freshConfig, freshLowest] = await Promise.all([
+        fetchProtocolConfig(connection),
+        fetchLowestSlotInfo(connection),
+      ]);
+
+      if (!freshLowest) {
+        setErrorMsg("No occupied slots found.");
+        setStep("error");
+        return;
+      }
+
+      setConfig(freshConfig);
+      setLowest(freshLowest);
+
+      // Re-validate after refresh
+      const freshMinRequired = freshLowest.lockedLamports + freshConfig.minIncrementLamports;
+      const effectiveMin = freshMinRequired > freshConfig.minLockLamports ? freshMinRequired : freshConfig.minLockLamports;
+
+      if (lockLamports < effectiveMin) {
+        const newMin = lamportsToSol(effectiveMin);
+        setLockInput(newMin.toString());
+        setErrorMsg(`Minimum increased to ${newMin} SOL. The lowest lock changed since you opened this modal. Review and try again.`);
+        setStep("ready");
+        return;
+      }
+
+      if (publicKey.equals(freshLowest.owner)) {
+        setErrorMsg("You cannot displace yourself.");
+        setStep("ready");
+        return;
+      }
+
+      if (freshConfig.isSettled) {
+        setErrorMsg("Protocol has settled.");
+        setStep("error");
+        return;
+      }
+
+      if (freshConfig.isPaused) {
+        setErrorMsg("Protocol is paused.");
+        setStep("error");
+        return;
+      }
+
+      // Build tx
+      setStep("signing");
+      const ix = buildDisplaceLowestIx(
+        publicKey,
+        freshLowest.slotId,
+        freshLowest.lockedLamports,
+        lockLamports,
+        freshConfig.treasuryAccount,
+        freshLowest.owner,
+      );
+
+      const tx = new Transaction().add(ix);
+      const sig = await sendTransaction(tx, connection);
+
+      setStep("confirming");
+      const result = await connection.confirmTransaction(sig, "confirmed");
+      if (result.value.err) {
+        throw new Error("Transaction failed on-chain.");
+      }
+
+      setTxSig(sig);
+      setStep("success");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Transaction failed.";
+
+      if (msg.includes("User rejected") || msg.includes("rejected")) {
+        setErrorMsg("Transaction cancelled.");
+        setStep("ready");
+        return;
+      }
+
+      // On-chain expected-state mismatch (race): refetch and let user retry.
+      // Anchor custom error codes: 6019 = ExpectedLowestMismatch (0x1783),
+      // 6020 = ExpectedLowestLockMismatch (0x1784).
+      if (
+        msg.includes("0x1783") || // 6019 ExpectedLowestMismatch
+        msg.includes("0x1784") || // 6020 ExpectedLowestLockMismatch
+        msg.includes("ExpectedLowestMismatch") ||
+        msg.includes("ExpectedLowestLockMismatch")
+      ) {
+        setErrorMsg("The lowest slot changed while you were signing. Refreshing...");
+        setStep("loading");
+        setTimeout(() => fetchState(), 500);
+        return;
+      }
+
+      // Map other known Anchor errors to friendly messages
+      const anchorErrors: Record<string, string> = {
+        "0x1782": "All slots must be filled before displacement.",  // 6018 CollectionNotFull
+        "0x1785": "Lock too low. Must exceed lowest + minimum increment.", // 6021 InsufficientDisplacementIncrement
+        "0x1786": "You cannot displace yourself.", // 6022 SelfDisplacementNotAllowed
+        "0x1787": "Claimable balance owner mismatch.", // 6023 ClaimableBalanceOwnerMismatch
+        "0x1780": "Lock amount is below the minimum.", // 6016 LockBelowMinimum
+        "0x177b": "Protocol is paused.", // 6011 ProtocolPaused
+        "0x177c": "Protocol is already settled.", // 6012 ProtocolSettled
+      };
+
+      let friendlyMsg = msg;
+      for (const [code, friendly] of Object.entries(anchorErrors)) {
+        if (msg.includes(code)) {
+          friendlyMsg = friendly;
+          break;
+        }
+      }
+
+      setErrorMsg(friendlyMsg);
+      setStep("ready");
+    }
+  }, [publicKey, sendTransaction, connection, config, lowest, lockLamports, fetchState]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[55] overflow-y-auto"
+      onClick={onClose}
+    >
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm" />
+      <div className="relative min-h-full flex items-center justify-center p-4">
+        <div
+          className="relative w-full max-w-md bg-surface-raised border border-gold-dim/30 p-6 sm:p-8 animate-fade-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-display font-bold text-foreground">
+              Displace Lowest Slot
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-muted hover:text-gold transition-colors cursor-pointer text-sm font-body min-h-[44px] min-w-[44px] flex items-center justify-center"
+            >
+              Close
+            </button>
+          </div>
+
+          {/* Wallet gate */}
+          {!connected ? (
+            <div className="text-center space-y-4">
+              <p className="text-sm text-foreground/60 font-body">
+                Connect your Solana wallet to displace the lowest slot.
+              </p>
+              <button
+                onClick={() => openWalletModal(true)}
+                className="btn-gold font-display tracking-wide py-3 px-8 cursor-pointer"
+              >
+                Connect Wallet
+              </button>
+            </div>
+          ) : step === "loading" ? (
+            <div className="text-center py-8">
+              <div className="inline-block w-6 h-6 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+              <p className="text-sm text-foreground/50 font-body mt-3">Fetching on-chain state...</p>
+            </div>
+          ) : step === "error" ? (
+            <div className="space-y-4">
+              <p className="text-sm text-red-400 font-body">{errorMsg}</p>
+              <button
+                onClick={fetchState}
+                className="btn-ghost font-display tracking-wide w-full cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
+          ) : step === "success" ? (
+            <div className="space-y-4 text-center">
+              <div className="text-3xl">&#9876;</div>
+              <p className="text-base font-display font-bold text-gold">Displacement successful</p>
+              <p className="text-sm text-foreground/60 font-body">
+                You now hold Slot #{lowest?.slotId} with {lockSol} SOL locked.
+              </p>
+              {txSig && (
+                <p className="text-xs text-foreground/40 font-body break-all">
+                  Tx: {txSig.slice(0, 12)}...{txSig.slice(-8)}
+                </p>
+              )}
+              <button
+                onClick={() => { onClose(); onSuccess(); }}
+                className="btn-gold font-display tracking-wide w-full cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          ) : (
+            /* step === "ready" | "signing" | "confirming" */
+            <div className="space-y-5">
+              {/* Current lowest info */}
+              {lowest && config && (
+                <div className="bg-black/30 border border-gold-dim/20 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-foreground/40 font-body">Current lowest slot</span>
+                    <span className="text-sm font-display text-foreground">#{lowest.slotId}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-foreground/40 font-body">Current lock</span>
+                    <span className="text-sm font-display text-gold">
+                      &#9678; {lamportsToSol(lowest.lockedLamports)} SOL
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-foreground/40 font-body">Minimum to displace</span>
+                    <span className="text-sm font-display text-foreground">
+                      &#9678; {lamportsToSol(minRequiredLamports)} SOL
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Lock amount input */}
+              <div>
+                <label className="block text-xs text-foreground/40 font-body mb-2">
+                  Your lock amount (SOL)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={lamportsToSol(minRequiredLamports)}
+                    step="0.1"
+                    value={lockInput}
+                    onChange={(e) => {
+                      setLockInput(e.target.value);
+                      setErrorMsg(null);
+                    }}
+                    disabled={step !== "ready"}
+                    className="w-full bg-black/30 border border-gold-dim/30 text-foreground font-display text-sm px-4 py-3 pr-14 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 transition-colors placeholder:text-muted/30 disabled:opacity-50"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted/50 font-display">
+                    SOL
+                  </span>
+                </div>
+                {!isAmountValid && lockInput && (
+                  <p className="text-xs text-red-400 font-body mt-1">
+                    Minimum is {lamportsToSol(minRequiredLamports)} SOL
+                  </p>
+                )}
+              </div>
+
+              {/* Cost breakdown */}
+              {config && (
+                <div className="bg-black/30 border border-gold-dim/20 p-4 space-y-1.5">
+                  <p className="text-xs text-foreground/40 font-body uppercase tracking-wider mb-2">
+                    Transaction summary
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-foreground/50 font-body">Lock to vault</span>
+                    <span className="text-sm font-display text-foreground">{lockSol} SOL</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-foreground/50 font-body">Displacement fee to treasury</span>
+                    <span className="text-sm font-display text-foreground">{feeSol} SOL</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-gold-dim/15 pt-1.5 mt-1.5">
+                    <span className="text-xs text-foreground/60 font-body font-medium">Total from wallet</span>
+                    <span className="text-sm font-display font-bold text-gold">{totalCostSol} SOL</span>
+                  </div>
+                  <p className="text-[10px] text-foreground/30 font-body mt-2 leading-relaxed">
+                    The displaced holder&apos;s full principal is credited to their claimable balance for withdrawal.
+                    Your lock is held in the protocol vault until settlement (SOL hits $1,000 or Mar 16, 2030 UTC) or displacement.
+                  </p>
+                </div>
+              )}
+
+              {/* Self-displacement warning */}
+              {isSelfDisplace && (
+                <p className="text-sm text-red-400 font-body">
+                  You own the lowest slot. You cannot displace yourself.
+                </p>
+              )}
+
+              {/* Error */}
+              {errorMsg && (
+                <p className="text-sm text-red-400 font-body">{errorMsg}</p>
+              )}
+
+              {/* CTA */}
+              <button
+                onClick={handleDisplace}
+                disabled={
+                  step !== "ready" ||
+                  !isAmountValid ||
+                  isSelfDisplace ||
+                  false
+                }
+                className="w-full btn-gold font-display tracking-wide text-base py-3.5 disabled:opacity-50 cursor-pointer"
+              >
+                {step === "signing" && "Sign in your wallet..."}
+                {step === "confirming" && "Confirming on-chain..."}
+                {step === "ready" && (
+                  isAmountValid
+                    ? `Displace &#8212; Lock ${lockSol} SOL`
+                    : "Enter a valid amount"
+                )}
+              </button>
+
+              <p className="text-[11px] text-foreground/30 font-body text-center">
+                Connected: {publicKey?.toBase58().slice(0, 4)}...{publicKey?.toBase58().slice(-4)}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Withdraw Banner ──────────────────────────────────────────────────
+
+function WithdrawBanner() {
+  const { publicKey, connected, sendTransaction } = useWallet();
+  const { connection } = useConnection();
+
+  const [claimableLamports, setClaimableLamports] = useState<bigint | null>(null);
+  const [withdrawStep, setWithdrawStep] = useState<"idle" | "signing" | "confirming" | "done">("idle");
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  const [withdrawTxSig, setWithdrawTxSig] = useState<string | null>(null);
+
+  const checkBalance = useCallback(async () => {
+    if (!publicKey || !connected) {
+      setClaimableLamports(null);
+      return;
+    }
+    try {
+      const cb = await fetchClaimableBalance(connection, publicKey);
+      setClaimableLamports(cb && cb.claimableLamports > BigInt(0) ? cb.claimableLamports : null);
+    } catch {
+      setClaimableLamports(null);
+    }
+  }, [connection, publicKey, connected]);
+
+  useEffect(() => {
+    checkBalance();
+  }, [checkBalance]);
+
+  const handleWithdraw = useCallback(async () => {
+    if (!publicKey || !sendTransaction || !claimableLamports) return;
+
+    setWithdrawStep("signing");
+    setWithdrawError(null);
+    try {
+      const ix = buildClaimWithdrawIx(publicKey);
+      const tx = new Transaction().add(ix);
+      const sig = await sendTransaction(tx, connection);
+
+      setWithdrawStep("confirming");
+      const result = await connection.confirmTransaction(sig, "confirmed");
+      if (result.value.err) {
+        throw new Error("Withdraw transaction failed on-chain.");
+      }
+
+      setWithdrawTxSig(sig);
+      setWithdrawStep("done");
+      setClaimableLamports(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Withdraw failed.";
+      if (msg.includes("User rejected") || msg.includes("rejected")) {
+        setWithdrawError("Transaction cancelled.");
+      } else {
+        setWithdrawError(msg);
+      }
+      setWithdrawStep("idle");
+    }
+  }, [publicKey, sendTransaction, connection, claimableLamports]);
+
+  if (!connected || claimableLamports === null) {
+    // Show success message briefly after withdraw
+    if (withdrawTxSig && withdrawStep === "done") {
+      return (
+        <div className="bg-green-900/30 border border-green-500/30 p-4 sm:p-5 mb-8 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-body text-green-400">
+              Withdraw successful. Tx: {withdrawTxSig.slice(0, 8)}...
+            </p>
+            <button
+              onClick={() => setWithdrawTxSig(null)}
+              className="text-xs text-green-400/60 hover:text-green-400 cursor-pointer font-body"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  const solAmount = lamportsToSol(claimableLamports);
+
+  return (
+    <div className="bg-gold/10 border border-gold/30 p-4 sm:p-5 mb-8 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p className="text-xs text-gold/70 font-body uppercase tracking-wider mb-1">
+            Claimable Balance
+          </p>
+          <p className="text-base font-display font-bold text-gold">
+            &#9678; {solAmount} SOL available to withdraw
+          </p>
+          <p className="text-xs text-foreground/40 font-body mt-1">
+            You were displaced from a slot. Your full principal is ready for withdrawal.
+          </p>
+        </div>
+        <button
+          onClick={handleWithdraw}
+          disabled={withdrawStep !== "idle"}
+          className="btn-gold font-display tracking-wide flex-shrink-0 py-3 px-6 disabled:opacity-50 cursor-pointer"
+        >
+          {withdrawStep === "signing" && "Sign in wallet..."}
+          {withdrawStep === "confirming" && "Confirming..."}
+          {withdrawStep === "idle" && `Withdraw ${solAmount} SOL`}
+        </button>
+      </div>
+      {withdrawError && (
+        <p className="text-sm text-red-400 font-body mt-2">{withdrawError}</p>
+      )}
+    </div>
+  );
+}
+
+// ── Collection Lightbox ──────────────────────────────────────────────
+
 function CollectionLightbox({
   entry,
   onClose,
@@ -83,9 +613,6 @@ function CollectionLightbox({
   onChallenge: () => void;
 }) {
   const currentConviction = entry.conviction ?? 0;
-  const minBid = currentConviction > 0
-    ? Math.round(Math.max(currentConviction * 1.01, currentConviction + 0.1) * 10) / 10
-    : 0.1;
   const [zoomedStage, setZoomedStage] = useState<number | null>(null);
 
   // Mobile swipe carousel state
@@ -134,7 +661,7 @@ function CollectionLightbox({
                 </span>
                 {currentConviction > 0 && (
                   <span className="text-xs sm:text-sm font-body text-gold">
-                    ◎ {currentConviction.toFixed(1)} locked
+                    &#9678; {currentConviction.toFixed(1)} locked
                   </span>
                 )}
               </div>
@@ -272,11 +799,12 @@ function CollectionLightbox({
             <div className="mt-6 border-t border-gold-dim/20 pt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <p className="text-xs text-foreground/40 font-body uppercase tracking-wider mb-1">
-                  Challenge this slot
+                  Displace the lowest slot
                 </p>
                 <p className="text-sm text-foreground/60 font-body">
-                  Lock <span className="text-gold font-medium">◎ {minBid.toFixed(1)}</span> or more to take over this position.
-                  The current holder gets their full SOL back.
+                  Lock more SOL than the current lowest holder to take their position.
+                  The protocol always displaces the lowest-locked slot, not this one specifically.
+                  The displaced holder gets their full SOL back.
                 </p>
               </div>
               <button
@@ -297,7 +825,7 @@ function CollectionLightbox({
                   <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
                   <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
                 </svg>
-                Outbid — ◎ {minBid.toFixed(1)}+
+                Displace Lowest
               </button>
             </div>
           </div>
@@ -370,14 +898,22 @@ function GalleryContent() {
   const [sliderPrice, setSliderPrice] = useState(127);
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [sort, setSort] = useState<SortOption>("highest");
+  const [showDisplace, setShowDisplace] = useState(false);
   const currentStage = priceToStage(sliderPrice);
   const searchParams = useSearchParams();
-  const toast = useComingSoon();
   const newId = searchParams.get("new");
   const highlightedRef = useRef<HTMLDivElement>(null);
-  const didAutoOpen = useRef(false);
+  const [autoOpened, setAutoOpened] = useState(false);
 
-  useEffect(() => {
+  const enrichEntries = useCallback((items: GalleryEntry[]) => {
+    const byTime = [...items].sort((a, b) => a.publishedAt - b.publishedAt);
+    return byTime.map((entry, i) => ({
+      ...entry,
+      slot: entry.slot ?? i + 1,
+    }));
+  }, []);
+
+  const fetchCollections = useCallback(() => {
     fetch("/api/gallery")
       .then((res) => res.json())
       .then((data) => {
@@ -386,6 +922,10 @@ function GalleryContent() {
       })
       .catch(() => setError("Failed to load gallery."))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchCollections();
 
     fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd")
       .then((res) => res.json())
@@ -397,27 +937,21 @@ function GalleryContent() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [fetchCollections]);
 
   // Enrich entries with derived slot numbers (oldest = slot 1)
-  const entries = useMemo(() => {
-    const byTime = [...collections].sort((a, b) => a.publishedAt - b.publishedAt);
-    return byTime.map((entry, i) => ({
-      ...entry,
-      slot: entry.slot ?? i + 1,
-    }));
-  }, [collections]);
+  const entries = useMemo(() => enrichEntries(collections), [collections, enrichEntries]);
 
-  // Auto-open lightbox for newly published collection
-  useEffect(() => {
-    if (newId && !didAutoOpen.current && entries.length > 0) {
-      const match = entries.find((c) => c.id === newId);
-      if (match) {
-        setSelected(match);
-        didAutoOpen.current = true;
-      }
+  // Auto-open lightbox for newly published collection (?new=<id>).
+  // State adjustment during render — avoids setState-in-effect and refs-during-render lint violations.
+  // autoOpened state guards one-time trigger; survives lightbox close without re-triggering.
+  if (newId && !autoOpened && entries.length > 0) {
+    const match = entries.find((c) => c.id === newId);
+    if (match) {
+      setAutoOpened(true);
+      setSelected(match);
     }
-  }, [newId, entries]);
+  }
 
   // Scroll to highlighted entry
   useEffect(() => {
@@ -457,6 +991,11 @@ function GalleryContent() {
     { key: "lowest", label: "Lowest Conviction" },
     { key: "slot", label: "Slot #" },
   ];
+
+  const handleChallenge = useCallback(() => {
+    setSelected(null); // close lightbox
+    setShowDisplace(true);
+  }, []);
 
   return (
     <main className="min-h-screen px-4 py-10 sm:px-6 sm:py-24">
@@ -501,6 +1040,9 @@ function GalleryContent() {
           </div>
         </div>
 
+        {/* Withdraw banner */}
+        {!loading && <WithdrawBanner />}
+
         {/* Stats */}
         {!loading && entries.length > 0 && (
           <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-8">
@@ -511,7 +1053,7 @@ function GalleryContent() {
               <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
                 {stats.floor != null ? (
                   <>
-                    <span className="text-gold">◎</span> {stats.floor.toFixed(1)}
+                    <span className="text-gold">&#9678;</span> {stats.floor.toFixed(1)}
                   </>
                 ) : (
                   "—"
@@ -525,7 +1067,7 @@ function GalleryContent() {
               <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
                 {stats.total > 0 ? (
                   <>
-                    <span className="text-gold">◎</span>{" "}
+                    <span className="text-gold">&#9678;</span>{" "}
                     {stats.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </>
                 ) : (
@@ -745,7 +1287,7 @@ function GalleryContent() {
                       </span>
                       {entry.conviction != null && entry.conviction > 0 ? (
                         <span className="text-[11px] text-gold font-body">
-                          ◎ {entry.conviction.toFixed(1)}
+                          &#9678; {entry.conviction.toFixed(1)}
                         </span>
                       ) : legendaryCount > 0 ? (
                         <span className="text-[11px] text-gold/60 font-body">
@@ -767,11 +1309,20 @@ function GalleryContent() {
           entry={selected}
           onClose={() => setSelected(null)}
           currentStage={currentStage}
-          onChallenge={() => toast.show("Wallet connection required. Coming soon.")}
+          onChallenge={handleChallenge}
         />
       )}
 
-      <ComingSoonToast visible={toast.visible} message={toast.message} />
+      {/* Displacement Modal */}
+      {showDisplace && (
+        <DisplacementModal
+          onClose={() => setShowDisplace(false)}
+          onSuccess={() => {
+            setShowDisplace(false);
+            fetchCollections();
+          }}
+        />
+      )}
     </main>
   );
 }

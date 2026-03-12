@@ -1,20 +1,31 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { Transaction } from "@solana/web3.js";
+import bs58 from "bs58";
 import { STAGE_NAMES, STAGE_PRICES, type StageNumber } from "@/lib/prompt";
 import type { TraitManifest, TraitRoll } from "@/lib/traits/types";
-import { savePortraits, loadPortraits, clearPortraits } from "@/lib/storage";
+import { savePortraits, loadPortraits, clearPortraits, saveClaimMeta, loadClaimMeta, type ClaimMeta } from "@/lib/storage";
 import {
-  useComingSoon,
-  ComingSoonToast,
-} from "@/components/coming-soon-toast";
+  isSlotOccupied,
+  hasClaimableBalance,
+  buildClaimInstructions,
+  fetchClaimableBalance,
+  buildClaimWithdrawIx,
+  fetchSlotBook,
+} from "@/lib/onchain/client";
+import { MIN_LOCK_SOL, MAX_SLOT_ID, SOL_DECIMALS } from "@/lib/onchain/constants";
 
 type AppStage = "intro" | "capture" | "preview" | "gallery" | "commit" | "locked";
 type CaptureMode = "upload" | "camera";
+type ClaimStep = "idle" | "preflight" | "signing" | "confirming" | "authorizing" | "publishing";
 
-const LOCK_PRESETS = [0.5, 1, 2, 5, 10];
+const LOCK_PRESETS = [1, 2, 5, 10];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -427,6 +438,263 @@ function WebcamCapture({ onCapture, onBack }: { onCapture: (blob: Blob) => void;
   );
 }
 
+// ── Slot Browser ─────────────────────────────────────────────────────
+
+const SLOTS_TOTAL = 1000;
+const PAGE_SIZE = 100;
+
+function SlotBrowser({
+  selectedSlot,
+  onSelect,
+  connection,
+}: {
+  selectedSlot: number | null;
+  onSelect: (slotId: number) => void;
+  connection: import("@solana/web3.js").Connection;
+}) {
+  const [occupied, setOccupied] = useState<boolean[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+
+  const totalPages = Math.ceil(SLOTS_TOTAL / PAGE_SIZE);
+
+  const loadOccupancy = useCallback(async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const slotBook = await fetchSlotBook(connection);
+      setOccupied(slotBook.occupied);
+    } catch {
+      setFetchError("Failed to load slot availability.");
+    } finally {
+      setLoading(false);
+    }
+  }, [connection]);
+
+  useEffect(() => {
+    loadOccupancy();
+  }, [loadOccupancy]);
+
+  // Jump to the page containing the selected slot
+  useEffect(() => {
+    if (selectedSlot !== null) {
+      const targetPage = Math.floor(selectedSlot / PAGE_SIZE);
+      setPage(targetPage);
+    }
+  }, [selectedSlot]);
+
+  const pageStart = page * PAGE_SIZE;
+  const pageEnd = Math.min(pageStart + PAGE_SIZE, SLOTS_TOTAL);
+
+  const stats = useMemo(() => {
+    if (!occupied) return { available: 0, filled: 0 };
+    const filled = occupied.filter(Boolean).length;
+    return { available: SLOTS_TOTAL - filled, filled };
+  }, [occupied]);
+
+  return (
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-foreground/40 font-body">
+            {occupied ? `${stats.available} available` : "Loading..."}
+          </span>
+          {/* Legend */}
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 text-[10px] text-foreground/30 font-body">
+              <span className="w-2 h-2 bg-gold/20 border border-gold-dim/30 inline-block" />
+              open
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-foreground/30 font-body">
+              <span className="w-2 h-2 bg-foreground/5 border border-foreground/10 inline-block" />
+              taken
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-foreground/30 font-body">
+              <span className="w-2 h-2 bg-gold border border-gold inline-block" />
+              selected
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={loadOccupancy}
+          disabled={loading}
+          className="text-[10px] text-muted/40 font-body border border-gold-dim/20 px-2 py-0.5 hover:text-gold hover:border-gold/50 transition-colors cursor-pointer disabled:opacity-50"
+        >
+          {loading ? "..." : "Refresh"}
+        </button>
+      </div>
+
+      {fetchError && (
+        <p className="text-xs text-red-400 font-body">{fetchError}</p>
+      )}
+
+      {/* Grid */}
+      {occupied && (
+        <>
+          <div className="grid grid-cols-10 gap-[3px]">
+            {Array.from({ length: pageEnd - pageStart }, (_, i) => {
+              const slotId = pageStart + i;
+              const isOccupied = occupied[slotId] ?? false;
+              const isSelected = selectedSlot === slotId;
+
+              return (
+                <button
+                  key={slotId}
+                  onClick={() => {
+                    if (!isOccupied) onSelect(slotId);
+                  }}
+                  disabled={isOccupied}
+                  title={isOccupied ? `Slot #${slotId} (occupied)` : `Slot #${slotId}`}
+                  className={`aspect-square flex items-center justify-center text-[9px] sm:text-[10px] font-display transition-all ${
+                    isSelected
+                      ? "bg-gold text-background border border-gold font-bold"
+                      : isOccupied
+                        ? "bg-foreground/5 border border-foreground/10 text-foreground/15 cursor-not-allowed"
+                        : "bg-gold/10 border border-gold-dim/30 text-foreground/50 hover:border-gold/60 hover:bg-gold/20 hover:text-foreground cursor-pointer"
+                  }`}
+                >
+                  {slotId}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-center gap-1.5">
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => setPage(i)}
+                className={`min-w-[36px] min-h-[32px] px-2 py-1 text-[10px] font-body border transition-colors cursor-pointer ${
+                  page === i
+                    ? "border-gold text-gold bg-gold/10"
+                    : "border-gold-dim/20 text-muted/40 hover:text-gold hover:border-gold/50"
+                }`}
+              >
+                {i * PAGE_SIZE}&ndash;{Math.min((i + 1) * PAGE_SIZE - 1, SLOTS_TOTAL - 1)}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Loading skeleton */}
+      {loading && !occupied && (
+        <div className="grid grid-cols-10 gap-[3px]">
+          {Array.from({ length: PAGE_SIZE }, (_, i) => (
+            <div key={i} className="aspect-square bg-foreground/5 border border-foreground/10 animate-pulse" />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WithdrawBanner() {
+  const { publicKey, connected, sendTransaction } = useWallet();
+  const { connection } = useConnection();
+
+  const [claimableLamports, setClaimableLamports] = useState<bigint | null>(null);
+  const [withdrawStep, setWithdrawStep] = useState<"idle" | "signing" | "confirming" | "done">("idle");
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  const [withdrawTxSig, setWithdrawTxSig] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!publicKey || !connected) {
+      setClaimableLamports(null);
+      return;
+    }
+    fetchClaimableBalance(connection, publicKey)
+      .then((cb) => {
+        setClaimableLamports(cb && cb.claimableLamports > BigInt(0) ? cb.claimableLamports : null);
+      })
+      .catch(() => setClaimableLamports(null));
+  }, [connection, publicKey, connected]);
+
+  const handleWithdraw = useCallback(async () => {
+    if (!publicKey || !sendTransaction || !claimableLamports) return;
+
+    setWithdrawStep("signing");
+    setWithdrawError(null);
+    try {
+      const ix = buildClaimWithdrawIx(publicKey);
+      const tx = new Transaction().add(ix);
+      const sig = await sendTransaction(tx, connection);
+
+      setWithdrawStep("confirming");
+      const result = await connection.confirmTransaction(sig, "confirmed");
+      if (result.value.err) throw new Error("Withdraw transaction failed on-chain.");
+
+      setWithdrawTxSig(sig);
+      setWithdrawStep("done");
+      setClaimableLamports(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Withdraw failed.";
+      if (msg.includes("User rejected") || msg.includes("rejected")) {
+        setWithdrawError("Transaction cancelled.");
+      } else {
+        setWithdrawError(msg);
+      }
+      setWithdrawStep("idle");
+    }
+  }, [publicKey, sendTransaction, connection, claimableLamports]);
+
+  if (!connected || claimableLamports === null) {
+    if (withdrawTxSig && withdrawStep === "done") {
+      return (
+        <div className="bg-green-900/30 border border-green-500/30 p-4 mb-6 animate-fade-in max-w-md mx-auto">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-body text-green-400">
+              Withdraw successful. Tx: {withdrawTxSig.slice(0, 8)}...
+            </p>
+            <button
+              onClick={() => setWithdrawTxSig(null)}
+              className="text-xs text-green-400/60 hover:text-green-400 cursor-pointer font-body"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  const solAmount = Number(claimableLamports) / SOL_DECIMALS;
+
+  return (
+    <div className="bg-gold/10 border border-gold/30 p-4 mb-6 animate-fade-in max-w-md mx-auto">
+      <div className="space-y-3">
+        <div>
+          <p className="text-xs text-gold/70 font-body uppercase tracking-wider mb-1">
+            Claimable Balance
+          </p>
+          <p className="text-base font-display font-bold text-gold">
+            &#9678; {solAmount} SOL available to withdraw
+          </p>
+          <p className="text-xs text-foreground/40 font-body mt-1">
+            You were displaced. Your full principal is ready for withdrawal.
+          </p>
+        </div>
+        <button
+          onClick={handleWithdraw}
+          disabled={withdrawStep !== "idle"}
+          className="w-full btn-gold font-display tracking-wide py-3 disabled:opacity-50 cursor-pointer"
+        >
+          {withdrawStep === "signing" && "Sign in wallet..."}
+          {withdrawStep === "confirming" && "Confirming..."}
+          {withdrawStep === "idle" && `Withdraw ${solAmount} SOL`}
+        </button>
+      </div>
+      {withdrawError && (
+        <p className="text-sm text-red-400 font-body mt-2">{withdrawError}</p>
+      )}
+    </div>
+  );
+}
+
 export default function PortraitStudio() {
   const [appStage, setAppStage] = useState<AppStage>("intro");
   const [captureMode, setCaptureMode] = useState<CaptureMode>("upload");
@@ -440,17 +708,23 @@ export default function PortraitStudio() {
   const [editedPrompts, setEditedPrompts] = useState<Record<number, string>>({});
   const [lightboxStage, setLightboxStage] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [lockingIn, setLockingIn] = useState(false);
   const [lockAmount, setLockAmount] = useState<number>(1);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [focusedStage, setFocusedStage] = useState<StageNumber>(1);
+  const [slotIdInput, setSlotIdInput] = useState<string>("");
+  const [claimStep, setClaimStep] = useState<ClaimStep>("idle");
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const [claimTxSig, setClaimTxSig] = useState<string | null>(null);
+  const [claimMeta, setClaimMeta] = useState<ClaimMeta | null>(null);
 
   const compressedRef = useRef<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const swipeTouchStart = useRef<number>(0);
   const swipeTouchEnd = useRef<number>(0);
   const router = useRouter();
-  const comingSoon = useComingSoon();
+  const { publicKey, connected, sendTransaction, signMessage } = useWallet();
+  const { setVisible: openWalletModal } = useWalletModal();
+  const { connection } = useConnection();
 
   // Auto-advance focused stage to whichever is currently generating
   useEffect(() => {
@@ -486,6 +760,8 @@ export default function PortraitStudio() {
       setPortraits(saved.portraits);
       if (saved.traits) setTraitManifests(saved.traits);
       setAppStage("locked");
+      const meta = loadClaimMeta();
+      if (meta) setClaimMeta(meta);
     }
   }, []);
 
@@ -549,7 +825,13 @@ export default function PortraitStudio() {
         formData.append("customPrompt", customPrompt);
       }
 
-      const res = await fetch("/api/generate", { method: "POST", body: formData });
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        body: formData,
+        headers: process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY
+          ? { "x-internal-test-key": process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY }
+          : undefined,
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -607,15 +889,100 @@ export default function PortraitStudio() {
     }
   }, [generateStage]);
 
-  const lockIn = useCallback(async () => {
-    const allDone = portraits.every((p) => p !== null);
-    if (!allDone || lockingIn) return;
+  const claimAndPublish = useCallback(async () => {
+    if (!publicKey || !sendTransaction || !connection) return;
 
-    setLockingIn(true);
+    const allDone = portraits.every((p) => p !== null);
+    if (!allDone || claimStep !== "idle") return;
+
+    const parsedSlotId = parseInt(slotIdInput, 10);
+    if (isNaN(parsedSlotId) || parsedSlotId < 0 || parsedSlotId > MAX_SLOT_ID) {
+      setClaimError("Slot ID must be 0\u2013999.");
+      return;
+    }
+
+    if (lockAmount < MIN_LOCK_SOL) {
+      setClaimError(`Minimum lock is ${MIN_LOCK_SOL} SOL.`);
+      return;
+    }
+
+    if (!signMessage) {
+      setClaimError("Your wallet does not support message signing. Please use a wallet like Phantom or Solflare.");
+      return;
+    }
+
+    setClaimStep("preflight");
+    setClaimError(null);
     setError(null);
 
     try {
-      // 1. Compress for storage (serialize to avoid mobile memory spikes)
+      // 1. Pre-flight: check if slot is available
+      const occupied = await isSlotOccupied(connection, parsedSlotId);
+      if (occupied) {
+        setClaimError(`Slot #${parsedSlotId} is already claimed. Try a different slot.`);
+        setClaimStep("idle");
+        return;
+      }
+
+      // 2. Check if ClaimableBalance PDA exists
+      const hasCB = await hasClaimableBalance(connection, publicKey);
+
+      // 3. Build transaction
+      setClaimStep("signing");
+      const lockLamports = BigInt(Math.round(lockAmount * SOL_DECIMALS));
+      const instructions = buildClaimInstructions(
+        publicKey,
+        parsedSlotId,
+        lockLamports,
+        !hasCB,
+      );
+      const tx = new Transaction().add(...instructions);
+
+      // 4. Send via wallet
+      const sig = await sendTransaction(tx, connection);
+
+      // 5. Confirm
+      setClaimStep("confirming");
+      const result = await connection.confirmTransaction(sig, "confirmed");
+      if (result.value.err) {
+        throw new Error("Transaction failed on-chain.");
+      }
+
+      setClaimTxSig(sig);
+
+      // 6. Request publish challenge and sign it
+      setClaimStep("authorizing");
+
+      const walletAddr = publicKey.toBase58();
+      const challengeRes = await fetch("/api/gallery/publish/challenge", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY && {
+            "x-internal-test-key": process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY,
+          }),
+        },
+        body: JSON.stringify({
+          wallet: walletAddr,
+          slotId: parsedSlotId,
+          claimTxSig: sig,
+        }),
+      });
+
+      if (!challengeRes.ok) {
+        const errData = await challengeRes.json().catch(() => ({ error: "Failed to get publish authorization." }));
+        throw new Error(errData.error || "Failed to get publish authorization.");
+      }
+
+      const { challengeMessage, challengeToken } = await challengeRes.json();
+
+      // Sign the challenge message with wallet
+      const messageBytes = new TextEncoder().encode(challengeMessage);
+      const sigBytes = await signMessage(messageBytes);
+      const walletSignature = bs58.encode(sigBytes);
+
+      // 7. Compress and publish with auth proof
+      setClaimStep("publishing");
       const compressed: string[] = [];
       for (const p of portraits) {
         compressed.push(await compressForStorage(p!));
@@ -623,27 +990,55 @@ export default function PortraitStudio() {
       const validTraits = traitManifests.filter((t): t is TraitManifest => t !== null);
       savePortraits(compressed, validTraits.length === 5 ? validTraits : undefined);
 
-      // 2. Publish to gallery first (critical path — do before zip download)
       let galleryId: string | null = null;
       try {
         const res = await fetch("/api/gallery/publish", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY && {
+              "x-internal-test-key": process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY,
+            }),
+          },
           body: JSON.stringify({
             portraits: compressed,
             traits: validTraits.length === 5 ? validTraits : undefined,
+            conviction: lockAmount,
+            wallet: walletAddr,
+            slotId: parsedSlotId,
+            claimTxSig: sig,
+            challengeToken,
+            walletSignature,
           }),
         });
 
         if (res.ok) {
           const data = await res.json();
           galleryId = data.id;
+        } else {
+          const errData = await res.json().catch(() => ({ error: "Gallery publish failed." }));
+          const meta: ClaimMeta = { wallet: walletAddr, slotId: parsedSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus: "local-only" };
+          saveClaimMeta(meta);
+          setClaimMeta(meta);
+          setPortraits(compressed);
+          setClaimError(`Slot claimed on-chain but gallery publish failed: ${errData.error}`);
+          setAppStage("locked");
+          setClaimStep("idle");
+          return;
         }
       } catch (pubErr) {
         console.warn("Publish failed:", pubErr);
+        const meta: ClaimMeta = { wallet: walletAddr, slotId: parsedSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus: "local-only" };
+        saveClaimMeta(meta);
+        setClaimMeta(meta);
+        setPortraits(compressed);
+        setClaimError("Slot claimed on-chain but gallery publish failed. Your collection is saved locally.");
+        setAppStage("locked");
+        setClaimStep("idle");
+        return;
       }
 
-      // 3. Download zip (optional — don't block if it fails)
+      // 8. Download zip (optional)
       try {
         const { default: JSZipLib } = await import("jszip");
         const zip = new JSZipLib();
@@ -659,23 +1054,34 @@ export default function PortraitStudio() {
         a.download = "solazzo-collection.zip";
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      } catch (zipErr) {
-        console.warn("Zip download failed:", zipErr);
+      } catch {
+        // Non-blocking
       }
 
-      // 4. Redirect or fallback
+      // 9. Persist claim metadata & redirect
+      const publishStatus = galleryId ? "published" : "local-only";
+      const meta: ClaimMeta = { wallet: walletAddr, slotId: parsedSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus };
+      saveClaimMeta(meta);
+      setClaimMeta(meta);
+
+      setClaimStep("idle");
       if (galleryId) {
         router.push(`/gallery?new=${galleryId}`);
       } else {
         setPortraits(compressed);
         setAppStage("locked");
       }
-    } catch {
-      setError("Failed to save. Please try again.");
-    } finally {
-      setLockingIn(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Transaction failed.";
+      // User rejected wallet prompt
+      if (msg.includes("User rejected") || msg.includes("rejected")) {
+        setClaimError("Transaction cancelled.");
+      } else {
+        setClaimError(msg);
+      }
+      setClaimStep("idle");
     }
-  }, [portraits, traitManifests, lockingIn, router]);
+  }, [publicKey, sendTransaction, signMessage, connection, portraits, traitManifests, slotIdInput, lockAmount, claimStep, router]);
 
   const reset = useCallback(() => {
     clearPortraits();
@@ -685,6 +1091,7 @@ export default function PortraitStudio() {
     setGeneratingStages(new Set());
     setPreviewUrl(null);
     setError(null);
+    setClaimMeta(null);
     compressedRef.current = null;
     setAppStage("intro");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -715,7 +1122,7 @@ export default function PortraitStudio() {
               </h1>
               <div className="w-24 h-px mx-auto mt-5 bg-gradient-to-r from-transparent via-gold to-transparent" />
               <p className="text-lg sm:text-xl text-foreground font-display mt-6 max-w-lg mx-auto leading-snug">
-                The bet is simple. SOL hits $1,000 &mdash; you get every coin back.
+                The bet is simple. SOL hits $1,000 or the clock runs out &mdash; you get every coin back.
               </p>
               <p className="text-foreground/60 text-base font-body mt-4 max-w-md mx-auto leading-relaxed">
                 While you wait, your face gets painted into five Baroque oil
@@ -738,9 +1145,10 @@ export default function PortraitStudio() {
               <p className="text-foreground/50 text-base font-body text-center max-w-md mx-auto leading-relaxed mb-8">
                 You lock SOL. Not spend it &mdash; lock it. The contract holds
                 your coins and paints you into the collection. As SOL moves, your
-                portrait transforms. When it crosses $1,000, the game ends and
-                every single SOL goes back to its owner. No fees. No catch. Just
-                conviction with a receipt.
+                portrait transforms. When SOL crosses $1,000 &mdash; or at
+                protocol end date (Mar 16, 2030 UTC) &mdash; every single SOL
+                goes back to its owner. No fees. No catch. Just conviction with
+                a receipt.
               </p>
               <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-md mx-auto text-center">
                 <div className="py-3 sm:py-4">
@@ -813,7 +1221,7 @@ export default function PortraitStudio() {
                     $1,000
                   </p>
                   <p className="text-sm text-foreground/50 font-body mt-1">
-                    SOL. That&rsquo;s the number. Hit it and every locker gets made whole.
+                    SOL target &mdash; or Mar 16, 2030. Hit either and every locker gets made whole.
                   </p>
                 </div>
               </div>
@@ -1214,7 +1622,7 @@ export default function PortraitStudio() {
           </div>
         )}
 
-        {/* ── Commit (choose SOL amount) ── */}
+        {/* ── Commit (choose SOL amount + claim on-chain) ── */}
         {appStage === "commit" && (
           <div className="animate-stage-enter space-y-8">
             <button
@@ -1224,13 +1632,15 @@ export default function PortraitStudio() {
               &larr; Back to portraits
             </button>
 
+            <WithdrawBanner />
+
             <div className="text-center">
               <h2 className="text-2xl sm:text-3xl font-display font-bold text-foreground">
                 Lock your SOL
               </h2>
               <p className="text-base text-foreground/50 font-body mt-3 max-w-md mx-auto leading-relaxed">
                 Choose how much SOL to lock with your collection.
-                You get every coin back when SOL crosses $1,000.
+                You get every coin back when SOL crosses $1,000 or at protocol end date (Mar 16, 2030 UTC).
               </p>
             </div>
 
@@ -1249,129 +1659,218 @@ export default function PortraitStudio() {
               })}
             </div>
 
-            {/* SOL amount selector */}
-            <div className="bg-surface-raised/50 border border-gold-dim/20 p-5 sm:p-8 max-w-md mx-auto">
-              <p className="text-xs uppercase tracking-[0.2em] text-gold font-body mb-5 text-center">
-                Your conviction
-              </p>
-
-              {/* Preset buttons */}
-              <div className="grid grid-cols-5 gap-2 mb-4">
-                {LOCK_PRESETS.map((amount) => (
-                  <button
-                    key={amount}
-                    onClick={() => {
-                      setLockAmount(amount);
-                      setCustomAmount("");
+            {/* Wallet gate */}
+            {!connected ? (
+              <div className="bg-surface-raised/50 border border-gold-dim/20 p-6 sm:p-8 max-w-md mx-auto text-center space-y-4">
+                <p className="text-sm text-foreground/60 font-body leading-relaxed">
+                  Connect your Solana wallet to claim a slot on-chain.
+                </p>
+                <button
+                  onClick={() => openWalletModal(true)}
+                  className="btn-gold font-display tracking-wide text-base py-3 px-8 cursor-pointer"
+                >
+                  Connect Wallet
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Slot browser */}
+                <div className="bg-surface-raised/50 border border-gold-dim/20 p-4 sm:p-6 max-w-md mx-auto">
+                  <p className="text-xs uppercase tracking-[0.2em] text-gold font-body mb-4 text-center">
+                    Choose your slot
+                  </p>
+                  <SlotBrowser
+                    selectedSlot={(() => { const n = parseInt(slotIdInput, 10); return Number.isInteger(n) && n >= 0 && n <= 999 ? n : null; })()}
+                    onSelect={(id) => {
+                      setSlotIdInput(String(id));
+                      setClaimError(null);
                     }}
-                    className={`py-3 text-sm font-display font-semibold transition-all cursor-pointer ${
-                      lockAmount === amount && !customAmount
-                        ? "bg-gold text-background border border-gold"
-                        : "bg-transparent text-foreground/70 border border-gold-dim/30 hover:border-gold/50 hover:text-foreground"
-                    }`}
+                    connection={connection}
+                  />
+                  {/* Manual slot input fallback */}
+                  <div className="mt-4 pt-3 border-t border-gold-dim/15">
+                    <label className="block text-xs text-foreground/40 font-body mb-1.5">
+                      Or enter slot number
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="999"
+                      step="1"
+                      placeholder="e.g. 42"
+                      value={slotIdInput}
+                      onChange={(e) => {
+                        setSlotIdInput(e.target.value);
+                        setClaimError(null);
+                      }}
+                      className="w-full bg-black/30 border border-gold-dim/30 text-foreground font-display text-sm px-4 py-2.5 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 transition-colors placeholder:text-muted/30"
+                    />
+                  </div>
+                </div>
+
+                {/* Amount selector */}
+                <div className="bg-surface-raised/50 border border-gold-dim/20 p-5 sm:p-8 max-w-md mx-auto">
+                  <p className="text-xs uppercase tracking-[0.2em] text-gold font-body mb-5 text-center">
+                    Your conviction
+                  </p>
+
+                  {/* Preset buttons */}
+                  <div className="grid grid-cols-4 gap-2 mb-4">
+                    {LOCK_PRESETS.map((amount) => (
+                      <button
+                        key={amount}
+                        onClick={() => {
+                          setLockAmount(amount);
+                          setCustomAmount("");
+                        }}
+                        className={`py-3 text-sm font-display font-semibold transition-all cursor-pointer ${
+                          lockAmount === amount && !customAmount
+                            ? "bg-gold text-background border border-gold"
+                            : "bg-transparent text-foreground/70 border border-gold-dim/30 hover:border-gold/50 hover:text-foreground"
+                        }`}
+                      >
+                        {amount}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom input */}
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="Custom amount (min 1)"
+                      value={customAmount}
+                      onChange={(e) => {
+                        setCustomAmount(e.target.value);
+                        const val = parseFloat(e.target.value);
+                        if (val >= MIN_LOCK_SOL) setLockAmount(val);
+                      }}
+                      onFocus={() => {
+                        if (!customAmount) setCustomAmount(String(lockAmount));
+                      }}
+                      className="w-full bg-black/30 border border-gold-dim/30 text-foreground font-display text-sm px-4 py-3 pr-14 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 transition-colors placeholder:text-muted/30"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted/50 font-display">
+                      SOL
+                    </span>
+                  </div>
+
+                  {/* Points earning rate */}
+                  <div className="mt-4 pt-4 border-t border-gold-dim/15">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-foreground/40 font-body">Solazzo Points per day</span>
+                      <span className="text-sm font-display font-bold text-gold">
+                        {(lockAmount * 24).toFixed(0)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-xs text-foreground/40 font-body">Points after 30 days</span>
+                      <span className="text-sm font-display font-semibold text-foreground/70">
+                        {(lockAmount * 720).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-foreground/30 font-body mt-2 leading-relaxed">
+                      Points = SOL &times; Hours. They accrue while you hold your slot and can never be erased.
+                      {lockAmount >= 5 && " Serious conviction."}
+                      {lockAmount >= 10 && " Legendary tier."}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Transaction disclosure */}
+                <div className="bg-surface-raised/30 border border-gold-dim/15 p-4 max-w-md mx-auto">
+                  <p className="text-xs text-foreground/50 font-body leading-relaxed space-y-1">
+                    <span className="block">
+                      &bull; Lock <span className="text-gold font-display font-semibold">{lockAmount} SOL</span>{" "}
+                      in Slot <span className="text-gold font-display font-semibold">#{slotIdInput || "?"}</span>
+                    </span>
+                    <span className="block">&bull; Funds are transferred to the protocol vault on-chain.</span>
+                    <span className="block">&bull; Non-custodial: your SOL is returned if you are displaced, when SOL reaches $1,000, or at protocol end date (Mar 16, 2030 UTC).</span>
+                    <span className="block">&bull; No admin can access your locked funds.</span>
+                  </p>
+                </div>
+
+                {/* Objections */}
+                <div className="max-w-md mx-auto space-y-3">
+                  <details className="group border border-gold-dim/15 bg-surface-raised/30">
+                    <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
+                      What if SOL never hits $1,000?
+                      <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
+                    </summary>
+                    <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
+                      Your SOL unlocks when SOL hits $1,000 or at the protocol
+                      end date (Mar 16, 2030 UTC), whichever comes first.
+                      Your portraits remain yours regardless.
+                      No admin keys, no backdoors.
+                    </p>
+                  </details>
+                  <details className="group border border-gold-dim/15 bg-surface-raised/30">
+                    <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
+                      What if I lose access to my wallet?
+                      <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
+                    </summary>
+                    <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
+                      Your locked SOL and portraits are soulbound &mdash; tied to
+                      your wallet, non-transferable. If you lose access, those are
+                      gone. However, your Solazzo Points token can be freely sent
+                      and traded.
+                    </p>
+                  </details>
+                  <details className="group border border-gold-dim/15 bg-surface-raised/30">
+                    <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
+                      Can someone take my slot?
+                      <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
+                    </summary>
+                    <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
+                      Only once all 1,000 slots are filled. After that, anyone can
+                      outbid the lowest slot. If you&rsquo;re displaced, you get
+                      your full SOL back instantly. You don&rsquo;t lose money
+                      &mdash; you lose position.
+                    </p>
+                  </details>
+                </div>
+
+                {/* Claim CTA */}
+                <div className="max-w-md mx-auto">
+                  <button
+                    onClick={claimAndPublish}
+                    disabled={claimStep !== "idle" || !slotIdInput || lockAmount < MIN_LOCK_SOL}
+                    className="w-full btn-gold font-display tracking-wide text-base py-3.5 disabled:opacity-50"
                   >
-                    {amount}
+                    {claimStep === "preflight" && "Checking slot..."}
+                    {claimStep === "signing" && "Sign in your wallet..."}
+                    {claimStep === "confirming" && "Confirming on-chain..."}
+                    {claimStep === "authorizing" && "Authorize publish in wallet..."}
+                    {claimStep === "publishing" && "Publishing to gallery..."}
+                    {claimStep === "idle" &&
+                      (slotIdInput
+                        ? `Claim Slot #${slotIdInput} \u2014 Lock ${lockAmount} SOL`
+                        : "Enter a slot number")}
                   </button>
-                ))}
-              </div>
-
-              {/* Custom input */}
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  placeholder="Custom amount"
-                  value={customAmount}
-                  onChange={(e) => {
-                    setCustomAmount(e.target.value);
-                    const val = parseFloat(e.target.value);
-                    if (val > 0) setLockAmount(val);
-                  }}
-                  onFocus={() => {
-                    if (!customAmount) setCustomAmount(String(lockAmount));
-                  }}
-                  className="w-full bg-black/30 border border-gold-dim/30 text-foreground font-display text-sm px-4 py-3 pr-14 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 transition-colors placeholder:text-muted/30"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted/50 font-display">
-                  SOL
-                </span>
-              </div>
-
-              {/* Points earning rate */}
-              <div className="mt-4 pt-4 border-t border-gold-dim/15">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-foreground/40 font-body">Solazzo Points per day</span>
-                  <span className="text-sm font-display font-bold text-gold">
-                    {(lockAmount * 24).toFixed(0)}
-                  </span>
+                  <p className="text-[11px] text-foreground/30 font-body mt-2 text-center">
+                    Connected: {publicKey?.toBase58().slice(0, 4)}...{publicKey?.toBase58().slice(-4)}
+                  </p>
                 </div>
-                <div className="flex items-center justify-between mt-1.5">
-                  <span className="text-xs text-foreground/40 font-body">Points after 30 days</span>
-                  <span className="text-sm font-display font-semibold text-foreground/70">
-                    {(lockAmount * 720).toLocaleString()}
-                  </span>
-                </div>
-                <p className="text-[11px] text-foreground/30 font-body mt-2 leading-relaxed">
-                  Points = SOL &times; Hours. They accrue while you hold your slot and can never be erased.
-                  {lockAmount >= 5 && " Serious conviction."}
-                  {lockAmount >= 10 && " Legendary tier."}
-                </p>
-              </div>
-            </div>
 
-            {/* Objections */}
-            <div className="max-w-md mx-auto space-y-3">
-              <details className="group border border-gold-dim/15 bg-surface-raised/30">
-                <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
-                  What if SOL never hits $1,000?
-                  <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
-                </summary>
-                <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
-                  Then it stays locked. That&rsquo;s the bet. Your portraits
-                  remain yours regardless, but the SOL only unlocks at $1,000.
-                  No exceptions, no admin keys, no backdoors.
-                </p>
-              </details>
-              <details className="group border border-gold-dim/15 bg-surface-raised/30">
-                <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
-                  What if I lose access to my wallet?
-                  <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
-                </summary>
-                <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
-                  Your locked SOL and portraits are soulbound &mdash; tied to
-                  your wallet, non-transferable. If you lose access, those are
-                  gone. However, your Solazzo Points token can be freely sent
-                  and traded.
-                </p>
-              </details>
-              <details className="group border border-gold-dim/15 bg-surface-raised/30">
-                <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
-                  Can someone take my slot?
-                  <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
-                </summary>
-                <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
-                  Only once all 1,000 slots are filled. After that, anyone can
-                  outbid the lowest slot. If you&rsquo;re displaced, you get
-                  your full SOL back instantly. You don&rsquo;t lose money
-                  &mdash; you lose position.
-                </p>
-              </details>
-            </div>
+                {/* ── Position Summary (existing claim) ── */}
+                {claimMeta && (
+                  <div className="bg-surface-raised/50 border border-gold-dim/20 px-4 py-3 max-w-md mx-auto space-y-1 text-sm font-body">
+                    <p className="font-display text-foreground/80 font-semibold text-xs uppercase tracking-wider mb-2">Previous Claim</p>
+                    <p className="text-muted/70">Wallet: <span className="text-foreground/80 font-mono">{claimMeta.wallet.slice(0, 4)}…{claimMeta.wallet.slice(-4)}</span></p>
+                    <p className="text-muted/70">Slot: <span className="text-foreground/80">#{claimMeta.slotId}</span></p>
+                    <p className="text-muted/70">Locked: <span className="text-foreground/80">{claimMeta.lockSol} SOL</span></p>
+                    <p className="text-muted/70">Tx: <span className="text-foreground/80 font-mono">{claimMeta.claimTxSig.slice(0, 8)}…{claimMeta.claimTxSig.slice(-8)}</span></p>
+                    <p className="text-muted/70">Status: <span className={claimMeta.publishStatus === "published" ? "text-green-400" : "text-yellow-400"}>{claimMeta.publishStatus === "published" ? "Published" : "Local Only"}</span></p>
+                  </div>
+                )}
 
-            {/* Lock CTA */}
-            <div className="max-w-md mx-auto">
-              <button
-                onClick={lockIn}
-                disabled={lockingIn}
-                className="w-full btn-gold font-display tracking-wide text-base py-3.5 disabled:opacity-50"
-              >
-                {lockingIn ? "Locking in..." : `Lock ${lockAmount} SOL & Save`}
-              </button>
-              <p className="text-[11px] text-foreground/30 font-body mt-2 text-center">
-                Wallet connection coming soon. Your collection will be saved locally for now.
-              </p>
-            </div>
+                {claimError && (
+                  <p className="text-red-400 text-sm text-center font-body max-w-md mx-auto">{claimError}</p>
+                )}
+              </>
+            )}
 
             {error && <p className="text-red-400 text-sm text-center font-body">{error}</p>}
           </div>
@@ -1428,6 +1927,25 @@ export default function PortraitStudio() {
                 </Link>
               </div>
             </div>
+
+            {/* ── Wallet mismatch warning ── */}
+            {claimMeta && connected && publicKey && publicKey.toBase58() !== claimMeta.wallet && (
+              <div className="bg-yellow-900/30 border border-yellow-600/40 px-4 py-3 text-sm text-yellow-200 font-body">
+                Connected wallet ({publicKey.toBase58().slice(0, 4)}…{publicKey.toBase58().slice(-4)}) differs from the wallet that claimed this slot ({claimMeta.wallet.slice(0, 4)}…{claimMeta.wallet.slice(-4)}).
+              </div>
+            )}
+
+            {/* ── Position Summary ── */}
+            {claimMeta && (
+              <div className="bg-surface-raised border border-gold-dim/20 px-4 py-3 space-y-1 text-sm font-body">
+                <p className="font-display text-foreground/80 font-semibold text-xs uppercase tracking-wider mb-2">Position Summary</p>
+                <p className="text-muted/70">Wallet: <span className="text-foreground/80 font-mono">{claimMeta.wallet.slice(0, 4)}…{claimMeta.wallet.slice(-4)}</span></p>
+                <p className="text-muted/70">Slot: <span className="text-foreground/80">#{claimMeta.slotId}</span></p>
+                <p className="text-muted/70">Locked: <span className="text-foreground/80">{claimMeta.lockSol} SOL</span></p>
+                <p className="text-muted/70">Tx: <span className="text-foreground/80 font-mono">{claimMeta.claimTxSig.slice(0, 8)}…{claimMeta.claimTxSig.slice(-8)}</span></p>
+                <p className="text-muted/70">Status: <span className={claimMeta.publishStatus === "published" ? "text-green-400" : "text-yellow-400"}>{claimMeta.publishStatus === "published" ? "Published" : "Local Only"}</span></p>
+              </div>
+            )}
 
             {/* ── Mobile: single portrait + thumbnail strip ── */}
             <div className="sm:hidden">
@@ -1635,7 +2153,16 @@ export default function PortraitStudio() {
         </div>
       )}
 
-      <ComingSoonToast visible={comingSoon.visible} message={comingSoon.message} />
+      {/* Claim tx confirmation toast */}
+      {claimTxSig && appStage === "locked" && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] animate-fade-in">
+          <div className="bg-surface-raised border border-gold-dim/30 px-5 py-3 shadow-lg">
+            <p className="text-sm font-body text-foreground/80">
+              Slot claimed on-chain. Tx: {claimTxSig.slice(0, 8)}...
+            </p>
+          </div>
+        </div>
+      )}
 
       {promptViewStage !== null && traitManifests[promptViewStage - 1] && (
         <PromptModal

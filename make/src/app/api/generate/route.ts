@@ -3,13 +3,23 @@ import { rollAndAssemble, type StageNumber } from "@/lib/prompt";
 import { reportError, reportGeneration } from "@/lib/report";
 import { geminiGenerate, type ReferenceImage } from "@/lib/gemini";
 import { loadStageReferences } from "@/lib/reference-images";
+import { testGate, generationGate } from "@/lib/test-gate";
 
 export const maxDuration = 60;
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_REF_FILE_SIZE = 5 * 1024 * 1024; // 5 MB per reference image
+const MAX_REF_COUNT = 5;
+const MAX_CUSTOM_PROMPT_LENGTH = 4000;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export async function POST(request: NextRequest) {
+  const blocked = testGate(request, "POST /api/generate");
+  if (blocked) return blocked;
+
+  const killSwitch = generationGate();
+  if (killSwitch) return killSwitch;
+
   try {
     const formData = await request.formData();
     const file = formData.get("image");
@@ -51,8 +61,26 @@ export async function POST(request: NextRequest) {
     let refs: ReferenceImage[] = [];
 
     if (refFiles.length > 0 && refFiles[0] instanceof File) {
+      if (refFiles.length > MAX_REF_COUNT) {
+        return NextResponse.json(
+          { error: `Too many reference images. Maximum is ${MAX_REF_COUNT}.` },
+          { status: 400 },
+        );
+      }
       for (const rf of refFiles) {
         if (rf instanceof File) {
+          if (!ACCEPTED_TYPES.includes(rf.type)) {
+            return NextResponse.json(
+              { error: "Invalid reference image type. Use JPEG, PNG, or WebP." },
+              { status: 400 },
+            );
+          }
+          if (rf.size > MAX_REF_FILE_SIZE) {
+            return NextResponse.json(
+              { error: "Reference image too large. Maximum is 5 MB each." },
+              { status: 400 },
+            );
+          }
           const refBuf = await rf.arrayBuffer();
           refs.push({
             base64: Buffer.from(refBuf).toString("base64"),
@@ -67,6 +95,13 @@ export async function POST(request: NextRequest) {
     // Use custom prompt if provided, otherwise roll fresh traits
     const customPrompt = formData.get("customPrompt");
     const hasCustomPrompt = typeof customPrompt === "string" && customPrompt.length > 0;
+
+    if (typeof customPrompt === "string" && customPrompt.length > MAX_CUSTOM_PROMPT_LENGTH) {
+      return NextResponse.json(
+        { error: `Custom prompt too long. Maximum is ${MAX_CUSTOM_PROMPT_LENGTH} characters.` },
+        { status: 400 },
+      );
+    }
 
     let prompt: string;
     let manifest: ReturnType<typeof rollAndAssemble> | null = null;

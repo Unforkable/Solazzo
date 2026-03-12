@@ -12,14 +12,15 @@
  */
 
 import { parseArgs } from "node:util";
-import { readFile, readFileSync, writeFile, mkdir } from "node:fs/promises";
-import { resolve, basename, extname, dirname } from "node:path";
+import { readFileSync } from "node:fs";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { resolve, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Load .env.local (Next.js doesn't do this for standalone scripts)
 try {
   const envPath = resolve(dirname(fileURLToPath(import.meta.url)), "../.env.local");
-  const envFile = require("fs").readFileSync(envPath, "utf-8") as string;
+  const envFile = readFileSync(envPath, "utf-8");
   for (const line of envFile.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
