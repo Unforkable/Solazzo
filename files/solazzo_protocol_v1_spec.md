@@ -632,3 +632,35 @@ When resuming work, start from:
 - "Task 7.1 accepted."
 - "Begin Task 8 (Phase E) prompt and implementation."
 
+---
+
+## 19. Post-MVP Product Scope (No Top-Up)
+
+A follow-on product scope is defined in:
+
+- `files/solazzo_post_mvp_scope_no_topup.md`
+
+Summary:
+- guided onboarding/claim UX improvements,
+- multi-slot ownership UX hardening,
+- "My Positions" dashboard with wallet-level totals,
+- explicit exclusion of slot top-up/additional-lock functionality in this phase.
+
+---
+
+## 20. Verification Runbook (Release Gate)
+
+Canonical rehearsal and verification steps live in:
+
+- `files/solazzo_verification_runbook.md`
+
+Policy:
+
+- This runbook is mandatory before any mainnet release decision.
+- A run must produce recorded evidence for:
+  - claim success,
+  - displacement crediting,
+  - withdraw-to-zero confirmation,
+  - network alignment (app RPC + wallet + program).
+- If any gate fails, launch is blocked until resolved and rerun.
+

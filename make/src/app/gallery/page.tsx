@@ -86,6 +86,15 @@ function lamportsToSol(lamports: bigint): number {
   return Number(lamports) / SOL_DECIMALS;
 }
 
+function rpcNetworkLabel(endpoint: string): string {
+  const e = endpoint.toLowerCase();
+  if (e.includes("devnet")) return "devnet";
+  if (e.includes("testnet")) return "testnet";
+  if (e.includes("mainnet")) return "mainnet";
+  if (e.includes("127.0.0.1") || e.includes("localhost")) return "localnet";
+  return endpoint;
+}
+
 // ── Displacement Modal ───────────────────────────────────────────────
 
 type DisplaceStep = "idle" | "loading" | "ready" | "signing" | "confirming" | "success" | "error";
@@ -97,7 +106,7 @@ function DisplacementModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const { publicKey, connected, sendTransaction } = useWallet();
+  const { publicKey, connected, sendTransaction, signTransaction } = useWallet();
   const { setVisible: openWalletModal } = useWalletModal();
   const { connection } = useConnection();
   const router = useRouter();
@@ -179,7 +188,7 @@ function DisplacementModal({
   const isSelfDisplace = publicKey && lowest?.owner ? publicKey.equals(lowest.owner) : false;
 
   const handleDisplace = useCallback(async () => {
-    if (!publicKey || !sendTransaction || !config || !lowest) return;
+    if (!publicKey || !config || !lowest) return;
 
     // Refetch freshest state to prevent stale-data race
     setStep("loading");
@@ -241,10 +250,49 @@ function DisplacementModal({
       );
 
       const tx = new Transaction().add(ix);
-      const sig = await sendTransaction(tx, connection);
+      const latest = await connection.getLatestBlockhash("confirmed");
+      tx.feePayer = publicKey;
+      tx.recentBlockhash = latest.blockhash;
+
+      const estimatedFeeLamports = BigInt(10_000); // conservative buffer for tx fee
+      const walletBalanceLamports = BigInt(await connection.getBalance(publicKey, "confirmed"));
+      if (walletBalanceLamports < lockLamports + estimatedFeeLamports) {
+        const requiredSol = lamportsToSol(lockLamports + estimatedFeeLamports);
+        const currentSol = lamportsToSol(walletBalanceLamports);
+        setErrorMsg(
+          `Insufficient balance on this network. Need about ${requiredSol.toFixed(6)} SOL, have ${currentSol.toFixed(6)} SOL.`,
+        );
+        setStep("ready");
+        return;
+      }
+
+      let sig: string;
+      if (signTransaction) {
+        const signedTx = await signTransaction(tx);
+        sig = await connection.sendRawTransaction(signedTx.serialize(), {
+          preflightCommitment: "confirmed",
+          maxRetries: 3,
+        });
+      } else if (sendTransaction) {
+        sig = await sendTransaction(tx, connection, {
+          preflightCommitment: "confirmed",
+          maxRetries: 3,
+        });
+      } else {
+        setErrorMsg("Connected wallet cannot sign transactions in this browser. Try Phantom/Solflare in this profile.");
+        setStep("ready");
+        return;
+      }
 
       setStep("confirming");
-      const result = await connection.confirmTransaction(sig, "confirmed");
+      const result = await connection.confirmTransaction(
+        {
+          signature: sig,
+          blockhash: latest.blockhash,
+          lastValidBlockHeight: latest.lastValidBlockHeight,
+        },
+        "confirmed",
+      );
       if (result.value.err) {
         throw new Error("Transaction failed on-chain.");
       }
@@ -252,7 +300,18 @@ function DisplacementModal({
       setTxSig(sig);
       setStep("success");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Transaction failed.";
+      const nestedError =
+        typeof err === "object" && err !== null && "error" in err
+          ? (err as { error?: unknown }).error
+          : null;
+      const nestedMessage =
+        nestedError instanceof Error
+          ? nestedError.message
+          : typeof nestedError === "string"
+            ? nestedError
+            : "";
+      const msg = err instanceof Error ? (nestedMessage ? `${err.message}: ${nestedMessage}` : err.message) : "Transaction failed.";
+      console.error("[DisplacementModal] handleDisplace failed", err);
 
       if (msg.includes("User rejected") || msg.includes("rejected")) {
         setErrorMsg("Transaction cancelled.");
@@ -294,10 +353,22 @@ function DisplacementModal({
         }
       }
 
+      if (msg.includes("Attempt to load a program that does not exist")) {
+        friendlyMsg =
+          "Program not found on the currently selected network. Make sure wallet, RPC, and deployed program are all on the same chain.";
+      }
+      if (msg.toLowerCase().includes("network mismatch")) {
+        friendlyMsg = `Wallet network mismatch. Switch wallet to ${rpcNetworkLabel(connection.rpcEndpoint)} and try again.`;
+      }
+      if (msg.includes("Attempt to debit an account but found no record of a prior credit")) {
+        friendlyMsg =
+          "This wallet has no SOL on the current network. Fund this exact wallet on localnet/devnet before displacing.";
+      }
+
       setErrorMsg(friendlyMsg);
       setStep("ready");
     }
-  }, [publicKey, sendTransaction, connection, config, lowest, lockLamports, fetchState]);
+  }, [publicKey, sendTransaction, signTransaction, connection, config, lowest, lockLamports, fetchState]);
 
   return (
     <div
@@ -335,6 +406,9 @@ function DisplacementModal({
               >
                 Connect Wallet
               </button>
+              <p className="text-[11px] text-foreground/45 font-body">
+                App RPC network: {rpcNetworkLabel(connection.rpcEndpoint)}
+              </p>
             </div>
           ) : step === "loading" ? (
             <div className="text-center py-8">
@@ -487,13 +561,16 @@ function DisplacementModal({
                 {step === "confirming" && "Confirming on-chain..."}
                 {step === "ready" && (
                   isAmountValid
-                    ? `Displace &#8212; Lock ${lockSol} SOL`
+                    ? `Displace Slot #${lowest?.slotId ?? "?"} - Lock ${lockSol} SOL`
                     : "Enter a valid amount"
                 )}
               </button>
 
               <p className="text-[11px] text-foreground/30 font-body text-center">
                 Connected: {publicKey?.toBase58().slice(0, 4)}...{publicKey?.toBase58().slice(-4)}
+              </p>
+              <p className="text-[11px] text-foreground/30 font-body text-center">
+                App RPC network: {rpcNetworkLabel(connection.rpcEndpoint)}
               </p>
             </div>
           )}

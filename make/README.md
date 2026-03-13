@@ -49,6 +49,16 @@ If no open slots remain, the user is told no slots are available.
 
 All slot IDs are `0..999` everywhere: on-chain program, backend API payloads, frontend state, and UI display text. There is no 1-based display mapping. This prevents off-by-one bugs between layers.
 
+## Pre-Launch Verification
+
+Use the canonical runbook before release:
+
+- `files/solazzo_verification_runbook.md`
+
+Required gate:
+
+- Do not proceed toward mainnet launch unless the runbook passes end-to-end (claim, displacement credit, withdraw-to-zero, network alignment checks).
+
 ### curl examples
 
 Generate a portrait:
