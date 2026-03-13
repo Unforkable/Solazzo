@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -443,159 +443,6 @@ function WebcamCapture({ onCapture, onBack }: { onCapture: (blob: Blob) => void;
   );
 }
 
-// ── Slot Browser ─────────────────────────────────────────────────────
-
-const SLOTS_TOTAL = 1000;
-const PAGE_SIZE = 100;
-
-function SlotBrowser({
-  selectedSlot,
-  onSelect,
-  connection,
-}: {
-  selectedSlot: number | null;
-  onSelect: (slotId: number) => void;
-  connection: import("@solana/web3.js").Connection;
-}) {
-  const [occupied, setOccupied] = useState<boolean[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-
-  const totalPages = Math.ceil(SLOTS_TOTAL / PAGE_SIZE);
-
-  const loadOccupancy = useCallback(async () => {
-    setLoading(true);
-    setFetchError(null);
-    try {
-      const slotBook = await fetchSlotBook(connection);
-      setOccupied(slotBook.occupied);
-    } catch {
-      setFetchError("Failed to load slot availability.");
-    } finally {
-      setLoading(false);
-    }
-  }, [connection]);
-
-  useEffect(() => {
-    loadOccupancy();
-  }, [loadOccupancy]);
-
-  // Jump to the page containing the selected slot
-  useEffect(() => {
-    if (selectedSlot !== null) {
-      const targetPage = Math.floor(selectedSlot / PAGE_SIZE);
-      setPage(targetPage);
-    }
-  }, [selectedSlot]);
-
-  const pageStart = page * PAGE_SIZE;
-  const pageEnd = Math.min(pageStart + PAGE_SIZE, SLOTS_TOTAL);
-
-  const stats = useMemo(() => {
-    if (!occupied) return { available: 0, filled: 0 };
-    const filled = occupied.filter(Boolean).length;
-    return { available: SLOTS_TOTAL - filled, filled };
-  }, [occupied]);
-
-  return (
-    <div className="space-y-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-foreground/40 font-body">
-            {occupied ? `${stats.available} available` : "Loading..."}
-          </span>
-          {/* Legend */}
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 text-[10px] text-foreground/30 font-body">
-              <span className="w-2 h-2 bg-gold/20 border border-gold-dim/30 inline-block" />
-              open
-            </span>
-            <span className="flex items-center gap-1 text-[10px] text-foreground/30 font-body">
-              <span className="w-2 h-2 bg-foreground/5 border border-foreground/10 inline-block" />
-              taken
-            </span>
-            <span className="flex items-center gap-1 text-[10px] text-foreground/30 font-body">
-              <span className="w-2 h-2 bg-gold border border-gold inline-block" />
-              selected
-            </span>
-          </div>
-        </div>
-        <button
-          onClick={loadOccupancy}
-          disabled={loading}
-          className="text-[10px] text-muted/40 font-body border border-gold-dim/20 px-2 py-0.5 hover:text-gold hover:border-gold/50 transition-colors cursor-pointer disabled:opacity-50"
-        >
-          {loading ? "..." : "Refresh"}
-        </button>
-      </div>
-
-      {fetchError && (
-        <p className="text-xs text-red-400 font-body">{fetchError}</p>
-      )}
-
-      {/* Grid */}
-      {occupied && (
-        <>
-          <div className="grid grid-cols-10 gap-[3px]">
-            {Array.from({ length: pageEnd - pageStart }, (_, i) => {
-              const slotId = pageStart + i;
-              const isOccupied = occupied[slotId] ?? false;
-              const isSelected = selectedSlot === slotId;
-
-              return (
-                <button
-                  key={slotId}
-                  onClick={() => {
-                    if (!isOccupied) onSelect(slotId);
-                  }}
-                  disabled={isOccupied}
-                  title={isOccupied ? `Slot #${slotId} (occupied)` : `Slot #${slotId}`}
-                  className={`aspect-square flex items-center justify-center text-[9px] sm:text-[10px] font-display transition-all ${
-                    isSelected
-                      ? "bg-gold text-background border border-gold font-bold"
-                      : isOccupied
-                        ? "bg-foreground/5 border border-foreground/10 text-foreground/15 cursor-not-allowed"
-                        : "bg-gold/10 border border-gold-dim/30 text-foreground/50 hover:border-gold/60 hover:bg-gold/20 hover:text-foreground cursor-pointer"
-                  }`}
-                >
-                  {slotId}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Pagination */}
-          <div className="flex items-center justify-center gap-1.5">
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => setPage(i)}
-                className={`min-w-[36px] min-h-[32px] px-2 py-1 text-[10px] font-body border transition-colors cursor-pointer ${
-                  page === i
-                    ? "border-gold text-gold bg-gold/10"
-                    : "border-gold-dim/20 text-muted/40 hover:text-gold hover:border-gold/50"
-                }`}
-              >
-                {i * PAGE_SIZE}&ndash;{Math.min((i + 1) * PAGE_SIZE - 1, SLOTS_TOTAL - 1)}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Loading skeleton */}
-      {loading && !occupied && (
-        <div className="grid grid-cols-10 gap-[3px]">
-          {Array.from({ length: PAGE_SIZE }, (_, i) => (
-            <div key={i} className="aspect-square bg-foreground/5 border border-foreground/10 animate-pulse" />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function WithdrawBanner() {
   const { publicKey, connected, sendTransaction } = useWallet();
@@ -716,7 +563,8 @@ export default function PortraitStudio() {
   const [lockAmount, setLockAmount] = useState<number>(1);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [focusedStage, setFocusedStage] = useState<StageNumber>(1);
-  const [slotIdInput, setSlotIdInput] = useState<string>("");
+  const [assignedSlotId, setAssignedSlotId] = useState<number | null>(null);
+  const [slotAssigning, setSlotAssigning] = useState(false);
   const [claimStep, setClaimStep] = useState<ClaimStep>("idle");
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimTxSig, setClaimTxSig] = useState<string | null>(null);
@@ -769,6 +617,27 @@ export default function PortraitStudio() {
       if (meta) setClaimMeta(meta);
     }
   }, []);
+
+  const refreshAssignedSlot = useCallback(async (): Promise<number | null> => {
+    setSlotAssigning(true);
+    try {
+      const slotBook = await fetchSlotBook(connection);
+      const firstOpen = slotBook.occupied.findIndex((isOccupied) => !isOccupied);
+      const nextSlot = firstOpen >= 0 ? firstOpen : null;
+      setAssignedSlotId(nextSlot);
+      return nextSlot;
+    } catch {
+      setAssignedSlotId(null);
+      return null;
+    } finally {
+      setSlotAssigning(false);
+    }
+  }, [connection]);
+
+  useEffect(() => {
+    if (!connected || appStage !== "commit") return;
+    void refreshAssignedSlot();
+  }, [connected, appStage, refreshAssignedSlot]);
 
   const handleFile = useCallback((file: Blob) => {
     setError(null);
@@ -900,9 +769,12 @@ export default function PortraitStudio() {
     const allDone = portraits.every((p) => p !== null);
     if (!allDone || claimStep !== "idle") return;
 
-    const parsedSlotId = parseInt(slotIdInput, 10);
-    if (isNaN(parsedSlotId) || parsedSlotId < 0 || parsedSlotId > MAX_SLOT_ID) {
-      setClaimError("Slot ID must be 0\u2013999.");
+    let targetSlotId = assignedSlotId;
+    if (targetSlotId === null) {
+      targetSlotId = await refreshAssignedSlot();
+    }
+    if (targetSlotId === null || targetSlotId < 0 || targetSlotId > MAX_SLOT_ID) {
+      setClaimError("No open slots available right now. Try refreshing.");
       return;
     }
 
@@ -922,9 +794,14 @@ export default function PortraitStudio() {
 
     try {
       // 1. Pre-flight: check if slot is available
-      const occupied = await isSlotOccupied(connection, parsedSlotId);
+      const occupied = await isSlotOccupied(connection, targetSlotId);
       if (occupied) {
-        setClaimError(`Slot #${parsedSlotId} is already claimed. Try a different slot.`);
+        const nextOpen = await refreshAssignedSlot();
+        if (nextOpen !== null) {
+          setClaimError(`Slot #${targetSlotId} was just claimed. Reassigned to open Slot #${nextOpen}. Click claim again.`);
+        } else {
+          setClaimError("That slot was just claimed and no open slots are currently available.");
+        }
         setClaimStep("idle");
         return;
       }
@@ -946,7 +823,7 @@ export default function PortraitStudio() {
       const lockLamports = BigInt(Math.round(lockAmount * SOL_DECIMALS));
       const instructions = buildClaimInstructions(
         publicKey,
-        parsedSlotId,
+        targetSlotId,
         lockLamports,
         !hasCB,
       );
@@ -978,7 +855,7 @@ export default function PortraitStudio() {
         },
         body: JSON.stringify({
           wallet: walletAddr,
-          slotId: parsedSlotId,
+          slotId: targetSlotId,
           claimTxSig: sig,
         }),
       });
@@ -1014,7 +891,7 @@ export default function PortraitStudio() {
             traits: validTraits.length === 5 ? validTraits : undefined,
             conviction: lockAmount,
             wallet: walletAddr,
-            slotId: parsedSlotId,
+            slotId: targetSlotId,
             claimTxSig: sig,
             challengeToken,
             walletSignature,
@@ -1026,7 +903,7 @@ export default function PortraitStudio() {
           galleryId = data.id;
         } else {
           const errData = await res.json().catch(() => ({ error: "Gallery publish failed." }));
-          const meta: ClaimMeta = { wallet: walletAddr, slotId: parsedSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus: "local-only" };
+          const meta: ClaimMeta = { wallet: walletAddr, slotId: targetSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus: "local-only" };
           saveClaimMeta(meta);
           setClaimMeta(meta);
           setPortraits(compressed);
@@ -1037,7 +914,7 @@ export default function PortraitStudio() {
         }
       } catch (pubErr) {
         console.warn("Publish failed:", pubErr);
-        const meta: ClaimMeta = { wallet: walletAddr, slotId: parsedSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus: "local-only" };
+        const meta: ClaimMeta = { wallet: walletAddr, slotId: targetSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus: "local-only" };
         saveClaimMeta(meta);
         setClaimMeta(meta);
         setPortraits(compressed);
@@ -1069,7 +946,7 @@ export default function PortraitStudio() {
 
       // 10. Persist claim metadata & redirect
       const publishStatus = galleryId ? "published" : "local-only";
-      const meta: ClaimMeta = { wallet: walletAddr, slotId: parsedSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus };
+      const meta: ClaimMeta = { wallet: walletAddr, slotId: targetSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus };
       saveClaimMeta(meta);
       setClaimMeta(meta);
 
@@ -1090,7 +967,7 @@ export default function PortraitStudio() {
       }
       setClaimStep("idle");
     }
-  }, [publicKey, sendTransaction, signMessage, connection, portraits, traitManifests, slotIdInput, lockAmount, claimStep, router]);
+  }, [publicKey, sendTransaction, signMessage, connection, portraits, traitManifests, assignedSlotId, lockAmount, claimStep, router, refreshAssignedSlot]);
 
   const reset = useCallback(() => {
     clearPortraits();
@@ -1683,37 +1560,26 @@ export default function PortraitStudio() {
               </div>
             ) : (
               <>
-                {/* Slot browser */}
+                {/* Auto-assigned slot */}
                 <div className="bg-surface-raised/50 border border-gold-dim/20 p-4 sm:p-6 max-w-md mx-auto">
                   <p className="text-xs uppercase tracking-[0.2em] text-gold font-body mb-4 text-center">
-                    Choose your slot
+                    Your slot (auto-assigned)
                   </p>
-                  <SlotBrowser
-                    selectedSlot={(() => { const n = parseInt(slotIdInput, 10); return Number.isInteger(n) && n >= 0 && n <= 999 ? n : null; })()}
-                    onSelect={(id) => {
-                      setSlotIdInput(String(id));
-                      setClaimError(null);
-                    }}
-                    connection={connection}
-                  />
-                  {/* Manual slot input fallback */}
-                  <div className="mt-4 pt-3 border-t border-gold-dim/15">
-                    <label className="block text-xs text-foreground/40 font-body mb-1.5">
-                      Or enter slot number
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="999"
-                      step="1"
-                      placeholder="e.g. 42"
-                      value={slotIdInput}
-                      onChange={(e) => {
-                        setSlotIdInput(e.target.value);
-                        setClaimError(null);
-                      }}
-                      className="w-full bg-black/30 border border-gold-dim/30 text-foreground font-display text-sm px-4 py-2.5 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 transition-colors placeholder:text-muted/30"
-                    />
+                  <div className="bg-black/30 border border-gold-dim/20 p-3 text-center">
+                    <p className="text-xs text-foreground/40 font-body">Next available slot</p>
+                    <p className="text-xl font-display font-bold text-gold mt-1">
+                      {assignedSlotId !== null ? `#${assignedSlotId}` : "—"}
+                    </p>
+                    <p className="text-[11px] text-foreground/30 font-body mt-1">
+                      Slots are assigned automatically to reduce friction.
+                    </p>
+                    <button
+                      onClick={() => void refreshAssignedSlot()}
+                      disabled={slotAssigning || claimStep !== "idle"}
+                      className="mt-2 text-[10px] text-muted/40 font-body border border-gold-dim/20 px-2 py-0.5 hover:text-gold hover:border-gold/50 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {slotAssigning ? "Refreshing..." : "Refresh assignment"}
+                    </button>
                   </div>
                 </div>
 
@@ -1793,7 +1659,7 @@ export default function PortraitStudio() {
                   <p className="text-xs text-foreground/50 font-body leading-relaxed space-y-1">
                     <span className="block">
                       &bull; Lock <span className="text-gold font-display font-semibold">{lockAmount} SOL</span>{" "}
-                      in Slot <span className="text-gold font-display font-semibold">#{slotIdInput || "?"}</span>
+                      in Slot <span className="text-gold font-display font-semibold">{assignedSlotId !== null ? `#${assignedSlotId}` : "pending assignment"}</span>
                     </span>
                     <span className="block">&bull; Funds are transferred to the protocol vault on-chain.</span>
                     <span className="block">&bull; Non-custodial: your SOL is returned if you are displaced, when SOL reaches $1,000, or at protocol end date (Mar 16, 2030 UTC).</span>
@@ -1845,7 +1711,7 @@ export default function PortraitStudio() {
                 <div className="max-w-md mx-auto">
                   <button
                     onClick={claimAndPublish}
-                    disabled={claimStep !== "idle" || !slotIdInput || lockAmount < MIN_LOCK_SOL}
+                    disabled={claimStep !== "idle" || assignedSlotId === null || lockAmount < MIN_LOCK_SOL}
                     className="w-full btn-gold font-display tracking-wide text-base py-3.5 disabled:opacity-50"
                   >
                     {claimStep === "preflight" && "Checking slot..."}
@@ -1854,9 +1720,9 @@ export default function PortraitStudio() {
                     {claimStep === "authorizing" && "Authorize publish in wallet..."}
                     {claimStep === "publishing" && "Publishing to gallery..."}
                     {claimStep === "idle" &&
-                      (slotIdInput
-                        ? `Claim Slot #${slotIdInput} \u2014 Lock ${lockAmount} SOL`
-                        : "Enter a slot number")}
+                      (assignedSlotId !== null
+                        ? `Claim Slot #${assignedSlotId} \u2014 Lock ${lockAmount} SOL`
+                        : "Assigning your slot...")}
                   </button>
                   <p className="text-[11px] text-foreground/30 font-body mt-2 text-center">
                     Connected: {publicKey?.toBase58().slice(0, 4)}...{publicKey?.toBase58().slice(-4)}

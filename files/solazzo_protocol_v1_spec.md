@@ -47,7 +47,8 @@ v1 prioritizes safety, simplicity, and verifiability over feature breadth.
 
 - Total slots: exactly `1000`.
 - Slot IDs: `0..999`.
-- Before full occupancy: users may claim any unfilled slot ID.
+- Before full occupancy: protocol allows claiming any unfilled slot ID.
+- Product UX (make app): slot assignment is automatic (next available open slot). Users cannot manually pick a slot ID. This reduces friction, prevents slot-picking errors, and avoids off-by-one confusion. All slot references in UI, backend, and on-chain remain 0-based (`0..999`).
 - After full occupancy: only `displace_lowest` is allowed; direct targeted challenges are disallowed.
 - Lowest-slot tie break: lowest slot ID wins.
 - Ownership rights and principal withdrawal rights are wallet-bound (non-transferable in protocol state).

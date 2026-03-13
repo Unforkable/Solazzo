@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
@@ -11,6 +11,7 @@ import type { GalleryEntry, GalleryTraitRoll } from "@/lib/gallery-store";
 import {
   fetchProtocolConfig,
   fetchLowestSlotInfo,
+  fetchSlotBook,
   fetchClaimableBalance,
   buildDisplaceLowestIx,
   buildClaimWithdrawIx,
@@ -99,10 +100,12 @@ function DisplacementModal({
   const { publicKey, connected, sendTransaction } = useWallet();
   const { setVisible: openWalletModal } = useWalletModal();
   const { connection } = useConnection();
+  const router = useRouter();
 
   const [step, setStep] = useState<DisplaceStep>("idle");
   const [config, setConfig] = useState<ProtocolConfigAccount | null>(null);
   const [lowest, setLowest] = useState<(LowestSlotInfo & { owner: PublicKey }) | null>(null);
+  const [firstOpenSlot, setFirstOpenSlot] = useState<number | null>(null);
   const [lockInput, setLockInput] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [txSig, setTxSig] = useState<string | null>(null);
@@ -112,12 +115,15 @@ function DisplacementModal({
     setStep("loading");
     setErrorMsg(null);
     try {
-      const [cfg, low] = await Promise.all([
+      const [cfg, low, slotBook] = await Promise.all([
         fetchProtocolConfig(connection),
         fetchLowestSlotInfo(connection),
+        fetchSlotBook(connection),
       ]);
       setConfig(cfg);
       setLowest(low);
+      const firstOpen = slotBook.occupied.findIndex((isOccupied) => !isOccupied);
+      setFirstOpenSlot(firstOpen >= 0 ? firstOpen : null);
 
       if (!low) {
         setErrorMsg("No occupied slots found.");
@@ -338,6 +344,17 @@ function DisplacementModal({
           ) : step === "error" ? (
             <div className="space-y-4">
               <p className="text-sm text-red-400 font-body">{errorMsg}</p>
+              {firstOpenSlot !== null && errorMsg?.includes("Claim an empty slot instead.") && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    router.push("/?from=displace");
+                  }}
+                  className="btn-gold font-display tracking-wide w-full cursor-pointer"
+                >
+                  Go To Auto-Claim (next open #{firstOpenSlot})
+                </button>
+              )}
               <button
                 onClick={fetchState}
                 className="btn-ghost font-display tracking-wide w-full cursor-pointer"
