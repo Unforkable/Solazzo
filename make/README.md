@@ -59,6 +59,58 @@ Required gate:
 
 - Do not proceed toward mainnet launch unless the runbook passes end-to-end (claim, displacement credit, withdraw-to-zero, network alignment checks).
 
+## Notification Signups (MVP)
+
+- `POST /api/notifications/subscribe` stores email notification preferences in Blob (`notify-subscribers/*.json`).
+- Supported preferences:
+  - Launch announcements
+  - Slot replaced alerts (requires wallet)
+  - SOL claimable alerts (requires wallet)
+- This endpoint stores subscriptions only. Delivery is handled by the dispatch pipeline below.
+
+## Email Notification Delivery
+
+Cron-driven pipeline that sends email notifications via Resend. Runs every 15 minutes via Vercel Cron (`vercel.json`).
+
+### Required env vars
+
+| Variable | Purpose |
+|---|---|
+| `RESEND_API_KEY` | Resend API key for sending emails |
+| `RESEND_FROM_EMAIL` | Sender address, e.g. `Solazzo <notify@solazzo.fun>` |
+| `NOTIFY_DISPATCH_SECRET` | Bearer token for the dispatch endpoint |
+
+### Event types
+
+| Event | Trigger | Idempotency key |
+|---|---|---|
+| **Launch** | `notifyLaunch=true` | `launch-v1__<email>` |
+| **Replaced** | Historical gallery slot no longer active on-chain | `replaced__<wallet>__slot-<id>` |
+| **Claimable** | `ClaimableBalance` PDA has lamports > 0 | `claimable__<wallet>__<lastUpdatedAt>_<lamports>` |
+
+### Auth flow
+
+```
+POST /api/notifications/dispatch -> Bearer token check -> runDispatch() -> JSON summary
+```
+
+Vercel Cron invokes the route automatically. Manual trigger:
+
+```bash
+curl -X POST https://make.solazzo.fun/api/notifications/dispatch \
+  -H "authorization: Bearer YOUR_DISPATCH_SECRET"
+```
+
+### Architecture
+
+- `src/lib/email.ts` — Resend SDK wrapper
+- `src/lib/notify-dispatch.ts` — event detection + email send loop
+- `src/lib/notify-delivery-log.ts` — idempotency via Vercel Blob (`notify-deliveries/`)
+- `src/lib/notify-store.ts` — subscriber listing from Blob (`notify-subscribers/`)
+- `vercel.json` — cron schedule (every 15 min)
+
+Delivery is idempotent: each event is keyed so re-running dispatch never sends duplicate emails. The claimable key includes `lastUpdatedAt` and `claimableLamports` so a new notification fires when the balance changes.
+
 ### curl examples
 
 Generate a portrait:
