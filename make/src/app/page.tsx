@@ -26,6 +26,8 @@ type CaptureMode = "upload" | "camera";
 type ClaimStep = "idle" | "preflight" | "signing" | "confirming" | "authorizing" | "publishing";
 
 const LOCK_PRESETS = [1, 2, 5, 10];
+const CHALLENGE_TIMEOUT_MS = 15_000;
+const PUBLISH_TIMEOUT_MS = 90_000;
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -569,6 +571,7 @@ export default function PortraitStudio() {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimTxSig, setClaimTxSig] = useState<string | null>(null);
   const [claimMeta, setClaimMeta] = useState<ClaimMeta | null>(null);
+  const [retryPublishStep, setRetryPublishStep] = useState<"idle" | "authorizing" | "publishing">("idle");
 
   const compressedRef = useRef<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -578,6 +581,57 @@ export default function PortraitStudio() {
   const { publicKey, connected, sendTransaction, signMessage } = useWallet();
   const { setVisible: openWalletModal } = useWalletModal();
   const { connection } = useConnection();
+
+  const postJsonWithTimeout = useCallback(
+    async (url: string, payload: unknown, timeoutMs: number): Promise<Response> => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY && {
+              "x-internal-test-key": process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY,
+            }),
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    },
+    [],
+  );
+
+  const reconcileLocalOnlyPublish = useCallback(async (): Promise<string | null> => {
+    const meta = loadClaimMeta();
+    if (!meta || meta.publishStatus !== "local-only") return null;
+    try {
+      const res = await fetch("/api/gallery", {
+        headers: process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY
+          ? { "x-internal-test-key": process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY }
+          : undefined,
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const collections = Array.isArray(data?.collections) ? data.collections : [];
+      const hit = collections.find((entry: { claimTxSig?: string; wallet?: string; slot?: number; id?: string }) =>
+        entry?.claimTxSig === meta.claimTxSig &&
+        entry?.wallet === meta.wallet &&
+        entry?.slot === meta.slotId &&
+        typeof entry?.id === "string",
+      );
+      if (!hit?.id) return null;
+      const updated: ClaimMeta = { ...meta, publishStatus: "published" };
+      saveClaimMeta(updated);
+      setClaimMeta(updated);
+      return hit.id;
+    } catch {
+      return null;
+    }
+  }, []);
 
   // Auto-advance focused stage to whichever is currently generating
   useEffect(() => {
@@ -612,11 +666,22 @@ export default function PortraitStudio() {
     if (saved) {
       setPortraits(saved.portraits);
       if (saved.traits) setTraitManifests(saved.traits);
-      setAppStage("locked");
       const meta = loadClaimMeta();
-      if (meta) setClaimMeta(meta);
+      if (meta) {
+        setClaimMeta(meta);
+        setAppStage("locked");
+      } else {
+        // Portraits can be autosaved before on-chain claim starts.
+        // In that case, restore the collection but keep claim flow available.
+        setAppStage("gallery");
+      }
     }
   }, []);
+
+  useEffect(() => {
+    if (!claimMeta || claimMeta.publishStatus !== "local-only") return;
+    void reconcileLocalOnlyPublish();
+  }, [claimMeta, reconcileLocalOnlyPublish]);
 
   const refreshAssignedSlot = useCallback(async (): Promise<number | null> => {
     setSlotAssigning(true);
@@ -845,20 +910,15 @@ export default function PortraitStudio() {
       setClaimStep("authorizing");
 
       const walletAddr = publicKey.toBase58();
-      const challengeRes = await fetch("/api/gallery/publish/challenge", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY && {
-            "x-internal-test-key": process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY,
-          }),
-        },
-        body: JSON.stringify({
+      const challengeRes = await postJsonWithTimeout(
+        "/api/gallery/publish/challenge",
+        {
           wallet: walletAddr,
           slotId: targetSlotId,
           claimTxSig: sig,
-        }),
-      });
+        },
+        CHALLENGE_TIMEOUT_MS,
+      );
 
       if (!challengeRes.ok) {
         const errData = await challengeRes.json().catch(() => ({ error: "Failed to get publish authorization." }));
@@ -878,15 +938,9 @@ export default function PortraitStudio() {
 
       let galleryId: string | null = null;
       try {
-        const res = await fetch("/api/gallery/publish", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY && {
-              "x-internal-test-key": process.env.NEXT_PUBLIC_INTERNAL_TEST_KEY,
-            }),
-          },
-          body: JSON.stringify({
+        const res = await postJsonWithTimeout(
+          "/api/gallery/publish",
+          {
             portraits: compressed,
             traits: validTraits.length === 5 ? validTraits : undefined,
             conviction: lockAmount,
@@ -895,8 +949,9 @@ export default function PortraitStudio() {
             claimTxSig: sig,
             challengeToken,
             walletSignature,
-          }),
-        });
+          },
+          PUBLISH_TIMEOUT_MS,
+        );
 
         if (res.ok) {
           const data = await res.json();
@@ -959,6 +1014,11 @@ export default function PortraitStudio() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Transaction failed.";
+      if (err instanceof Error && err.name === "AbortError") {
+        setClaimError("Publish request timed out. Your slot may still be claimed on-chain; use Retry Publish.");
+        setClaimStep("idle");
+        return;
+      }
       // User rejected wallet prompt
       if (msg.includes("User rejected") || msg.includes("rejected")) {
         setClaimError("Transaction cancelled.");
@@ -967,7 +1027,101 @@ export default function PortraitStudio() {
       }
       setClaimStep("idle");
     }
-  }, [publicKey, sendTransaction, signMessage, connection, portraits, traitManifests, assignedSlotId, lockAmount, claimStep, router, refreshAssignedSlot]);
+  }, [publicKey, sendTransaction, signMessage, connection, portraits, traitManifests, assignedSlotId, lockAmount, claimStep, router, refreshAssignedSlot, postJsonWithTimeout]);
+
+  const retryPublishLocalOnly = useCallback(async () => {
+    if (!claimMeta || claimMeta.publishStatus !== "local-only") return;
+    if (!publicKey || !connected) {
+      setClaimError("Connect the claiming wallet to retry publish.");
+      return;
+    }
+    const walletAddr = publicKey.toBase58();
+    if (walletAddr !== claimMeta.wallet) {
+      setClaimError("Connected wallet does not match the wallet that claimed this slot.");
+      return;
+    }
+    if (!signMessage) {
+      setClaimError("Your wallet does not support message signing. Please use Phantom or Solflare.");
+      return;
+    }
+    if (!portraits.every((p) => p !== null)) {
+      setClaimError("Missing local portraits. Please regenerate before retrying publish.");
+      return;
+    }
+
+    setClaimError(null);
+    try {
+      const existingId = await reconcileLocalOnlyPublish();
+      if (existingId) {
+        router.push(`/gallery?new=${existingId}`);
+        return;
+      }
+
+      setRetryPublishStep("authorizing");
+      const challengeRes = await postJsonWithTimeout(
+        "/api/gallery/publish/challenge",
+        {
+          wallet: walletAddr,
+          slotId: claimMeta.slotId,
+          claimTxSig: claimMeta.claimTxSig,
+        },
+        CHALLENGE_TIMEOUT_MS,
+      );
+      if (!challengeRes.ok) {
+        const errData = await challengeRes.json().catch(() => ({ error: "Failed to get publish authorization." }));
+        throw new Error(errData.error || "Failed to get publish authorization.");
+      }
+
+      const { challengeMessage, challengeToken } = await challengeRes.json();
+      const messageBytes = new TextEncoder().encode(challengeMessage);
+      const sigBytes = await signMessage(messageBytes);
+      const walletSignature = bs58.encode(sigBytes);
+
+      setRetryPublishStep("publishing");
+      const validTraits = traitManifests.filter((t): t is TraitManifest => t !== null);
+      const res = await postJsonWithTimeout(
+        "/api/gallery/publish",
+        {
+          portraits: portraits as string[],
+          traits: validTraits.length === 5 ? validTraits : undefined,
+          conviction: claimMeta.lockSol,
+          wallet: walletAddr,
+          slotId: claimMeta.slotId,
+          claimTxSig: claimMeta.claimTxSig,
+          challengeToken,
+          walletSignature,
+        },
+        PUBLISH_TIMEOUT_MS,
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: "Gallery publish failed." }));
+        throw new Error(errData.error || "Gallery publish failed.");
+      }
+
+      const data = await res.json();
+      const updated: ClaimMeta = { ...claimMeta, publishStatus: "published" };
+      saveClaimMeta(updated);
+      setClaimMeta(updated);
+      setRetryPublishStep("idle");
+      if (data?.id) {
+        router.push(`/gallery?new=${data.id}`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Retry publish failed.";
+      if (err instanceof Error && err.name === "AbortError") {
+        setClaimError("Publish request timed out. Retry again in a few seconds.");
+        setRetryPublishStep("idle");
+        return;
+      }
+      if (msg.includes("User rejected") || msg.includes("rejected")) {
+        setClaimError("Publish signature cancelled.");
+      } else {
+        setClaimError(msg);
+      }
+      setRetryPublishStep("idle");
+    }
+  }, [claimMeta, publicKey, connected, signMessage, portraits, traitManifests, router, postJsonWithTimeout, reconcileLocalOnlyPublish]);
 
   const reset = useCallback(() => {
     clearPortraits();
@@ -1819,6 +1973,26 @@ export default function PortraitStudio() {
                 <p className="text-muted/70">Locked: <span className="text-foreground/80">{claimMeta.lockSol} SOL</span></p>
                 <p className="text-muted/70">Tx: <span className="text-foreground/80 font-mono">{claimMeta.claimTxSig.slice(0, 8)}…{claimMeta.claimTxSig.slice(-8)}</span></p>
                 <p className="text-muted/70">Status: <span className={claimMeta.publishStatus === "published" ? "text-green-400" : "text-yellow-400"}>{claimMeta.publishStatus === "published" ? "Published" : "Local Only"}</span></p>
+                {claimMeta.publishStatus === "local-only" && (
+                  <div className="mt-2 space-y-2">
+                    <button
+                      onClick={retryPublishLocalOnly}
+                      disabled={retryPublishStep !== "idle"}
+                      className="w-full btn-ghost font-display tracking-wide disabled:opacity-50"
+                    >
+                      {retryPublishStep === "authorizing" && "Authorize publish..."}
+                      {retryPublishStep === "publishing" && "Publishing..."}
+                      {retryPublishStep === "idle" && "Retry Publish"}
+                    </button>
+                    <button
+                      onClick={() => void reconcileLocalOnlyPublish()}
+                      disabled={retryPublishStep !== "idle"}
+                      className="w-full text-xs text-muted/60 hover:text-gold transition-colors border border-gold-dim/20 py-2 disabled:opacity-50"
+                    >
+                      Refresh Publish Status
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

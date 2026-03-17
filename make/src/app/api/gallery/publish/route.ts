@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import bs58 from "bs58";
-import { publishCollection, type GalleryEntry } from "@/lib/gallery-store";
+import {
+  publishCollection,
+  findCollectionByClaimTxSig,
+  type GalleryEntry,
+} from "@/lib/gallery-store";
 import { verifyChallengeToken } from "@/lib/publish-auth";
 import { testGate } from "@/lib/test-gate";
 import { rpcRetry, RpcUnavailableError } from "@/lib/rpc-retry";
@@ -391,6 +395,24 @@ export async function POST(request: NextRequest) {
 
     const safeConviction =
       typeof conviction === "number" && conviction > 0 ? conviction : undefined;
+
+    // Idempotency guard: avoid duplicate gallery entries for same on-chain claim.
+    const existing = await findCollectionByClaimTxSig(claimTxSig);
+    if (existing) {
+      if (existing.wallet && existing.wallet !== wallet) {
+        return NextResponse.json(
+          { error: "Claim transaction already published for a different wallet." },
+          { status: 409 },
+        );
+      }
+      if (typeof existing.slot === "number" && existing.slot !== slotId) {
+        return NextResponse.json(
+          { error: "Claim transaction already published for a different slot." },
+          { status: 409 },
+        );
+      }
+      return NextResponse.json({ id: existing.id, deduped: true });
+    }
 
     const entry = await publishCollection(
       buffers,

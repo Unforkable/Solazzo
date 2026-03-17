@@ -80,3 +80,14 @@ export async function listCollections(): Promise<GalleryEntry[]> {
 
   return entries.sort((a, b) => b.publishedAt - a.publishedAt);
 }
+
+export async function findCollectionByClaimTxSig(
+  claimTxSig: string,
+): Promise<GalleryEntry | null> {
+  const collections = await listCollections();
+  return (
+    collections.find(
+      (entry) => typeof entry.claimTxSig === "string" && entry.claimTxSig === claimTxSig,
+    ) ?? null
+  );
+}
