@@ -33,6 +33,15 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALL_STAGES: StageNumber[] = [1, 2, 3, 4, 5];
 
+function rpcNetworkLabel(endpoint: string): string {
+  const e = endpoint.toLowerCase();
+  if (e.includes("devnet")) return "devnet";
+  if (e.includes("testnet")) return "testnet";
+  if (e.includes("mainnet")) return "mainnet";
+  if (e.includes("127.0.0.1") || e.includes("localhost")) return "localnet";
+  return endpoint;
+}
+
 function BaroqueFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="w-full" style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.5))" }}>
@@ -1149,9 +1158,37 @@ export default function PortraitStudio() {
   const allComplete = completedCount === 5;
   const isGenerating = generatingStages.size > 0;
 
+  const nextStepText = (() => {
+    switch (appStage) {
+      case "capture": return "Upload or take a selfie to begin.";
+      case "preview": return "Review your photo, then generate all 5 portraits.";
+      case "gallery":
+        if (isGenerating) return `Painting portrait ${completedCount + 1} of 5...`;
+        if (allComplete) return "All portraits complete. Lock in your collection to claim a slot.";
+        if (completedCount > 0) return "Some portraits are missing. Retry failed stages or try a different photo.";
+        return "Waiting for portraits to generate.";
+      case "commit":
+        if (!connected) return "Connect your Solana wallet to claim a slot.";
+        if (claimStep !== "idle") return "Follow the prompts in your wallet.";
+        return "Choose your SOL amount and claim your slot.";
+      case "locked":
+        if (claimMeta?.publishStatus === "local-only") return "Gallery publish is pending. Use Retry Publish below.";
+        return "Your collection is live. Download or share your portraits.";
+      default: return null;
+    }
+  })();
+
   return (
     <main className={`min-h-screen flex justify-center px-4 py-10 sm:px-6 sm:py-16 ${appStage === "intro" || appStage === "commit" ? "items-start" : "items-center"}`}>
       <div className={`w-full ${appStage === "gallery" || appStage === "locked" ? "max-w-[1200px]" : appStage === "commit" ? "max-w-[720px]" : "max-w-[640px]"}`}>
+        {/* ── Next Step indicator ── */}
+        {nextStepText && (
+          <div className="mb-6 bg-gold/5 border border-gold-dim/20 px-4 py-2.5 flex items-center gap-2 max-w-md mx-auto animate-fade-in">
+            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gold/20 flex items-center justify-center text-gold text-[10px] font-bold font-display">&rsaquo;</span>
+            <p className="text-xs text-foreground/60 font-body leading-snug">{nextStepText}</p>
+          </div>
+        )}
+
         {/* ── Intro / Onboarding ── */}
         {appStage === "intro" && (
           <div className="animate-fade-in">
@@ -1881,6 +1918,9 @@ export default function PortraitStudio() {
                   <p className="text-[11px] text-foreground/30 font-body mt-2 text-center">
                     Connected: {publicKey?.toBase58().slice(0, 4)}...{publicKey?.toBase58().slice(-4)}
                   </p>
+                  <p className="text-[11px] text-foreground/30 font-body text-center">
+                    App RPC network: {rpcNetworkLabel(connection.rpcEndpoint)}
+                  </p>
                 </div>
 
                 {/* ── Position Summary (existing claim) ── */}
@@ -1896,7 +1936,25 @@ export default function PortraitStudio() {
                 )}
 
                 {claimError && (
-                  <p className="text-red-400 text-sm text-center font-body max-w-md mx-auto">{claimError}</p>
+                  <div className="bg-red-900/20 border border-red-500/30 p-4 max-w-md mx-auto space-y-3">
+                    <p className="text-sm text-red-400 font-body">{claimError}</p>
+                    <div className="flex gap-3 justify-center">
+                      {(claimError.includes("cancelled") || claimError.includes("rejected")) && (
+                        <button
+                          onClick={() => { setClaimError(null); claimAndPublish(); }}
+                          className="btn-gold text-xs py-2 px-4 font-display"
+                        >
+                          Try Again
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setClaimError(null)}
+                        className="text-xs text-muted/60 hover:text-foreground transition-colors font-body min-h-[36px] px-3 border border-gold-dim/20"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
                 )}
               </>
             )}
@@ -1974,11 +2032,14 @@ export default function PortraitStudio() {
                 <p className="text-muted/70">Tx: <span className="text-foreground/80 font-mono">{claimMeta.claimTxSig.slice(0, 8)}…{claimMeta.claimTxSig.slice(-8)}</span></p>
                 <p className="text-muted/70">Status: <span className={claimMeta.publishStatus === "published" ? "text-green-400" : "text-yellow-400"}>{claimMeta.publishStatus === "published" ? "Published" : "Local Only"}</span></p>
                 {claimMeta.publishStatus === "local-only" && (
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-3 space-y-2 pt-3 border-t border-gold-dim/15">
+                    <p className="text-xs text-yellow-400/80 font-body leading-relaxed">
+                      Your slot is claimed on-chain, but the gallery publish did not complete. Your portraits are saved locally. Retry to finish publishing, or refresh to check if it already went through.
+                    </p>
                     <button
                       onClick={retryPublishLocalOnly}
                       disabled={retryPublishStep !== "idle"}
-                      className="w-full btn-ghost font-display tracking-wide disabled:opacity-50"
+                      className="w-full btn-gold font-display tracking-wide disabled:opacity-50"
                     >
                       {retryPublishStep === "authorizing" && "Authorize publish..."}
                       {retryPublishStep === "publishing" && "Publishing..."}
@@ -1993,6 +2054,18 @@ export default function PortraitStudio() {
                     </button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {claimError && (
+              <div className="bg-red-900/20 border border-red-500/30 p-4 space-y-3">
+                <p className="text-sm text-red-400 font-body">{claimError}</p>
+                <button
+                  onClick={() => setClaimError(null)}
+                  className="text-xs text-muted/60 hover:text-foreground transition-colors font-body min-h-[36px] px-3 border border-gold-dim/20"
+                >
+                  Dismiss
+                </button>
               </div>
             )}
 
