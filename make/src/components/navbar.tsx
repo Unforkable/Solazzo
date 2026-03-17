@@ -55,13 +55,13 @@ export function Navbar() {
           </Link>
           <Link
             href="/positions"
-            className={`text-xs font-body tracking-wide transition-colors hidden sm:block ${
+            className={`text-xs font-body tracking-wide transition-colors ${
               pathname === "/positions"
                 ? "text-gold"
                 : "text-foreground/40 hover:text-foreground/70"
             }`}
           >
-            My Positions
+            <span className="hidden sm:inline">My </span>Positions
           </Link>
         </div>
         <button
