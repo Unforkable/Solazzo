@@ -17,6 +17,7 @@ import {
   buildClaimWithdrawIx,
   type ProtocolConfigAccount,
   type LowestSlotInfo,
+  type SlotBookAccount,
 } from "@/lib/onchain/client";
 import { SOL_DECIMALS } from "@/lib/onchain/constants";
 
@@ -984,7 +985,11 @@ export default function GalleryPage() {
   );
 }
 
+const PYTH_SOL_USD_FEED =
+  "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d";
+
 function GalleryContent() {
+  const { connection } = useConnection();
   const [collections, setCollections] = useState<GalleryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -998,6 +1003,11 @@ function GalleryContent() {
   const newId = searchParams.get("new");
   const highlightedRef = useRef<HTMLDivElement>(null);
   const [autoOpened, setAutoOpened] = useState(false);
+
+  // On-chain KPI state
+  const [slotBook, setSlotBook] = useState<SlotBookAccount | null>(null);
+  const [kpiLoading, setKpiLoading] = useState(true);
+  const [kpiError, setKpiError] = useState<string | null>(null);
 
   const enrichEntries = useCallback((items: GalleryEntry[]) => {
     const byTime = [...items].sort((a, b) => a.publishedAt - b.publishedAt);
@@ -1018,20 +1028,33 @@ function GalleryContent() {
       .finally(() => setLoading(false));
   }, []);
 
+  const fetchKpis = useCallback(() => {
+    setKpiLoading(true);
+    setKpiError(null);
+    fetchSlotBook(connection)
+      .then((sb) => setSlotBook(sb))
+      .catch(() => setKpiError("Failed to load on-chain data."))
+      .finally(() => setKpiLoading(false));
+  }, [connection]);
+
   useEffect(() => {
     fetchCollections();
+    fetchKpis();
 
-    fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd")
+    fetch(`https://hermes.pyth.network/v2/updates/price/latest?ids[]=${PYTH_SOL_USD_FEED}`)
       .then((res) => res.json())
       .then((data) => {
-        const price = data?.solana?.usd;
-        if (typeof price === "number") {
-          setSolPrice(price);
-          setSliderPrice(price);
+        const parsed = data?.parsed?.[0]?.price;
+        if (parsed) {
+          const price = Number(parsed.price) * Math.pow(10, parsed.expo);
+          if (price > 0) {
+            setSolPrice(price);
+            setSliderPrice(price);
+          }
         }
       })
       .catch(() => {});
-  }, [fetchCollections]);
+  }, [fetchCollections, fetchKpis]);
 
   // Enrich entries with derived slot numbers (oldest = slot 1)
   const entries = useMemo(() => enrichEntries(collections), [collections, enrichEntries]);
@@ -1054,16 +1077,28 @@ function GalleryContent() {
     }
   }, [newId, loading]);
 
-  // Stats
+  // Stats — derived from on-chain SlotBook (truth), not gallery metadata
   const stats = useMemo(() => {
-    const convictions = entries
-      .map((e) => e.conviction ?? 0)
-      .filter((c) => c > 0);
+    if (!slotBook) return { floor: null, total: 0, slotsFilled: 0, slotsAvailable: 1000 };
+    let totalLamports = BigInt(0);
+    let floorLamports: bigint | null = null;
+    let filled = 0;
+    for (let i = 0; i < slotBook.occupied.length; i++) {
+      if (!slotBook.occupied[i]) continue;
+      filled++;
+      const lock = slotBook.locks[i];
+      totalLamports += lock;
+      if (floorLamports === null || lock < floorLamports) {
+        floorLamports = lock;
+      }
+    }
     return {
-      floor: convictions.length > 0 ? Math.min(...convictions) : null,
-      total: convictions.reduce((a, b) => a + b, 0),
+      floor: floorLamports !== null ? Number(floorLamports) / SOL_DECIMALS : null,
+      total: Number(totalLamports) / SOL_DECIMALS,
+      slotsFilled: filled,
+      slotsAvailable: slotBook.occupied.length - filled,
     };
-  }, [entries]);
+  }, [slotBook]);
 
   // Sorted entries
   const sorted = useMemo(() => {
@@ -1111,18 +1146,23 @@ function GalleryContent() {
                 <div className="mt-2">
                   <div className="flex items-center gap-3 mb-1.5">
                     <span className="text-sm font-body text-foreground/70">
-                      {entries.length} <span className="text-muted/40">/ 1,000 claimed</span>
+                      {slotBook ? stats.slotsFilled : entries.length} <span className="text-muted/40">/ 1,000 claimed</span>
                     </span>
                     {solPrice !== null && (
                       <span className="text-xs text-muted/30 font-body">
                         SOL ${solPrice.toFixed(0)}
                       </span>
                     )}
+                    {solPrice !== null && (
+                      <span className="text-[10px] text-muted/20 font-body">
+                        Source: Pyth
+                      </span>
+                    )}
                   </div>
                   <div className="h-1 w-48 sm:w-64 bg-surface-raised rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-gold-dim to-gold rounded-full transition-all duration-700"
-                      style={{ width: `${Math.max((entries.length / 1000) * 100, 0.5)}%` }}
+                      style={{ width: `${Math.max(((slotBook ? stats.slotsFilled : entries.length) / 1000) * 100, 0.5)}%` }}
                     />
                   </div>
                 </div>
@@ -1137,45 +1177,66 @@ function GalleryContent() {
         {/* Withdraw banner */}
         {!loading && <WithdrawBanner />}
 
-        {/* Stats */}
+        {/* Stats (on-chain truth) */}
         {!loading && entries.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-8">
-            <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
-              <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
-                Floor Conviction
-              </p>
-              <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
-                {stats.floor != null ? (
-                  <>
-                    <span className="text-gold">&#9678;</span> {stats.floor.toFixed(1)}
-                  </>
-                ) : (
-                  "—"
-                )}
-              </p>
-            </div>
-            <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
-              <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
-                Total Conviction Locked
-              </p>
-              <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
-                {stats.total > 0 ? (
-                  <>
-                    <span className="text-gold">&#9678;</span>{" "}
-                    {stats.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </>
-                ) : (
-                  "—"
-                )}
-              </p>
-            </div>
-            <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
-              <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
-                Slots Available
-              </p>
-              <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
-                {(1000 - entries.length).toLocaleString()}
-              </p>
+          <div className="mb-8 space-y-2">
+            {kpiError && (
+              <div className="flex items-center justify-between bg-red-900/20 border border-red-500/30 px-4 py-2">
+                <p className="text-xs text-red-400 font-body">{kpiError}</p>
+                <button
+                  onClick={fetchKpis}
+                  className="text-xs text-gold hover:text-gold-bright transition-colors cursor-pointer font-body"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+              <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
+                <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
+                  Floor Lock
+                </p>
+                <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
+                  {kpiLoading ? (
+                    <span className="text-muted/30">...</span>
+                  ) : stats.floor != null ? (
+                    <>
+                      <span className="text-gold">&#9678;</span> {stats.floor.toFixed(1)}
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </p>
+              </div>
+              <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
+                <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
+                  Total SOL Locked
+                </p>
+                <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
+                  {kpiLoading ? (
+                    <span className="text-muted/30">...</span>
+                  ) : stats.total > 0 ? (
+                    <>
+                      <span className="text-gold">&#9678;</span>{" "}
+                      {stats.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </p>
+              </div>
+              <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
+                <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
+                  Slots Available
+                </p>
+                <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
+                  {kpiLoading ? (
+                    <span className="text-muted/30">...</span>
+                  ) : (
+                    stats.slotsAvailable.toLocaleString()
+                  )}
+                </p>
+              </div>
             </div>
           </div>
         )}
