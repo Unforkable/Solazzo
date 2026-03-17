@@ -496,7 +496,7 @@ function WithdrawBanner() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Withdraw failed.";
       if (msg.includes("User rejected") || msg.includes("rejected")) {
-        setWithdrawError("Transaction cancelled.");
+        setWithdrawError("Transaction cancelled — no changes were made.");
       } else {
         setWithdrawError(msg);
       }
@@ -552,7 +552,17 @@ function WithdrawBanner() {
         </button>
       </div>
       {withdrawError && (
-        <p className="text-sm text-red-400 font-body mt-2">{withdrawError}</p>
+        <div className="mt-2 space-y-1">
+          <p className="text-sm text-red-400 font-body">{withdrawError}</p>
+          {withdrawStep === "idle" && (
+            <button
+              onClick={() => { setWithdrawError(null); void handleWithdraw(); }}
+              className="text-xs text-gold hover:text-gold/80 transition-colors cursor-pointer font-body underline underline-offset-2"
+            >
+              Try again
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -1030,7 +1040,7 @@ export default function PortraitStudio() {
       }
       // User rejected wallet prompt
       if (msg.includes("User rejected") || msg.includes("rejected")) {
-        setClaimError("Transaction cancelled.");
+        setClaimError("Transaction cancelled — no changes were made.");
       } else {
         setClaimError(msg);
       }
@@ -1124,7 +1134,7 @@ export default function PortraitStudio() {
         return;
       }
       if (msg.includes("User rejected") || msg.includes("rejected")) {
-        setClaimError("Publish signature cancelled.");
+        setClaimError("Signature cancelled — your slot is still safe.");
       } else {
         setClaimError(msg);
       }
@@ -1941,7 +1951,7 @@ export default function PortraitStudio() {
                     <div className="flex gap-3 justify-center">
                       {(claimError.includes("cancelled") || claimError.includes("rejected")) && (
                         <button
-                          onClick={() => { setClaimError(null); claimAndPublish(); }}
+                          onClick={() => { setClaimError(null); void claimAndPublish(); }}
                           className="btn-gold text-xs py-2 px-4 font-display"
                         >
                           Try Again
@@ -2052,6 +2062,9 @@ export default function PortraitStudio() {
                     >
                       Refresh Publish Status
                     </button>
+                    {claimError && (
+                      <p className="text-red-400 text-xs font-body mt-1">{claimError}</p>
+                    )}
                   </div>
                 )}
               </div>
