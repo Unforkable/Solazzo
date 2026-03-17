@@ -50,6 +50,26 @@ function writeU64LE(dst: Uint8Array, offset: number, value: bigint): void {
   view.setBigUint64(offset, value, true);
 }
 
+function readU16LE(src: Uint8Array, offset: number): number {
+  const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
+  return view.getUint16(offset, true);
+}
+
+function readU32LE(src: Uint8Array, offset: number): number {
+  const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
+  return view.getUint32(offset, true);
+}
+
+function readU64LE(src: Uint8Array, offset: number): bigint {
+  const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
+  return view.getBigUint64(offset, true);
+}
+
+function readI64LE(src: Uint8Array, offset: number): bigint {
+  const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
+  return view.getBigInt64(offset, true);
+}
+
 // ── Account types ─────────────────────────────────────────────────────
 
 export interface SlotAccount {
@@ -124,10 +144,10 @@ export function deserializeSlot(data: Buffer | Uint8Array): SlotAccount {
     throw new Error("Invalid Slot account discriminator");
   }
   return {
-    slotId: buf.readUInt16LE(8),
+    slotId: readU16LE(buf, 8),
     owner: new PublicKey(buf.subarray(10, 42)),
-    lockedLamports: buf.readBigUInt64LE(42),
-    lockStartedAt: buf.readBigInt64LE(50),
+    lockedLamports: readU64LE(buf, 42),
+    lockStartedAt: readI64LE(buf, 50),
     isOccupied: buf[58] === 1,
     bump: buf[59],
   };
@@ -157,15 +177,15 @@ export function deserializeProtocolConfig(
   offset += 32;
   const oracleFeedPubkey = new PublicKey(buf.subarray(offset, offset + 32));
   offset += 32;
-  const slotCount = buf.readUInt16LE(offset);
+  const slotCount = readU16LE(buf, offset);
   offset += 2;
-  const slotsFilled = buf.readUInt16LE(offset);
+  const slotsFilled = readU16LE(buf, offset);
   offset += 2;
-  const minLockLamports = buf.readBigUInt64LE(offset);
+  const minLockLamports = readU64LE(buf, offset);
   offset += 8;
-  const minIncrementLamports = buf.readBigUInt64LE(offset);
+  const minIncrementLamports = readU64LE(buf, offset);
   offset += 8;
-  const displacementFeeLamports = buf.readBigUInt64LE(offset);
+  const displacementFeeLamports = readU64LE(buf, offset);
   offset += 8;
   const isPaused = buf[offset] === 1;
   offset += 1;
@@ -203,16 +223,16 @@ export function deserializeSlotBook(
   let offset = 8;
 
   // locks: Vec<u64> — 4-byte length prefix + N * 8 bytes
-  const locksLen = buf.readUInt32LE(offset);
+  const locksLen = readU32LE(buf, offset);
   offset += 4;
   const locks: bigint[] = [];
   for (let i = 0; i < locksLen; i++) {
-    locks.push(buf.readBigUInt64LE(offset));
+    locks.push(readU64LE(buf, offset));
     offset += 8;
   }
 
   // occupied: Vec<u8> — 4-byte length prefix + N * 1 byte
-  const occupiedLen = buf.readUInt32LE(offset);
+  const occupiedLen = readU32LE(buf, offset);
   offset += 4;
   const occupied: boolean[] = [];
   for (let i = 0; i < occupiedLen; i++) {
@@ -236,8 +256,8 @@ export function deserializeClaimableBalance(
   }
   return {
     owner: new PublicKey(buf.subarray(8, 40)),
-    claimableLamports: buf.readBigUInt64LE(40),
-    lastUpdatedAt: buf.readBigInt64LE(48),
+    claimableLamports: readU64LE(buf, 40),
+    lastUpdatedAt: readI64LE(buf, 48),
     bump: buf[56],
   };
 }
@@ -446,7 +466,7 @@ export function buildClaimUnfilledSlotIx(
       },
     ],
     programId: PROGRAM_ID,
-    data,
+    data: Buffer.from(data),
   });
 }
 
@@ -501,7 +521,7 @@ export function buildDisplaceLowestIx(
       },
     ],
     programId: PROGRAM_ID,
-    data,
+    data: Buffer.from(data),
   });
 }
 
