@@ -376,93 +376,124 @@ export default function PositionsPage() {
                 </span>
               </div>
 
-              {/* Settlement bar */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-[11px] font-body text-muted/50">
-                  <span>Current</span>
-                  <span>Settlement at ${SETTLE_THRESHOLD}</span>
-                </div>
-                <div className="h-2 bg-black/30 border border-gold-dim/10 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-gold-dim to-gold transition-all duration-500"
-                    style={{
-                      width: `${Math.min((pythPrice.price / SETTLE_THRESHOLD) * 100, 100)}%`,
-                    }}
-                  />
-                </div>
-                <p className="text-[10px] text-muted/40 font-body">
-                  Timeout:{" "}
-                  {SETTLE_DEADLINE.toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
+              <p className="text-[11px] text-muted/40 font-body">
+                Unlock condition: SOL reaches ${SETTLE_THRESHOLD} (with protocol rules){" "}
+                <span className="text-foreground/40">or</span> timeout on{" "}
+                {SETTLE_DEADLINE.toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}{" "}
+                UTC.
+              </p>
             </div>
           ) : null}
         </div>
 
         {/* ── What-if Simulator ───────────────────────────────────── */}
-        {pythPrice && (
-          <div className="bg-surface-raised/50 border border-gold-dim/20 p-4 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="font-display text-foreground/80 font-semibold text-xs uppercase tracking-wider">
-                What-if Simulator
-              </p>
-              <span className="text-[10px] text-yellow-400/60 font-body border border-yellow-400/20 px-2 py-0.5">
-                Non-authoritative
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min={1}
-                  max={SETTLE_THRESHOLD}
-                  value={effectiveSimPrice}
-                  onChange={(e) => setSimPrice(Number(e.target.value))}
-                  className="flex-1 accent-[#c9a84c] cursor-pointer"
-                />
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted/40 font-body">$</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={SETTLE_THRESHOLD}
-                    value={effectiveSimPrice}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      if (v >= 1 && v <= SETTLE_THRESHOLD) setSimPrice(v);
-                    }}
-                    className="w-16 bg-black/30 border border-gold-dim/20 text-sm text-foreground/80 font-mono px-2 py-1 text-center focus:outline-none focus:border-gold/50"
-                  />
+        {pythPrice && (() => {
+          const settled = effectiveSimPrice >= SETTLE_THRESHOLD;
+          return (
+            <div className={`border p-4 sm:p-6 transition-all duration-700 ${
+              settled
+                ? "bg-gold/10 border-gold/40 shadow-[0_0_30px_rgba(201,168,76,0.15)]"
+                : "bg-surface-raised/50 border-gold-dim/20"
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 mb-3">
+                <div className="flex items-center gap-2">
+                  <p className={`text-xs font-body uppercase tracking-wider transition-colors duration-500 ${
+                    settled ? "text-gold" : "text-muted/50"
+                  }`}>
+                    {settled ? "Settlement reached" : "What if SOL hits..."}
+                  </p>
+                  <span className="text-[10px] text-yellow-400/60 font-body border border-yellow-400/20 px-2 py-0.5">
+                    Non-authoritative
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <span className={`text-lg sm:text-xl font-display font-bold transition-colors duration-500 ${
+                    settled ? "text-gold animate-shimmer" : "text-foreground"
+                  }`}>
+                    ${effectiveSimPrice}
+                  </span>
+                  <span className={`text-xs sm:text-sm font-display transition-colors duration-500 ${
+                    settled ? "text-gold-bright" : "text-gold"
+                  }`}>
+                    {settled ? "Settled" : `Stage ${currentStage}/5`}
+                  </span>
+                  {Math.abs(effectiveSimPrice - Math.round(pythPrice.price)) > 5 && (
+                    <button
+                      onClick={() => setSimPrice(Math.round(pythPrice.price))}
+                      className="text-[10px] text-muted/40 font-body border border-gold-dim/20 px-2 py-0.5 hover:text-gold hover:border-gold/50 transition-colors cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="flex gap-6 text-sm font-body">
-                <p className="text-muted/70">
-                  Simulated price:{" "}
-                  <span className="text-foreground/80 font-semibold">
-                    ${effectiveSimPrice}
-                  </span>
-                </p>
-                <p className="text-muted/70">
-                  Portrait stage:{" "}
-                  <span className="text-gold font-semibold">
-                    {currentStage}/5
-                  </span>
-                </p>
-                {effectiveSimPrice >= SETTLE_THRESHOLD && (
-                  <p className="text-green-400 font-semibold">
-                    Settlement triggered
-                  </p>
-                )}
+              {/* Slider track with $1k marker */}
+              <div className="relative">
+                <input
+                  type="range"
+                  min={0}
+                  max={1200}
+                  step={1}
+                  value={effectiveSimPrice}
+                  onChange={(e) => setSimPrice(Number(e.target.value))}
+                  className={`w-full h-1.5 appearance-none cursor-pointer outline-none transition-all duration-500 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer ${
+                    settled
+                      ? "bg-gold/30 [&::-webkit-slider-thumb]:bg-gold-bright [&::-webkit-slider-thumb]:shadow-[0_0_12px_rgba(226,201,126,0.6)] [&::-moz-range-thumb]:bg-gold-bright"
+                      : "bg-gold-dim/30 [&::-webkit-slider-thumb]:bg-gold [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(201,168,76,0.4)] [&::-moz-range-thumb]:bg-gold"
+                  }`}
+                />
+                {/* $1,000 milestone marker */}
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ left: `${(1000 / 1200) * 100}%` }}
+                >
+                  <div className={`w-px h-4 transition-colors duration-500 ${
+                    settled ? "bg-gold" : "bg-gold-dim/50"
+                  }`} />
+                </div>
               </div>
 
+              {/* Scale labels */}
+              <div className="relative mt-1.5 h-4">
+                {[
+                  { price: 0, label: "$0" },
+                  { price: 200, label: "$200" },
+                  { price: 400, label: "$400" },
+                  { price: 600, label: "$600" },
+                  { price: 800, label: "$800" },
+                  { price: 1000, label: "$1k" },
+                  { price: 1200, label: "$1.2k" },
+                ].map(({ price, label }, i, arr) => (
+                  <span
+                    key={price}
+                    className={`absolute font-body transition-colors duration-500 ${
+                      price === 1000
+                        ? `text-[11px] font-medium ${settled ? "text-gold" : "text-gold-dim"}`
+                        : "text-[10px] text-muted/40"
+                    }`}
+                    style={{
+                      left: `${(price / 1200) * 100}%`,
+                      transform:
+                        i === 0
+                          ? "none"
+                          : i === arr.length - 1
+                            ? "translateX(-100%)"
+                            : "translateX(-50%)",
+                    }}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+
+              {/* Position value summary */}
               {positions.length > 0 && (
-                <div className="flex gap-6 text-sm font-body">
+                <div className="flex flex-wrap gap-6 text-sm font-body mt-3">
                   <p className="text-muted/70">
                     Total locked:{" "}
                     <span className="text-foreground/80">{totalSol} SOL</span>
@@ -480,15 +511,24 @@ export default function PositionsPage() {
                 </div>
               )}
 
-              <button
-                onClick={() => setSimPrice(Math.round(pythPrice.price))}
-                className="text-[11px] text-muted/40 hover:text-gold transition-colors cursor-pointer font-body"
-              >
-                Reset to live price
-              </button>
+              {/* Simulated claim CTA */}
+              {positions.length > 0 && settled && (
+                <div className="mt-4 pt-4 border-t border-gold/30 animate-fade-in">
+                  <button
+                    type="button"
+                    className="w-full btn-gold font-display tracking-wide text-sm py-3 opacity-90 cursor-default"
+                  >
+                    Claim SOL (Simulation) &mdash; {totalSol.toFixed(1)} SOL
+                  </button>
+                  <p className="mt-2 text-[11px] text-yellow-300/70 font-body">
+                    Simulation only. Real claim activates when the live protocol
+                    settlement conditions are met on-chain.
+                  </p>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── Positions Summary ───────────────────────────────────── */}
         {error && (
