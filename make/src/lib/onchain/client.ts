@@ -411,6 +411,59 @@ export function validateDisplacementInputs(
   return { valid: true };
 }
 
+// ── Wallet positions ─────────────────────────────────────────────────
+
+export interface WalletPosition {
+  slotId: number;
+  lockedLamports: bigint;
+  lockStartedAt: bigint;
+}
+
+/**
+ * Fetch all slot positions owned by a given wallet.
+ * Strategy: read SlotBook to find occupied indices, batch-fetch their
+ * Slot PDAs via getMultipleAccountsInfo, filter by owner.
+ */
+export async function fetchWalletPositions(
+  connection: Connection,
+  wallet: PublicKey,
+): Promise<WalletPosition[]> {
+  const slotBook = await fetchSlotBook(connection);
+
+  const occupiedIndices: number[] = [];
+  for (let i = 0; i < slotBook.occupied.length; i++) {
+    if (slotBook.occupied[i]) occupiedIndices.push(i);
+  }
+
+  if (occupiedIndices.length === 0) return [];
+
+  // Derive PDAs for all occupied slots
+  const pdas = occupiedIndices.map((id) => getSlotPDA(id)[0]);
+
+  // Batch fetch (getMultipleAccountsInfo max 100 per call)
+  const BATCH = 100;
+  const positions: WalletPosition[] = [];
+
+  for (let i = 0; i < pdas.length; i += BATCH) {
+    const batch = pdas.slice(i, i + BATCH);
+    const accounts = await connection.getMultipleAccountsInfo(batch);
+    for (let j = 0; j < accounts.length; j++) {
+      const acct = accounts[j];
+      if (!acct) continue;
+      const slot = deserializeSlot(acct.data);
+      if (slot.isOccupied && slot.owner.equals(wallet)) {
+        positions.push({
+          slotId: slot.slotId,
+          lockedLamports: slot.lockedLamports,
+          lockStartedAt: slot.lockStartedAt,
+        });
+      }
+    }
+  }
+
+  return positions.sort((a, b) => a.slotId - b.slotId);
+}
+
 // ── Instruction builders ──────────────────────────────────────────────
 
 /** Build init_claimable_balance instruction. */
