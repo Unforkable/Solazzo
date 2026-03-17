@@ -2,6 +2,8 @@ import type { TraitManifest } from "./traits/types";
 
 const STORAGE_KEY = "solazzo-portraits";
 const CLAIM_META_KEY = "solazzo-claim-meta";
+const CLAIM_HISTORY_KEY = "solazzo-claim-history";
+const MAX_CLAIM_HISTORY = 20;
 
 export interface LockedPortraitSet {
   portraits: string[]; // 5 data URLs
@@ -80,5 +82,70 @@ export function loadClaimMeta(): ClaimMeta | null {
     return data;
   } catch {
     return null;
+  }
+}
+
+// ── Claim history ──────────────────────────────────────────────────
+
+export interface ClaimHistoryEntry {
+  wallet: string;
+  slotId: number;
+  lockSol: number;
+  claimTxSig: string;
+  publishStatus: "published" | "local-only";
+  timestamp: number;
+}
+
+export function saveClaimToHistory(meta: ClaimMeta): void {
+  try {
+    const history = loadClaimHistory();
+    // Dedupe by claimTxSig
+    const exists = history.some((h) => h.claimTxSig === meta.claimTxSig);
+    if (exists) {
+      // Update publish status if changed
+      const updated = history.map((h) =>
+        h.claimTxSig === meta.claimTxSig
+          ? { ...h, publishStatus: meta.publishStatus }
+          : h,
+      );
+      localStorage.setItem(CLAIM_HISTORY_KEY, JSON.stringify(updated));
+      return;
+    }
+    const entry: ClaimHistoryEntry = {
+      ...meta,
+      timestamp: Date.now(),
+    };
+    const updated = [entry, ...history].slice(0, MAX_CLAIM_HISTORY);
+    localStorage.setItem(CLAIM_HISTORY_KEY, JSON.stringify(updated));
+  } catch {
+    // fail silently
+  }
+}
+
+export function loadClaimHistory(): ClaimHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(CLAIM_HISTORY_KEY);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data)) return [];
+    return data.filter(
+      (h: unknown): h is ClaimHistoryEntry =>
+        typeof h === "object" &&
+        h !== null &&
+        typeof (h as ClaimHistoryEntry).wallet === "string" &&
+        typeof (h as ClaimHistoryEntry).slotId === "number" &&
+        typeof (h as ClaimHistoryEntry).claimTxSig === "string" &&
+        typeof (h as ClaimHistoryEntry).timestamp === "number",
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function clearClaimHistory(): void {
+  try {
+    localStorage.removeItem(CLAIM_HISTORY_KEY);
+  } catch {
+    // fail silently
   }
 }

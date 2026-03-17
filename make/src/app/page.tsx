@@ -10,7 +10,17 @@ import { Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import { STAGE_NAMES, STAGE_PRICES, type StageNumber } from "@/lib/prompt";
 import type { TraitManifest, TraitRoll } from "@/lib/traits/types";
-import { savePortraits, loadPortraits, clearPortraits, saveClaimMeta, loadClaimMeta, type ClaimMeta } from "@/lib/storage";
+import {
+  savePortraits,
+  loadPortraits,
+  clearPortraits,
+  saveClaimMeta,
+  loadClaimMeta,
+  saveClaimToHistory,
+  loadClaimHistory,
+  type ClaimMeta,
+  type ClaimHistoryEntry,
+} from "@/lib/storage";
 import {
   isSlotOccupied,
   hasClaimableBalance,
@@ -654,6 +664,8 @@ export default function PortraitStudio() {
   const [claimTxSig, setClaimTxSig] = useState<string | null>(null);
   const [claimMeta, setClaimMeta] = useState<ClaimMeta | null>(null);
   const [retryPublishStep, setRetryPublishStep] = useState<"idle" | "authorizing" | "publishing">("idle");
+  const [claimHistory, setClaimHistory] = useState<ClaimHistoryEntry[]>([]);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const compressedRef = useRef<Blob | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -663,6 +675,13 @@ export default function PortraitStudio() {
   const { publicKey, connected, sendTransaction, signMessage } = useWallet();
   const { setVisible: openWalletModal } = useWalletModal();
   const { connection } = useConnection();
+
+  const persistClaim = useCallback((meta: ClaimMeta) => {
+    saveClaimMeta(meta);
+    saveClaimToHistory(meta);
+    setClaimMeta(meta);
+    setClaimHistory(loadClaimHistory());
+  }, []);
 
   const postJsonWithTimeout = useCallback(
     async (url: string, payload: unknown, timeoutMs: number): Promise<Response> => {
@@ -707,13 +726,12 @@ export default function PortraitStudio() {
       );
       if (!hit?.id) return null;
       const updated: ClaimMeta = { ...meta, publishStatus: "published" };
-      saveClaimMeta(updated);
-      setClaimMeta(updated);
+      persistClaim(updated);
       return hit.id;
     } catch {
       return null;
     }
-  }, []);
+  }, [persistClaim]);
 
   // Auto-advance focused stage to whichever is currently generating
   useEffect(() => {
@@ -744,6 +762,7 @@ export default function PortraitStudio() {
   }, []);
 
   useEffect(() => {
+    setClaimHistory(loadClaimHistory());
     const saved = loadPortraits();
     if (saved) {
       setPortraits(saved.portraits);
@@ -1041,8 +1060,7 @@ export default function PortraitStudio() {
         } else {
           const errData = await res.json().catch(() => ({ error: "Gallery publish failed." }));
           const meta: ClaimMeta = { wallet: walletAddr, slotId: targetSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus: "local-only" };
-          saveClaimMeta(meta);
-          setClaimMeta(meta);
+          persistClaim(meta);
           setPortraits(compressed);
           setClaimError(`Slot claimed on-chain but gallery publish failed: ${errData.error}`);
           setAppStage("locked");
@@ -1052,8 +1070,7 @@ export default function PortraitStudio() {
       } catch (pubErr) {
         console.warn("Publish failed:", pubErr);
         const meta: ClaimMeta = { wallet: walletAddr, slotId: targetSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus: "local-only" };
-        saveClaimMeta(meta);
-        setClaimMeta(meta);
+        persistClaim(meta);
         setPortraits(compressed);
         setClaimError("Slot claimed on-chain but gallery publish failed. Your collection is saved locally.");
         setAppStage("locked");
@@ -1084,8 +1101,7 @@ export default function PortraitStudio() {
       // 10. Persist claim metadata & redirect
       const publishStatus = galleryId ? "published" : "local-only";
       const meta: ClaimMeta = { wallet: walletAddr, slotId: targetSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus };
-      saveClaimMeta(meta);
-      setClaimMeta(meta);
+      persistClaim(meta);
 
       setClaimStep("idle");
       if (galleryId) {
@@ -1109,7 +1125,7 @@ export default function PortraitStudio() {
       }
       setClaimStep("idle");
     }
-  }, [publicKey, sendTransaction, signMessage, connection, portraits, traitManifests, assignedSlotId, lockAmount, claimStep, router, refreshAssignedSlot, postJsonWithTimeout]);
+  }, [publicKey, sendTransaction, signMessage, connection, portraits, traitManifests, assignedSlotId, lockAmount, claimStep, router, refreshAssignedSlot, postJsonWithTimeout, persistClaim]);
 
   const retryPublishLocalOnly = useCallback(async () => {
     if (!claimMeta || claimMeta.publishStatus !== "local-only") return;
@@ -1183,8 +1199,7 @@ export default function PortraitStudio() {
 
       const data = await res.json();
       const updated: ClaimMeta = { ...claimMeta, publishStatus: "published" };
-      saveClaimMeta(updated);
-      setClaimMeta(updated);
+      persistClaim(updated);
       setRetryPublishStep("idle");
       if (data?.id) {
         router.push(`/gallery?new=${data.id}`);
@@ -1203,9 +1218,10 @@ export default function PortraitStudio() {
       }
       setRetryPublishStep("idle");
     }
-  }, [claimMeta, publicKey, connected, signMessage, portraits, traitManifests, router, postJsonWithTimeout, reconcileLocalOnlyPublish]);
+  }, [claimMeta, publicKey, connected, signMessage, portraits, traitManifests, router, postJsonWithTimeout, reconcileLocalOnlyPublish, persistClaim]);
 
-  const reset = useCallback(() => {
+  // Reset generation state but preserve claim history
+  const resetGenerationState = useCallback(() => {
     clearPortraits();
     setPortraits([null, null, null, null, null]);
     setTraitManifests([null, null, null, null, null]);
@@ -1214,10 +1230,27 @@ export default function PortraitStudio() {
     setPreviewUrl(null);
     setError(null);
     setClaimMeta(null);
+    setClaimStep("idle");
+    setClaimError(null);
+    setClaimTxSig(null);
+    setAssignedSlotId(null);
+    setLockAmount(1);
+    setCustomAmount("");
+    setRetryPublishStep("idle");
+    setConfirmReset(false);
     compressedRef.current = null;
-    setAppStage("intro");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
+
+  const reset = useCallback(() => {
+    resetGenerationState();
+    setAppStage("intro");
+  }, [resetGenerationState]);
+
+  const claimAnother = useCallback(() => {
+    resetGenerationState();
+    setAppStage("capture");
+  }, [resetGenerationState]);
 
   const repick = useCallback(() => {
     setPreviewUrl(null);
@@ -1805,6 +1838,24 @@ export default function PortraitStudio() {
               </p>
             </div>
 
+            {/* Multi-slot info + history summary */}
+            {connected && claimHistory.length > 0 && (
+              <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-4 max-w-md mx-auto">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-foreground/50 font-body">
+                    You have {claimHistory.length} previous claim{claimHistory.length > 1 ? "s" : ""}.
+                    You can claim multiple slots over time.
+                  </p>
+                  <Link
+                    href="/positions"
+                    className="text-xs text-gold hover:text-gold-bright transition-colors font-body flex-shrink-0 ml-3"
+                  >
+                    My Positions &rarr;
+                  </Link>
+                </div>
+              </div>
+            )}
+
             {/* Portrait preview strip */}
             <div className="flex gap-2 justify-center">
               {ALL_STAGES.map((stage) => {
@@ -2313,6 +2364,66 @@ export default function PortraitStudio() {
               })}
             </div>
 
+            {/* ── Claim Another CTA ── */}
+            <div className="bg-surface-raised/50 border border-gold-dim/20 p-4 sm:p-6 text-center space-y-3">
+              <p className="text-sm text-foreground/60 font-body">
+                You can claim multiple slots over time.
+              </p>
+              <button
+                onClick={claimAnother}
+                className="btn-gold font-display tracking-wide text-base py-3 px-8 cursor-pointer"
+              >
+                Claim Another Slot
+              </button>
+            </div>
+
+            {/* ── Claim History ── */}
+            {claimHistory.length > 1 && (
+              <div className="bg-surface-raised/50 border border-gold-dim/20 p-4 sm:p-6">
+                <p className="font-display text-foreground/80 font-semibold text-xs uppercase tracking-wider mb-3">
+                  Claim History
+                </p>
+                <div className="space-y-1.5">
+                  {claimHistory.slice(0, 5).map((entry) => {
+                    const isCurrent = claimMeta?.claimTxSig === entry.claimTxSig;
+                    const walletMismatch = connected && publicKey && publicKey.toBase58() !== entry.wallet;
+                    return (
+                      <div
+                        key={entry.claimTxSig}
+                        className={`flex items-center justify-between px-3 py-2 border ${
+                          isCurrent
+                            ? "bg-gold/5 border-gold-dim/30"
+                            : "bg-black/20 border-gold-dim/10"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-display font-bold text-gold">
+                            #{entry.slotId}
+                          </span>
+                          <span className="text-xs text-muted/60 font-body">
+                            {entry.lockSol} SOL
+                          </span>
+                          <span className={`text-[10px] font-body ${
+                            entry.publishStatus === "published" ? "text-green-400/70" : "text-yellow-400/70"
+                          }`}>
+                            {entry.publishStatus === "published" ? "Published" : "Local Only"}
+                          </span>
+                          {walletMismatch && (
+                            <span className="text-[10px] text-yellow-400/50 font-body">
+                              (different wallet)
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-muted/40 font-body">
+                          {new Date(entry.timestamp).toLocaleDateString()}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-center gap-6">
               <Link
                 href="/gallery"
@@ -2320,12 +2431,36 @@ export default function PortraitStudio() {
               >
                 Browse Gallery
               </Link>
-              <button
-                onClick={reset}
-                className="text-sm text-muted/50 hover:text-red-400 transition-colors cursor-pointer min-h-[44px] font-body"
+              <Link
+                href="/positions"
+                className="text-sm text-muted/50 hover:text-gold transition-colors min-h-[44px] inline-flex items-center font-body"
               >
-                Start Over
-              </button>
+                My Positions
+              </Link>
+              {!confirmReset ? (
+                <button
+                  onClick={() => setConfirmReset(true)}
+                  className="text-sm text-muted/50 hover:text-red-400 transition-colors cursor-pointer min-h-[44px] font-body"
+                >
+                  Start Over
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-red-400 font-body">Clear portraits?</span>
+                  <button
+                    onClick={reset}
+                    className="text-xs text-red-400 hover:text-red-300 border border-red-500/30 px-2 py-1 cursor-pointer font-body"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={() => setConfirmReset(false)}
+                    className="text-xs text-muted/50 hover:text-foreground cursor-pointer font-body"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
