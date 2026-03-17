@@ -570,23 +570,21 @@ function WithdrawBanner() {
   );
 }
 
-function WalletPositions({ onClaimCta }: { onClaimCta?: () => void }) {
+function WalletPositions() {
   const { publicKey, connected } = useWallet();
   const { connection } = useConnection();
 
   const [positions, setPositions] = useState<WalletPosition[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!publicKey || !connected) return;
     setLoading(true);
-    setError(null);
     try {
       const result = await fetchWalletPositions(connection, publicKey);
       setPositions(result);
     } catch {
-      setError("Failed to load positions.");
+      // non-critical
     } finally {
       setLoading(false);
     }
@@ -602,77 +600,31 @@ function WalletPositions({ onClaimCta }: { onClaimCta?: () => void }) {
   const totalSol = Number(totalLocked) / SOL_DECIMALS;
 
   return (
-    <div className="bg-surface-raised/50 border border-gold-dim/20 p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-4">
+      <div className="flex items-center justify-between">
         <p className="font-display text-foreground/80 font-semibold text-xs uppercase tracking-wider">
           My Positions
         </p>
-        <button
-          onClick={() => void load()}
-          disabled={loading}
-          className="text-xs text-muted/60 hover:text-gold transition-colors font-body disabled:opacity-50 cursor-pointer"
+        <Link
+          href="/positions"
+          className="text-xs text-gold hover:text-gold-bright transition-colors font-body"
         >
-          {loading ? "Loading..." : "Refresh"}
-        </button>
+          View all &rarr;
+        </Link>
       </div>
 
-      {error && (
-        <p className="text-red-400 text-xs font-body mb-3">{error}</p>
-      )}
-
       {loading && positions.length === 0 ? (
-        <div className="text-center py-6">
-          <p className="text-sm text-muted/50 font-body">Loading positions...</p>
-        </div>
+        <p className="text-xs text-muted/50 font-body mt-2">Loading...</p>
       ) : positions.length === 0 ? (
-        <div className="text-center py-6 space-y-3">
-          <p className="text-sm text-muted/50 font-body">No positions yet</p>
-          {onClaimCta && (
-            <button
-              onClick={onClaimCta}
-              className="btn-gold font-display tracking-wide text-sm py-2 px-6 cursor-pointer"
-            >
-              Claim a Slot
-            </button>
-          )}
-        </div>
+        <p className="text-xs text-muted/50 font-body mt-2">No positions yet</p>
       ) : (
-        <div className="space-y-3">
-          {/* Totals */}
-          <div className="flex gap-6 text-sm font-body">
-            <p className="text-muted/70">
-              Slots: <span className="text-foreground/80 font-semibold">{positions.length}</span>
-            </p>
-            <p className="text-muted/70">
-              Total locked: <span className="text-gold font-semibold">{totalSol} SOL</span>
-            </p>
-          </div>
-
-          {/* Slot list */}
-          <div className="space-y-1">
-            {positions.map((pos) => {
-              const sol = Number(pos.lockedLamports) / SOL_DECIMALS;
-              const lockDate = pos.lockStartedAt > BigInt(0)
-                ? new Date(Number(pos.lockStartedAt) * 1000).toLocaleDateString()
-                : null;
-              return (
-                <div
-                  key={pos.slotId}
-                  className="flex items-center justify-between bg-black/20 border border-gold-dim/10 px-3 py-2"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-display font-bold text-gold">#{pos.slotId}</span>
-                    <span className="text-xs text-muted/60 font-body">{sol} SOL</span>
-                  </div>
-                  {lockDate && (
-                    <span className="text-[11px] text-muted/40 font-body">
-                      Locked {lockDate}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+        <div className="flex gap-6 text-sm font-body mt-2">
+          <p className="text-muted/70">
+            Slots: <span className="text-foreground/80 font-semibold">{positions.length}</span>
+          </p>
+          <p className="text-muted/70">
+            Locked: <span className="text-gold font-semibold">{totalSol} SOL</span>
+          </p>
         </div>
       )}
     </div>
@@ -1447,6 +1399,17 @@ export default function PortraitStudio() {
               >
                 Browse the Gallery
               </Link>
+
+              {connected && (
+                <div className="flex gap-4 mt-2">
+                  <Link
+                    href="/positions"
+                    className="text-sm text-foreground/40 hover:text-gold transition-colors font-body"
+                  >
+                    View Positions
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         )}
