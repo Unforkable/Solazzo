@@ -22,19 +22,48 @@ export async function upsertNotifySubscriber(
 ): Promise<{ key: string; updatedAt: number }> {
   const now = Date.now();
   const key = keyForEmail(subscriber.email);
+  const prefix = `notify-subscribers/${key}`;
+
+  // Preserve createdAt from existing record
+  let createdAt = now;
+  try {
+    const { blobs } = await list({ prefix });
+    const existing = blobs.filter((b) => b.pathname.endsWith(".json"));
+    if (existing.length > 0) {
+      const results = await Promise.allSettled(
+        existing.map(async (blob) => {
+          const res = await fetch(blob.url);
+          if (!res.ok) throw new Error(`Failed to fetch ${blob.pathname}`);
+          return (await res.json()) as NotifySubscriber;
+        }),
+      );
+      const latest = results
+        .filter(
+          (r): r is PromiseFulfilledResult<NotifySubscriber> =>
+            r.status === "fulfilled",
+        )
+        .map((r) => r.value)
+        .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      if (latest?.createdAt) {
+        createdAt = latest.createdAt;
+      }
+    }
+  } catch {
+    // First subscription or blob read failed — use now
+  }
 
   const payload: NotifySubscriber = {
     ...subscriber,
     source: "web",
-    createdAt: now,
+    createdAt,
     updatedAt: now,
   };
 
-  await put(`notify-subscribers/${key}.json`, JSON.stringify(payload), {
-    access: "private",
+  // Write immutable subscriber snapshots to avoid overwrite mode issues.
+  await put(`${prefix}-${now}.json`, JSON.stringify(payload), {
+    access: "public",
     contentType: "application/json",
     addRandomSuffix: false,
-    allowOverwrite: true,
   });
 
   return { key, updatedAt: now };
@@ -47,16 +76,28 @@ export async function listNotifySubscribers(): Promise<NotifySubscriber[]> {
     blobs
       .filter((b) => b.pathname.endsWith(".json"))
       .map(async (blob) => {
-        const res = await fetch(blob.downloadUrl);
+        const res = await fetch(blob.url);
         if (!res.ok) throw new Error(`Failed to fetch ${blob.pathname}`);
         return (await res.json()) as NotifySubscriber;
       }),
   );
 
-  return results
+  const subscribers = results
     .filter(
       (r): r is PromiseFulfilledResult<NotifySubscriber> =>
         r.status === "fulfilled",
     )
     .map((r) => r.value);
+
+  // Keep only latest preference state per normalized email.
+  const latestByEmail = new Map<string, NotifySubscriber>();
+  for (const sub of subscribers) {
+    const emailKey = sub.email.trim().toLowerCase();
+    const existing = latestByEmail.get(emailKey);
+    if (!existing || sub.updatedAt > existing.updatedAt) {
+      latestByEmail.set(emailKey, sub);
+    }
+  }
+
+  return Array.from(latestByEmail.values());
 }

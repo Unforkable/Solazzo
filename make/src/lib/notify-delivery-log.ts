@@ -19,7 +19,7 @@ export async function markDelivery(
   payload: { email: string; subject: string; sentAt: number },
 ): Promise<void> {
   await put(`${PREFIX}${eventKey}.json`, JSON.stringify(payload), {
-    access: "private",
+    access: "public",
     contentType: "application/json",
     addRandomSuffix: false,
     allowOverwrite: false,
