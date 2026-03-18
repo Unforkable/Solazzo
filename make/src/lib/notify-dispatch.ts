@@ -9,6 +9,7 @@ import {
 } from "./onchain/client";
 import { SOLANA_RPC_URL, SOL_DECIMALS } from "./onchain/constants";
 import { createNotifyToken } from "./notify-token";
+import { buildLaunchCopy, buildReplacedCopy, buildClaimableCopy } from "./notify-copy";
 
 // ── Result types ─────────────────────────────────────────────────────
 
@@ -56,45 +57,17 @@ function emailFooter(email: string): { html: string; text: string } {
   };
 }
 
-// ── Email templates ──────────────────────────────────────────────────
+// ── Email composition ────────────────────────────────────────────────
 
-function launchEmail(recipientEmail: string): { subject: string; html: string; text: string } {
+function composeEmail(
+  recipientEmail: string,
+  copy: { subject: string; htmlBody: string; textBody: string },
+): { subject: string; html: string; text: string } {
   const footer = emailFooter(recipientEmail);
   return {
-    subject: "Solazzo is live",
-    html: `<p>The Solazzo Portrait Studio is now live.</p>
-<p>Lock your SOL, get painted into five Baroque oil portraits, and join the collection.</p>
-<p><a href="https://make.solazzo.fun">Open Studio</a></p>${footer.html}`,
-    text: `Solazzo is live.\n\nLock your SOL, get painted into five Baroque oil portraits, and join the collection.\n\nhttps://make.solazzo.fun${footer.text}`,
-  };
-}
-
-function replacedEmail(slotId: number, recipientEmail: string): {
-  subject: string;
-  html: string;
-  text: string;
-} {
-  const footer = emailFooter(recipientEmail);
-  return {
-    subject: `Your Solazzo slot #${slotId} was displaced`,
-    html: `<p>Your slot <strong>#${slotId}</strong> has been displaced by a higher-conviction holder.</p>
-<p>Your full SOL principal is available for withdrawal.</p>
-<p><a href="https://make.solazzo.fun/positions">View Positions</a> &middot; <a href="https://make.solazzo.fun/gallery">Gallery</a></p>${footer.html}`,
-    text: `Your Solazzo slot #${slotId} was displaced by a higher-conviction holder.\n\nYour full SOL principal is available for withdrawal.\n\nhttps://make.solazzo.fun/positions${footer.text}`,
-  };
-}
-
-function claimableEmail(solAmount: number, recipientEmail: string): {
-  subject: string;
-  html: string;
-  text: string;
-} {
-  const footer = emailFooter(recipientEmail);
-  return {
-    subject: `${solAmount} SOL claimable on Solazzo`,
-    html: `<p>You have <strong>${solAmount} SOL</strong> available to withdraw on Solazzo.</p>
-<p><a href="https://make.solazzo.fun/positions">Withdraw now</a></p>${footer.html}`,
-    text: `You have ${solAmount} SOL available to withdraw on Solazzo.\n\nhttps://make.solazzo.fun/positions${footer.text}`,
+    subject: copy.subject,
+    html: `${copy.htmlBody}${footer.html}`,
+    text: `${copy.textBody}${footer.text}`,
   };
 }
 
@@ -138,7 +111,7 @@ export async function runDispatch(): Promise<DispatchResult> {
         if (await hasDelivery(key)) {
           result.skipped++;
         } else {
-          const email = launchEmail(sub.email);
+          const email = composeEmail(sub.email, buildLaunchCopy());
           await sendEmail({ to: sub.email, ...email });
           await markDelivery(key, {
             email: sub.email,
@@ -187,7 +160,7 @@ export async function runDispatch(): Promise<DispatchResult> {
             if (await hasDelivery(key)) {
               result.skipped++;
             } else {
-              const email = replacedEmail(slotId, sub.email);
+              const email = composeEmail(sub.email, buildReplacedCopy(slotId));
               await sendEmail({ to: sub.email, ...email });
               await markDelivery(key, {
                 email: sub.email,
@@ -228,9 +201,9 @@ export async function runDispatch(): Promise<DispatchResult> {
             result.skipped++;
           } else {
             const solAmount = Number(cb.claimableLamports) / SOL_DECIMALS;
-            const email = claimableEmail(
-              parseFloat(solAmount.toFixed(4)),
+            const email = composeEmail(
               sub.email,
+              buildClaimableCopy(parseFloat(solAmount.toFixed(4))),
             );
             await sendEmail({ to: sub.email, ...email });
             await markDelivery(key, {
