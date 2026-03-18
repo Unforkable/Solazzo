@@ -32,6 +32,7 @@ import {
   type WalletPosition,
 } from "@/lib/onchain/client";
 import { MIN_LOCK_SOL, MAX_SLOT_ID, SOL_DECIMALS } from "@/lib/onchain/constants";
+import { NotificationSignup } from "@/components/notification-signup";
 
 type AppStage = "intro" | "capture" | "preview" | "gallery" | "commit" | "locked";
 type CaptureMode = "upload" | "camera";
@@ -1443,6 +1444,10 @@ export default function PortraitStudio() {
                   </Link>
                 </div>
               )}
+
+              <div className="w-full max-w-md mt-2">
+                <NotificationSignup />
+              </div>
             </div>
           </div>
         )}

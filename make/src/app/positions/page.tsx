@@ -11,6 +11,7 @@ import {
 } from "@/lib/onchain/client";
 import { SOL_DECIMALS } from "@/lib/onchain/constants";
 import { loadClaimMeta, loadPortraits } from "@/lib/storage";
+import { NotificationSignup } from "@/components/notification-signup";
 
 // ── Pyth SOL/USD feed (Hermes REST API) ──────────────────────────────
 
@@ -282,6 +283,7 @@ export default function PositionsPage() {
               &larr; Back to Studio
             </Link>
           </div>
+          <NotificationSignup title="Get Notified" />
         </div>
       </main>
     );
@@ -328,6 +330,8 @@ export default function PositionsPage() {
             </Link>
           </div>
         </div>
+
+        <NotificationSignup title="Notification Preferences" />
 
         {/* ── Pyth Price Panel ────────────────────────────────────── */}
         <div className="bg-surface-raised border border-gold-dim/20 p-4 sm:p-6 space-y-4">

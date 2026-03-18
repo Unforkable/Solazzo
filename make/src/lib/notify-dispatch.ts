@@ -21,8 +21,8 @@ export interface DispatchResult {
 
 // ── Idempotency key helpers ──────────────────────────────────────────
 
-function launchKey(email: string): string {
-  return `launch-v1__${email}`;
+function launchKey(campaignId: string, email: string): string {
+  return `${campaignId}__${email}`;
 }
 
 function replacedKey(wallet: string, slotId: number): string {
@@ -101,13 +101,21 @@ export async function runDispatch(): Promise<DispatchResult> {
     result.details.push("warn: failed to fetch gallery collections");
   }
 
+  // Launch campaign gating
+  const launchEnabled = process.env.NOTIFY_LAUNCH_ENABLED === "true";
+  const campaignId = process.env.NOTIFY_LAUNCH_CAMPAIGN || "launch-v1";
+
+  if (!launchEnabled) {
+    result.details.push(`info: launch notifications disabled (campaign=${campaignId})`);
+  }
+
   for (const sub of subscribers) {
     result.processed++;
 
     // A) Launch notification
-    if (sub.notifyLaunch) {
+    if (sub.notifyLaunch && launchEnabled) {
       try {
-        const key = launchKey(sub.email);
+        const key = launchKey(campaignId, sub.email);
         if (await hasDelivery(key)) {
           result.skipped++;
         } else {
