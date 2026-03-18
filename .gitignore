@@ -4,3 +4,10 @@ node_modules/
 *.zip
 .vercel
 .env.local
+
+# Local build and test artifacts
+make/tsconfig.tsbuildinfo
+make/test-output/
+make/tsx
+make/solazzo-make@0.1.0
+test-ledger/
