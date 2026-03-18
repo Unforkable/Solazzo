@@ -104,3 +104,87 @@ export async function listNotifySubscribers(): Promise<NotifySubscriber[]> {
 
   return Array.from(latestByEmail.values());
 }
+
+export async function getNotifySubscriberByEmail(
+  email: string,
+): Promise<NotifySubscriber | null> {
+  const key = keyForEmail(email);
+  const prefix = `notify-subscribers/${key}`;
+
+  const { blobs } = await list({ prefix, ...notifyListOptions() });
+  const jsonBlobs = blobs.filter((b) => b.pathname.endsWith(".json"));
+  if (jsonBlobs.length === 0) return null;
+
+  const results = await Promise.allSettled(
+    jsonBlobs.map(async (blob) => {
+      const res = await fetch(blob.downloadUrl ?? blob.url, {
+        headers: notifyReadHeaders(),
+      });
+      if (!res.ok) throw new Error(`Failed to fetch ${blob.pathname}`);
+      return (await res.json()) as NotifySubscriber;
+    }),
+  );
+
+  const subs = results
+    .filter(
+      (r): r is PromiseFulfilledResult<NotifySubscriber> =>
+        r.status === "fulfilled",
+    )
+    .map((r) => r.value)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  return subs[0] ?? null;
+}
+
+export async function updateNotifyPreferencesByEmail(
+  email: string,
+  patch: Partial<Pick<NotifySubscriber, "notifyLaunch" | "notifyReplaced" | "notifyClaimable" | "wallet">>,
+): Promise<{ updatedAt: number }> {
+  const existing = await getNotifySubscriberByEmail(email);
+  if (!existing) {
+    throw new Error("Subscriber not found");
+  }
+
+  const now = Date.now();
+  const key = keyForEmail(email);
+  const prefix = `notify-subscribers/${key}`;
+
+  const payload: NotifySubscriber = {
+    ...existing,
+    ...patch,
+    updatedAt: now,
+  };
+
+  await put(`${prefix}-${now}.json`, JSON.stringify(payload), {
+    ...notifyPutOptions(),
+  });
+
+  return { updatedAt: now };
+}
+
+export async function unsubscribeByEmail(
+  email: string,
+): Promise<{ updatedAt: number }> {
+  const existing = await getNotifySubscriberByEmail(email);
+  if (!existing) {
+    throw new Error("Subscriber not found");
+  }
+
+  const now = Date.now();
+  const key = keyForEmail(email);
+  const prefix = `notify-subscribers/${key}`;
+
+  const payload: NotifySubscriber = {
+    ...existing,
+    notifyLaunch: false,
+    notifyReplaced: false,
+    notifyClaimable: false,
+    updatedAt: now,
+  };
+
+  await put(`${prefix}-${now}.json`, JSON.stringify(payload), {
+    ...notifyPutOptions(),
+  });
+
+  return { updatedAt: now };
+}

@@ -83,6 +83,7 @@ Cron-driven pipeline that sends email notifications via Resend. Runs every 15 mi
 | `NOTIFY_DISPATCH_SECRET` | Bearer token for manual curl/job calls (optional fallback) |
 | `NOTIFY_LAUNCH_ENABLED` | `true`/`false` — gate for launch email blast (default `false`) |
 | `NOTIFY_LAUNCH_CAMPAIGN` | Campaign id for launch idempotency key (default `launch-v1`) |
+| `NOTIFY_TOKEN_SECRET` | HMAC secret for signing unsubscribe/manage email links (required in production) |
 
 ### Launch campaign workflow
 
@@ -117,8 +118,22 @@ curl -X POST https://make.solazzo.fun/api/notifications/dispatch \
 - `src/lib/email.ts` — Resend SDK wrapper
 - `src/lib/notify-dispatch.ts` — event detection + email send loop
 - `src/lib/notify-delivery-log.ts` — idempotency via Vercel Blob (`notify-deliveries/`)
-- `src/lib/notify-store.ts` — subscriber listing from Blob (`notify-subscribers/`)
+- `src/lib/notify-store.ts` — subscriber listing + preference updates from Blob (`notify-subscribers/`)
+- `src/lib/notify-token.ts` — HMAC-signed token creation/verification for email links
+- `src/lib/notify-blob.ts` — centralized private blob client options
 - `vercel.json` — cron schedule (every 15 min)
+
+### Unsubscribe & Preference Management
+
+Every dispatched email includes signed links in the footer:
+- **Manage preferences**: `/notifications/manage?token=...`
+- **Unsubscribe**: `/notifications/unsubscribe?token=...`
+
+Tokens are HMAC-SHA256 signed with `NOTIFY_TOKEN_SECRET`, purpose-scoped (`unsubscribe` or `preferences`), and expire after 30 days. Invalid, expired, or purpose-mismatched tokens are rejected.
+
+API routes:
+- `POST /api/notifications/unsubscribe` — `{ token }` → sets all notify flags to false
+- `POST /api/notifications/preferences` — `{ token, notifyLaunch, notifyReplaced, notifyClaimable, wallet? }` → updates preferences
 
 Delivery is idempotent: each event is keyed so re-running dispatch never sends duplicate emails. The claimable key includes `lastUpdatedAt` and `claimableLamports` so a new notification fires when the balance changes.
 

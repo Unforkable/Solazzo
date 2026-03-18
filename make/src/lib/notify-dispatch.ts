@@ -8,6 +8,7 @@ import {
   fetchClaimableBalance,
 } from "./onchain/client";
 import { SOLANA_RPC_URL, SOL_DECIMALS } from "./onchain/constants";
+import { createNotifyToken } from "./notify-token";
 
 // ── Result types ─────────────────────────────────────────────────────
 
@@ -37,45 +38,63 @@ function claimableKey(
   return `claimable__${wallet}__${lastUpdatedAt.toString()}_${claimableLamports.toString()}`;
 }
 
+// ── Email link helpers ───────────────────────────────────────────────
+
+const BASE_URL = "https://make.solazzo.fun";
+const LINK_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function emailFooter(email: string): { html: string; text: string } {
+  const unsubToken = createNotifyToken(email, "unsubscribe", LINK_TTL_MS);
+  const prefsToken = createNotifyToken(email, "preferences", LINK_TTL_MS);
+
+  const unsubUrl = `${BASE_URL}/notifications/unsubscribe?token=${encodeURIComponent(unsubToken)}`;
+  const manageUrl = `${BASE_URL}/notifications/manage?token=${encodeURIComponent(prefsToken)}`;
+
+  return {
+    html: `<p style="color:#888;font-size:12px;margin-top:24px;border-top:1px solid #333;padding-top:12px"><a href="${manageUrl}" style="color:#888">Manage preferences</a> &middot; <a href="${unsubUrl}" style="color:#888">Unsubscribe</a></p>`,
+    text: `\n---\nManage preferences: ${manageUrl}\nUnsubscribe: ${unsubUrl}`,
+  };
+}
+
 // ── Email templates ──────────────────────────────────────────────────
 
-function launchEmail(): { subject: string; html: string; text: string } {
+function launchEmail(recipientEmail: string): { subject: string; html: string; text: string } {
+  const footer = emailFooter(recipientEmail);
   return {
     subject: "Solazzo is live",
     html: `<p>The Solazzo Portrait Studio is now live.</p>
 <p>Lock your SOL, get painted into five Baroque oil portraits, and join the collection.</p>
-<p><a href="https://make.solazzo.fun">Open Studio</a></p>
-<p style="color:#888;font-size:12px">You signed up for launch notifications at solazzo.fun.</p>`,
-    text: `Solazzo is live.\n\nLock your SOL, get painted into five Baroque oil portraits, and join the collection.\n\nhttps://make.solazzo.fun\n\nYou signed up for launch notifications at solazzo.fun.`,
+<p><a href="https://make.solazzo.fun">Open Studio</a></p>${footer.html}`,
+    text: `Solazzo is live.\n\nLock your SOL, get painted into five Baroque oil portraits, and join the collection.\n\nhttps://make.solazzo.fun${footer.text}`,
   };
 }
 
-function replacedEmail(slotId: number): {
+function replacedEmail(slotId: number, recipientEmail: string): {
   subject: string;
   html: string;
   text: string;
 } {
+  const footer = emailFooter(recipientEmail);
   return {
     subject: `Your Solazzo slot #${slotId} was displaced`,
     html: `<p>Your slot <strong>#${slotId}</strong> has been displaced by a higher-conviction holder.</p>
 <p>Your full SOL principal is available for withdrawal.</p>
-<p><a href="https://make.solazzo.fun/positions">View Positions</a> &middot; <a href="https://make.solazzo.fun/gallery">Gallery</a></p>
-<p style="color:#888;font-size:12px">You signed up for slot replacement alerts at solazzo.fun.</p>`,
-    text: `Your Solazzo slot #${slotId} was displaced by a higher-conviction holder.\n\nYour full SOL principal is available for withdrawal.\n\nhttps://make.solazzo.fun/positions\n\nYou signed up for slot replacement alerts at solazzo.fun.`,
+<p><a href="https://make.solazzo.fun/positions">View Positions</a> &middot; <a href="https://make.solazzo.fun/gallery">Gallery</a></p>${footer.html}`,
+    text: `Your Solazzo slot #${slotId} was displaced by a higher-conviction holder.\n\nYour full SOL principal is available for withdrawal.\n\nhttps://make.solazzo.fun/positions${footer.text}`,
   };
 }
 
-function claimableEmail(solAmount: number): {
+function claimableEmail(solAmount: number, recipientEmail: string): {
   subject: string;
   html: string;
   text: string;
 } {
+  const footer = emailFooter(recipientEmail);
   return {
     subject: `${solAmount} SOL claimable on Solazzo`,
     html: `<p>You have <strong>${solAmount} SOL</strong> available to withdraw on Solazzo.</p>
-<p><a href="https://make.solazzo.fun/positions">Withdraw now</a></p>
-<p style="color:#888;font-size:12px">You signed up for claimable balance alerts at solazzo.fun.</p>`,
-    text: `You have ${solAmount} SOL available to withdraw on Solazzo.\n\nhttps://make.solazzo.fun/positions\n\nYou signed up for claimable balance alerts at solazzo.fun.`,
+<p><a href="https://make.solazzo.fun/positions">Withdraw now</a></p>${footer.html}`,
+    text: `You have ${solAmount} SOL available to withdraw on Solazzo.\n\nhttps://make.solazzo.fun/positions${footer.text}`,
   };
 }
 
@@ -119,7 +138,7 @@ export async function runDispatch(): Promise<DispatchResult> {
         if (await hasDelivery(key)) {
           result.skipped++;
         } else {
-          const email = launchEmail();
+          const email = launchEmail(sub.email);
           await sendEmail({ to: sub.email, ...email });
           await markDelivery(key, {
             email: sub.email,
@@ -168,7 +187,7 @@ export async function runDispatch(): Promise<DispatchResult> {
             if (await hasDelivery(key)) {
               result.skipped++;
             } else {
-              const email = replacedEmail(slotId);
+              const email = replacedEmail(slotId, sub.email);
               await sendEmail({ to: sub.email, ...email });
               await markDelivery(key, {
                 email: sub.email,
@@ -211,6 +230,7 @@ export async function runDispatch(): Promise<DispatchResult> {
             const solAmount = Number(cb.claimableLamports) / SOL_DECIMALS;
             const email = claimableEmail(
               parseFloat(solAmount.toFixed(4)),
+              sub.email,
             );
             await sendEmail({ to: sub.email, ...email });
             await markDelivery(key, {
