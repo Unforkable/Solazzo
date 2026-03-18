@@ -123,7 +123,7 @@ Delivery is idempotent: each event is keyed so re-running dispatch never sends d
 
 ### Current Status
 
-- **Subscribe + dispatch**: confirmed working in production (2025-03-18).
+- **Subscribe + dispatch**: confirmed working in production (2026-03-18).
 - **Cron mode**: hobby-safe daily schedule (`vercel.json`).
 - **⚠ Temporary privacy risk**: `notify-subscribers/*.json` and `notify-deliveries/*.json` are written with **public blob access** due to a store-mode mismatch. Subscriber emails and delivery records are publicly addressable until migrated.
 
