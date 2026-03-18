@@ -33,7 +33,7 @@ export async function upsertNotifySubscriber(
     if (existing.length > 0) {
       const results = await Promise.allSettled(
         existing.map(async (blob) => {
-          const res = await fetch(blob.url);
+          const res = await fetch(blob.downloadUrl ?? blob.url);
           if (!res.ok) throw new Error(`Failed to fetch ${blob.pathname}`);
           return (await res.json()) as NotifySubscriber;
         }),
@@ -75,7 +75,7 @@ export async function listNotifySubscribers(): Promise<NotifySubscriber[]> {
     blobs
       .filter((b) => b.pathname.endsWith(".json"))
       .map(async (blob) => {
-        const res = await fetch(blob.url);
+        const res = await fetch(blob.downloadUrl ?? blob.url);
         if (!res.ok) throw new Error(`Failed to fetch ${blob.pathname}`);
         return (await res.json()) as NotifySubscriber;
       }),
