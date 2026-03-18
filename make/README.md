@@ -78,23 +78,33 @@ Cron-driven pipeline that sends email notifications via Resend. Runs every 15 mi
 |---|---|
 | `RESEND_API_KEY` | Resend API key for sending emails |
 | `RESEND_FROM_EMAIL` | Sender address, e.g. `Solazzo <notify@solazzo.fun>` |
-| `NOTIFY_DISPATCH_SECRET` | Bearer token for the dispatch endpoint |
+| `CRON_SECRET` | Bearer token used by Vercel Cron (preferred) |
+| `NOTIFY_DISPATCH_SECRET` | Bearer token for manual curl/job calls (optional fallback) |
+| `NOTIFY_LAUNCH_ENABLED` | `true`/`false` — gate for launch email blast (default `false`) |
+| `NOTIFY_LAUNCH_CAMPAIGN` | Campaign id for launch idempotency key (default `launch-v1`) |
+
+### Launch campaign workflow
+
+1. Set `NOTIFY_LAUNCH_ENABLED=true` when ready to send the launch blast.
+2. Cron runs → sends launch emails to all `notifyLaunch` subscribers.
+3. Once complete, set `NOTIFY_LAUNCH_ENABLED=false` to stop processing.
+4. For a future campaign, bump `NOTIFY_LAUNCH_CAMPAIGN` (e.g. `launch-v2`) and repeat.
 
 ### Event types
 
 | Event | Trigger | Idempotency key |
 |---|---|---|
-| **Launch** | `notifyLaunch=true` | `launch-v1__<email>` |
+| **Launch** | `notifyLaunch=true` + `NOTIFY_LAUNCH_ENABLED=true` | `<campaignId>__<email>` |
 | **Replaced** | Historical gallery slot no longer active on-chain | `replaced__<wallet>__slot-<id>` |
 | **Claimable** | `ClaimableBalance` PDA has lamports > 0 | `claimable__<wallet>__<lastUpdatedAt>_<lamports>` |
 
 ### Auth flow
 
 ```
-POST /api/notifications/dispatch -> Bearer token check -> runDispatch() -> JSON summary
+POST /api/notifications/dispatch -> Bearer token check (CRON_SECRET or NOTIFY_DISPATCH_SECRET) -> runDispatch() -> JSON summary
 ```
 
-Vercel Cron invokes the route automatically. Manual trigger:
+Vercel Cron sends `CRON_SECRET` automatically. Manual trigger:
 
 ```bash
 curl -X POST https://make.solazzo.fun/api/notifications/dispatch \
@@ -110,6 +120,18 @@ curl -X POST https://make.solazzo.fun/api/notifications/dispatch \
 - `vercel.json` — cron schedule (every 15 min)
 
 Delivery is idempotent: each event is keyed so re-running dispatch never sends duplicate emails. The claimable key includes `lastUpdatedAt` and `claimableLamports` so a new notification fires when the balance changes.
+
+### Current Status
+
+- **Subscribe + dispatch**: confirmed working in production (2025-03-18).
+- **Cron mode**: hobby-safe daily schedule (`vercel.json`).
+- **⚠ Temporary privacy risk**: `notify-subscribers/*.json` and `notify-deliveries/*.json` are written with **public blob access** due to a store-mode mismatch. Subscriber emails and delivery records are publicly addressable until migrated.
+
+### Required Next Hardening
+
+1. Migrate notification data (`notify-subscribers/`, `notify-deliveries/`) to private Vercel Blob storage.
+2. Rotate or delete existing public records after migration.
+3. Verify no public URLs remain cached or indexed.
 
 ### curl examples
 
