@@ -1,5 +1,6 @@
 import { put, list } from "@vercel/blob";
 import { createHash } from "crypto";
+import { notifyPutOptions, notifyListOptions } from "./notify-blob";
 
 export interface NotifySubscriber {
   email: string;
@@ -27,7 +28,7 @@ export async function upsertNotifySubscriber(
   // Preserve createdAt from existing record
   let createdAt = now;
   try {
-    const { blobs } = await list({ prefix });
+    const { blobs } = await list({ prefix, ...notifyListOptions() });
     const existing = blobs.filter((b) => b.pathname.endsWith(".json"));
     if (existing.length > 0) {
       const results = await Promise.allSettled(
@@ -61,16 +62,14 @@ export async function upsertNotifySubscriber(
 
   // Write immutable subscriber snapshots to avoid overwrite mode issues.
   await put(`${prefix}-${now}.json`, JSON.stringify(payload), {
-    access: "public",
-    contentType: "application/json",
-    addRandomSuffix: false,
+    ...notifyPutOptions(),
   });
 
   return { key, updatedAt: now };
 }
 
 export async function listNotifySubscribers(): Promise<NotifySubscriber[]> {
-  const { blobs } = await list({ prefix: "notify-subscribers/" });
+  const { blobs } = await list({ prefix: "notify-subscribers/", ...notifyListOptions() });
 
   const results = await Promise.allSettled(
     blobs

@@ -76,6 +76,7 @@ Cron-driven pipeline that sends email notifications via Resend. Runs every 15 mi
 
 | Variable | Purpose |
 |---|---|
+| `NOTIFY_BLOB_READ_WRITE_TOKEN` | Dedicated private blob store token for notification data (required in production; falls back to `BLOB_READ_WRITE_TOKEN` in local dev) |
 | `RESEND_API_KEY` | Resend API key for sending emails |
 | `RESEND_FROM_EMAIL` | Sender address, e.g. `Solazzo <notify@solazzo.fun>` |
 | `CRON_SECRET` | Bearer token used by Vercel Cron (preferred) |
@@ -125,13 +126,15 @@ Delivery is idempotent: each event is keyed so re-running dispatch never sends d
 
 - **Subscribe + dispatch**: confirmed working in production (2026-03-18).
 - **Cron mode**: hobby-safe daily schedule (`vercel.json`).
-- **⚠ Temporary privacy risk**: `notify-subscribers/*.json` and `notify-deliveries/*.json` are written with **public blob access** due to a store-mode mismatch. Subscriber emails and delivery records are publicly addressable until migrated.
+- **Storage**: notification data uses a dedicated private blob store via `NOTIFY_BLOB_READ_WRITE_TOKEN`. All new writes are `access: "private"`.
 
-### Required Next Hardening
+### Post-Migration Cleanup
 
-1. Migrate notification data (`notify-subscribers/`, `notify-deliveries/`) to private Vercel Blob storage.
-2. Rotate or delete existing public records after migration.
-3. Verify no public URLs remain cached or indexed.
+> **Deprecated**: prior to this hardening, notification records were written with `access: "public"` using the shared `BLOB_READ_WRITE_TOKEN`. Any records created before this change may still be publicly addressable.
+
+1. ~~Migrate notification data to private Vercel Blob storage.~~ Done.
+2. Rotate or delete pre-migration public records from the old store.
+3. Verify no old public URLs remain cached or indexed.
 
 ### curl examples
 

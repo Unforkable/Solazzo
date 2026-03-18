@@ -1,4 +1,5 @@
 import { put, list } from "@vercel/blob";
+import { notifyPutOptions, notifyListOptions } from "./notify-blob";
 
 const PREFIX = "notify-deliveries/";
 
@@ -7,7 +8,7 @@ const PREFIX = "notify-deliveries/";
  * Uses Blob listing by exact prefix match.
  */
 export async function hasDelivery(eventKey: string): Promise<boolean> {
-  const { blobs } = await list({ prefix: `${PREFIX}${eventKey}.json` });
+  const { blobs } = await list({ prefix: `${PREFIX}${eventKey}.json`, ...notifyListOptions() });
   return blobs.length > 0;
 }
 
@@ -19,9 +20,7 @@ export async function markDelivery(
   payload: { email: string; subject: string; sentAt: number },
 ): Promise<void> {
   await put(`${PREFIX}${eventKey}.json`, JSON.stringify(payload), {
-    access: "public",
-    contentType: "application/json",
-    addRandomSuffix: false,
+    ...notifyPutOptions(),
     allowOverwrite: false,
   });
 }
