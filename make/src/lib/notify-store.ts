@@ -1,6 +1,6 @@
 import { put, list } from "@vercel/blob";
 import { createHash } from "crypto";
-import { notifyPutOptions, notifyListOptions } from "./notify-blob";
+import { notifyPutOptions, notifyListOptions, notifyReadHeaders } from "./notify-blob";
 
 export interface NotifySubscriber {
   email: string;
@@ -33,7 +33,9 @@ export async function upsertNotifySubscriber(
     if (existing.length > 0) {
       const results = await Promise.allSettled(
         existing.map(async (blob) => {
-          const res = await fetch(blob.downloadUrl ?? blob.url);
+          const res = await fetch(blob.downloadUrl ?? blob.url, {
+            headers: notifyReadHeaders(),
+          });
           if (!res.ok) throw new Error(`Failed to fetch ${blob.pathname}`);
           return (await res.json()) as NotifySubscriber;
         }),
@@ -75,7 +77,9 @@ export async function listNotifySubscribers(): Promise<NotifySubscriber[]> {
     blobs
       .filter((b) => b.pathname.endsWith(".json"))
       .map(async (blob) => {
-        const res = await fetch(blob.downloadUrl ?? blob.url);
+        const res = await fetch(blob.downloadUrl ?? blob.url, {
+          headers: notifyReadHeaders(),
+        });
         if (!res.ok) throw new Error(`Failed to fetch ${blob.pathname}`);
         return (await res.json()) as NotifySubscriber;
       }),

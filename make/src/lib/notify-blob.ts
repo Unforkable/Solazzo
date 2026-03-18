@@ -43,3 +43,10 @@ export function notifyListOptions() {
     token: resolveToken(),
   };
 }
+
+/** Auth headers for reading private blob object URLs via fetch(). */
+export function notifyReadHeaders() {
+  return {
+    Authorization: `Bearer ${resolveToken()}`,
+  };
+}
