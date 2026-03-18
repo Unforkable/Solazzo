@@ -41,15 +41,29 @@ function claimableKey(
 
 // ── Email link helpers ───────────────────────────────────────────────
 
-const BASE_URL = "https://make.solazzo.fun";
+const EMAIL_LINK_BASE_URL = "https://make.solazzo.fun";
 const LINK_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function assertSafeEmailUrl(url: string): void {
+  if (
+    !url.startsWith(EMAIL_LINK_BASE_URL + "/") ||
+    !url.startsWith("https://")
+  ) {
+    throw new Error(
+      `Unsafe email link blocked: URL does not start with ${EMAIL_LINK_BASE_URL}/`,
+    );
+  }
+}
 
 function emailFooter(email: string): { html: string; text: string } {
   const unsubToken = createNotifyToken(email, "unsubscribe", LINK_TTL_MS);
   const prefsToken = createNotifyToken(email, "preferences", LINK_TTL_MS);
 
-  const unsubUrl = `${BASE_URL}/notifications/unsubscribe?token=${encodeURIComponent(unsubToken)}`;
-  const manageUrl = `${BASE_URL}/notifications/manage?token=${encodeURIComponent(prefsToken)}`;
+  const unsubUrl = `${EMAIL_LINK_BASE_URL}/notifications/unsubscribe?token=${encodeURIComponent(unsubToken)}`;
+  const manageUrl = `${EMAIL_LINK_BASE_URL}/notifications/manage?token=${encodeURIComponent(prefsToken)}`;
+
+  assertSafeEmailUrl(unsubUrl);
+  assertSafeEmailUrl(manageUrl);
 
   return {
     html: `<p style="color:#888;font-size:12px;margin-top:24px;border-top:1px solid #333;padding-top:12px"><a href="${manageUrl}" style="color:#888">Manage preferences</a> &middot; <a href="${unsubUrl}" style="color:#888">Unsubscribe</a></p>`,
