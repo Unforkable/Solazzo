@@ -42,6 +42,12 @@ export const PUBLISH_LIMIT: RateLimitConfig = {
   maxRequests: 5,
 };
 
+/** 10 notification signups per hour */
+export const NOTIFY_LIMIT: RateLimitConfig = {
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 10,
+};
+
 export function getClientIp(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
