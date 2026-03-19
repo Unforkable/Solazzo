@@ -551,7 +551,7 @@ function WithdrawBanner() {
             &#9678; {solAmount} SOL available to withdraw
           </p>
           <p className="text-xs text-foreground/40 font-body mt-1">
-            You were displaced. Your full principal is ready for withdrawal.
+            You were displaced. Your full principal is immediately claimable and ready for withdrawal.
           </p>
         </div>
         <button
@@ -660,6 +660,7 @@ export default function PortraitStudio() {
   const [focusedStage, setFocusedStage] = useState<StageNumber>(1);
   const [assignedSlotId, setAssignedSlotId] = useState<number | null>(null);
   const [slotAssigning, setSlotAssigning] = useState(false);
+  const [slotAssignError, setSlotAssignError] = useState<string | null>(null);
   const [claimStep, setClaimStep] = useState<ClaimStep>("idle");
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimTxSig, setClaimTxSig] = useState<string | null>(null);
@@ -787,14 +788,19 @@ export default function PortraitStudio() {
 
   const refreshAssignedSlot = useCallback(async (): Promise<number | null> => {
     setSlotAssigning(true);
+    setSlotAssignError(null);
     try {
       const slotBook = await fetchSlotBook(connection);
       const firstOpen = slotBook.occupied.findIndex((isOccupied) => !isOccupied);
       const nextSlot = firstOpen >= 0 ? firstOpen : null;
       setAssignedSlotId(nextSlot);
       return nextSlot;
-    } catch {
+    } catch (err) {
+      console.error("refreshAssignedSlot failed:", err);
       setAssignedSlotId(null);
+      setSlotAssignError(
+        "Failed to load slot availability. Check network/program config and try refresh.",
+      );
       return null;
     } finally {
       setSlotAssigning(false);
@@ -941,7 +947,7 @@ export default function PortraitStudio() {
       targetSlotId = await refreshAssignedSlot();
     }
     if (targetSlotId === null || targetSlotId < 0 || targetSlotId > MAX_SLOT_ID) {
-      setClaimError("No open slots available right now. Try refreshing.");
+      setClaimError("No open slot could be assigned. Refresh assignment and verify app RPC/network settings.");
       return;
     }
 
@@ -1411,7 +1417,7 @@ export default function PortraitStudio() {
               </div>
               <p className="text-foreground/40 text-sm font-body text-center mt-8 max-w-md mx-auto leading-relaxed">
                 Someone can always outbid you for your slot &mdash; but even then, you
-                get your full SOL back instantly. You don&rsquo;t lose money here.
+                get your full SOL immediately claimable. You don&rsquo;t lose money here.
                 You lose position.
               </p>
             </div>
@@ -1911,6 +1917,11 @@ export default function PortraitStudio() {
                     >
                       {slotAssigning ? "Refreshing..." : "Refresh assignment"}
                     </button>
+                    {slotAssignError && (
+                      <p className="mt-2 text-[11px] text-red-400 font-body">
+                        {slotAssignError}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1993,7 +2004,7 @@ export default function PortraitStudio() {
                       in Slot <span className="text-gold font-display font-semibold">{assignedSlotId !== null ? `#${assignedSlotId}` : "pending assignment"}</span>
                     </span>
                     <span className="block">&bull; Funds are transferred to the protocol vault on-chain.</span>
-                    <span className="block">&bull; Non-custodial: your SOL is returned if you are displaced, when SOL reaches $1,000, or at protocol end date (Mar 16, 2030 UTC).</span>
+                    <span className="block">&bull; Non-custodial: your SOL becomes immediately claimable if you are displaced, when SOL reaches $1,000, or at protocol end date (Mar 16, 2030 UTC).</span>
                     <span className="block">&bull; No admin can access your locked funds.</span>
                   </p>
                 </div>
@@ -2032,7 +2043,7 @@ export default function PortraitStudio() {
                     <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
                       Only once all 1,000 slots are filled. After that, anyone can
                       outbid the lowest slot. If you&rsquo;re displaced, you get
-                      your full SOL back instantly. You don&rsquo;t lose money
+                      your full SOL immediately claimable. You don&rsquo;t lose money
                       &mdash; you lose position.
                     </p>
                   </details>
