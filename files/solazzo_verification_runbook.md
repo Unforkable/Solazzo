@@ -174,6 +174,9 @@ Checks:
   - expected behavior until `slotsFilled == 1000`.
 - `WalletSendTransactionError` generic:
   - inspect modal error mapping + console details; most cases are network mismatch.
+- `Failed to load slot availability…` or `Slot availability is not initialized…`:
+  - transient variant: RPC read failure — click "Refresh assignment", check RPC URL reachability.
+  - uninitialized variant: SlotBook PDA does not exist on the connected network — verify program ID matches deployed program and that `initializeProtocol` has been run.
 
 ---
 

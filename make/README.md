@@ -45,6 +45,10 @@ If the assigned slot gets claimed by another user between assignment and transac
 
 If no open slots remain, the user is told no slots are available.
 
+### Slot assignment reliability
+
+The slot-book fetch in the commit stage uses `rpcRetry` (exponential backoff, 4 attempts). If slot availability cannot be loaded, the user sees an actionable error message distinguishing uninitialized SlotBook (program/network mismatch) from transient RPC failures. The "Refresh assignment" button is the first recovery step.
+
 ### 0-based numbering consistency
 
 All slot IDs are `0..999` everywhere: on-chain program, backend API payloads, frontend state, and UI display text. There is no 1-based display mapping. This prevents off-by-one bugs between layers.

@@ -32,6 +32,7 @@ import {
   type WalletPosition,
 } from "@/lib/onchain/client";
 import { MIN_LOCK_SOL, MAX_SLOT_ID, SOL_DECIMALS } from "@/lib/onchain/constants";
+import { rpcRetry } from "@/lib/rpc-retry";
 import { NotificationSignup } from "@/components/notification-signup";
 
 type AppStage = "intro" | "capture" | "preview" | "gallery" | "commit" | "locked";
@@ -790,7 +791,10 @@ export default function PortraitStudio() {
     setSlotAssigning(true);
     setSlotAssignError(null);
     try {
-      const slotBook = await fetchSlotBook(connection);
+      const slotBook = await rpcRetry(
+        () => fetchSlotBook(connection),
+        { maxAttempts: 4, baseDelayMs: 250, maxDelayMs: 2000 },
+      );
       const firstOpen = slotBook.occupied.findIndex((isOccupied) => !isOccupied);
       const nextSlot = firstOpen >= 0 ? firstOpen : null;
       setAssignedSlotId(nextSlot);
@@ -798,8 +802,11 @@ export default function PortraitStudio() {
     } catch (err) {
       console.error("refreshAssignedSlot failed:", err);
       setAssignedSlotId(null);
+      const msg = err instanceof Error ? err.message : "";
       setSlotAssignError(
-        "Failed to load slot availability. Check network/program config and try refresh.",
+        msg.includes("SlotBook account not found on-chain")
+          ? "Slot availability is not initialized for this network/program."
+          : "Failed to load slot availability. Check network/program config and try refresh.",
       );
       return null;
     } finally {
