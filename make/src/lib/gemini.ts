@@ -5,7 +5,9 @@ import type { StageNumber } from "./traits/types";
 let _gemini: GoogleGenAI | null = null;
 function getClient(): GoogleGenAI {
   if (!_gemini) {
-    _gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
+    _gemini = new GoogleGenAI({ apiKey });
   }
   return _gemini;
 }
