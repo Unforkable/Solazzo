@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  solazzo:
+    name: solazzo/ — lint & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: solazzo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: solazzo/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run build
+
+  make:
+    name: make/ — lint, test & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: make
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: make/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run test:auth
+      - run: npm run test:rpc
+      - run: npm run build
+        env:
+          GEMINI_API_KEY: dummy-key-for-build
+          BLOB_READ_WRITE_TOKEN: dummy-token-for-build
+
+  indexer:
+    name: onchain/indexer — lint & test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: onchain/indexer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: onchain/indexer/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
