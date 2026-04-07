@@ -32,6 +32,7 @@ import {
   type WalletPosition,
 } from "@/lib/onchain/client";
 import { MIN_LOCK_SOL, MAX_SLOT_ID, SOL_DECIMALS } from "@/lib/onchain/constants";
+import { useNetworkGuard } from "@/lib/onchain/useNetworkGuard";
 import { rpcRetry } from "@/lib/rpc-retry";
 import { NotificationSignup } from "@/components/notification-signup";
 
@@ -46,15 +47,6 @@ const PUBLISH_TIMEOUT_MS = 90_000;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALL_STAGES: StageNumber[] = [1, 2, 3, 4, 5];
-
-function rpcNetworkLabel(endpoint: string): string {
-  const e = endpoint.toLowerCase();
-  if (e.includes("devnet")) return "devnet";
-  if (e.includes("testnet")) return "testnet";
-  if (e.includes("mainnet")) return "mainnet";
-  if (e.includes("127.0.0.1") || e.includes("localhost")) return "localnet";
-  return endpoint;
-}
 
 function BaroqueFrame({ children }: { children: React.ReactNode }) {
   return (
@@ -678,6 +670,7 @@ export default function PortraitStudio() {
   const { publicKey, connected, sendTransaction, signMessage } = useWallet();
   const { setVisible: openWalletModal } = useWalletModal();
   const { connection } = useConnection();
+  const { network: verifiedNetwork, isMainnet, loading: networkLoading, error: networkError } = useNetworkGuard();
 
   const persistClaim = useCallback((meta: ClaimMeta) => {
     saveClaimMeta(meta);
@@ -2056,11 +2049,28 @@ export default function PortraitStudio() {
                   </details>
                 </div>
 
+                {/* Network warnings */}
+                {isMainnet && (
+                  <div className="bg-red-900/30 border border-red-500/40 px-4 py-3 max-w-md mx-auto text-center">
+                    <p className="text-sm font-display font-bold text-red-300">Mainnet Detected</p>
+                    <p className="text-xs text-red-400/80 font-body mt-1">
+                      You are connected to Solana mainnet-beta. This transaction will lock <span className="font-semibold text-red-300">real SOL</span>.
+                    </p>
+                  </div>
+                )}
+                {networkError && (
+                  <div className="bg-yellow-900/30 border border-yellow-600/40 px-4 py-3 max-w-md mx-auto text-center">
+                    <p className="text-xs text-yellow-300 font-body">
+                      Could not verify network. Proceed with caution.
+                    </p>
+                  </div>
+                )}
+
                 {/* Claim CTA */}
                 <div className="max-w-md mx-auto">
                   <button
                     onClick={claimAndPublish}
-                    disabled={claimStep !== "idle" || assignedSlotId === null || lockAmount < MIN_LOCK_SOL}
+                    disabled={claimStep !== "idle" || assignedSlotId === null || lockAmount < MIN_LOCK_SOL || networkLoading}
                     className="w-full btn-gold font-display tracking-wide text-base py-3.5 disabled:opacity-50"
                   >
                     {claimStep === "preflight" && "Checking slot..."}
@@ -2077,7 +2087,8 @@ export default function PortraitStudio() {
                     Connected: {publicKey?.toBase58().slice(0, 4)}...{publicKey?.toBase58().slice(-4)}
                   </p>
                   <p className="text-[11px] text-foreground/30 font-body text-center">
-                    App RPC network: {rpcNetworkLabel(connection.rpcEndpoint)}
+                    Network: {networkLoading ? "verifying\u2026" : verifiedNetwork}
+                    {networkError && " (unverified)"}
                   </p>
                 </div>
 
