@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { useConnection } from "@solana/wallet-adapter-react";
 
 /** Well-known Solana genesis hashes. */
@@ -28,6 +28,26 @@ export interface NetworkGuard {
   error: string | null;
 }
 
+type State = { network: SolanaNetwork; loading: boolean; error: string | null };
+
+type Action =
+  | { type: "reset" }
+  | { type: "resolved"; network: SolanaNetwork }
+  | { type: "failed"; error: string };
+
+const initialState: State = { network: "unknown", loading: true, error: null };
+
+function reducer(_state: State, action: Action): State {
+  switch (action.type) {
+    case "reset":
+      return initialState;
+    case "resolved":
+      return { network: action.network, loading: false, error: null };
+    case "failed":
+      return { network: "unknown", loading: false, error: action.error };
+  }
+}
+
 /**
  * Verify the actual Solana network by fetching the genesis hash.
  * URL-based heuristics ("devnet" in the URL) are unreliable for
@@ -35,40 +55,35 @@ export interface NetworkGuard {
  */
 export function useNetworkGuard(): NetworkGuard {
   const { connection } = useConnection();
-  const [network, setNetwork] = useState<SolanaNetwork>("unknown");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
     connection
       .getGenesisHash()
       .then((hash) => {
         if (cancelled) return;
         const known = GENESIS_HASHES[hash];
+        let network: SolanaNetwork;
         if (known) {
-          setNetwork(known as SolanaNetwork);
+          network = known as SolanaNetwork;
         } else if (
           connection.rpcEndpoint.includes("127.0.0.1") ||
           connection.rpcEndpoint.includes("localhost")
         ) {
-          setNetwork("localnet");
+          network = "localnet";
         } else {
-          setNetwork("unknown");
+          network = "unknown";
         }
+        dispatch({ type: "resolved", network });
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setNetwork("unknown");
-        setError(
-          `Failed to verify network: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        dispatch({
+          type: "failed",
+          error: `Failed to verify network: ${err instanceof Error ? err.message : String(err)}`,
+        });
       });
 
     return () => {
@@ -76,5 +91,10 @@ export function useNetworkGuard(): NetworkGuard {
     };
   }, [connection]);
 
-  return { network, loading, isMainnet: network === "mainnet-beta", error };
+  return {
+    network: state.network,
+    loading: state.loading,
+    isMainnet: state.network === "mainnet-beta",
+    error: state.error,
+  };
 }
