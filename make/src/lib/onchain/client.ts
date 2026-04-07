@@ -40,32 +40,100 @@ const CLAIMABLE_BALANCE_DISCRIMINATOR = Buffer.from([
   211, 2, 251, 123, 91, 61, 146, 116,
 ]);
 
+/**
+ * Exported discriminator map for test-time integrity verification.
+ * Keys use the Anchor hash prefix: "account:<Name>" or "global:<name>".
+ */
+export const DISCRIMINATORS: Record<string, Buffer> = {
+  "account:ProtocolConfig": PROTOCOL_CONFIG_DISCRIMINATOR,
+  "account:Slot": SLOT_DISCRIMINATOR,
+  "account:SlotBook": SLOT_BOOK_DISCRIMINATOR,
+  "account:ClaimableBalance": CLAIMABLE_BALANCE_DISCRIMINATOR,
+  "global:claim_unfilled_slot": CLAIM_UNFILLED_SLOT_DISC,
+  "global:init_claimable_balance": INIT_CLAIMABLE_BALANCE_DISC,
+  "global:displace_lowest": DISPLACE_LOWEST_DISC,
+  "global:claim": CLAIM_DISC,
+};
+
+/** Hard cap on SlotBook vec lengths to prevent pathological allocations from malformed data. */
+const MAX_SLOTBOOK_VEC_LEN = 10_000;
+
+/** Timeout for read-only RPC calls (ms). */
+const RPC_READ_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  context: string,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${context}: RPC call timed out after ${ms}ms.`)),
+      ms,
+    );
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
+function assertProgramOwner(
+  info: { owner: PublicKey },
+  accountType: string,
+): void {
+  if (!info.owner.equals(PROGRAM_ID)) {
+    throw new Error(
+      `${accountType}: account not owned by expected program ${PROGRAM_ID.toBase58()} (actual owner: ${info.owner.toBase58()}).`,
+    );
+  }
+}
+
+function ensureByteRange(
+  src: Uint8Array,
+  offset: number,
+  size: number,
+  context: string,
+): void {
+  if (offset < 0 || size < 0 || offset + size > src.byteLength) {
+    throw new Error(
+      `${context}: account data too short (need ${offset + size} bytes, got ${src.byteLength}).`,
+    );
+  }
+}
+
 function writeU16LE(dst: Uint8Array, offset: number, value: number): void {
+  ensureByteRange(dst, offset, 2, "writeU16LE");
   const view = new DataView(dst.buffer, dst.byteOffset, dst.byteLength);
   view.setUint16(offset, value, true);
 }
 
 function writeU64LE(dst: Uint8Array, offset: number, value: bigint): void {
+  ensureByteRange(dst, offset, 8, "writeU64LE");
   const view = new DataView(dst.buffer, dst.byteOffset, dst.byteLength);
   view.setBigUint64(offset, value, true);
 }
 
 function readU16LE(src: Uint8Array, offset: number): number {
+  ensureByteRange(src, offset, 2, "readU16LE");
   const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
   return view.getUint16(offset, true);
 }
 
 function readU32LE(src: Uint8Array, offset: number): number {
+  ensureByteRange(src, offset, 4, "readU32LE");
   const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
   return view.getUint32(offset, true);
 }
 
 function readU64LE(src: Uint8Array, offset: number): bigint {
+  ensureByteRange(src, offset, 8, "readU64LE");
   const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
   return view.getBigUint64(offset, true);
 }
 
 function readI64LE(src: Uint8Array, offset: number): bigint {
+  ensureByteRange(src, offset, 8, "readI64LE");
   const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
   return view.getBigInt64(offset, true);
 }
@@ -122,7 +190,11 @@ export async function isSlotOccupied(
   slotId: number,
 ): Promise<boolean> {
   const [pda] = getSlotPDA(slotId);
-  const info = await connection.getAccountInfo(pda);
+  const info = await withTimeout(
+    connection.getAccountInfo(pda),
+    RPC_READ_TIMEOUT_MS,
+    "isSlotOccupied",
+  );
   return info !== null;
 }
 
@@ -132,13 +204,18 @@ export async function hasClaimableBalance(
   owner: PublicKey,
 ): Promise<boolean> {
   const [pda] = getClaimableBalancePDA(owner);
-  const info = await connection.getAccountInfo(pda);
+  const info = await withTimeout(
+    connection.getAccountInfo(pda),
+    RPC_READ_TIMEOUT_MS,
+    "hasClaimableBalance",
+  );
   return info !== null;
 }
 
 /** Deserialize a Slot account from raw on-chain data. */
 export function deserializeSlot(data: Buffer | Uint8Array): SlotAccount {
   const buf = Buffer.from(data);
+  ensureByteRange(buf, 0, 60, "Slot account");
   const disc = buf.subarray(0, 8);
   if (!disc.equals(SLOT_DISCRIMINATOR)) {
     throw new Error("Invalid Slot account discriminator");
@@ -158,6 +235,7 @@ export function deserializeProtocolConfig(
   data: Buffer | Uint8Array,
 ): ProtocolConfigAccount {
   const buf = Buffer.from(data);
+  ensureByteRange(buf, 0, 178, "ProtocolConfig account");
   const disc = buf.subarray(0, 8);
   if (!disc.equals(PROTOCOL_CONFIG_DISCRIMINATOR)) {
     throw new Error("Invalid ProtocolConfig account discriminator");
@@ -216,6 +294,7 @@ export function deserializeSlotBook(
   data: Buffer | Uint8Array,
 ): SlotBookAccount {
   const buf = Buffer.from(data);
+  ensureByteRange(buf, 0, 13, "SlotBook account");
   const disc = buf.subarray(0, 8);
   if (!disc.equals(SLOT_BOOK_DISCRIMINATOR)) {
     throw new Error("Invalid SlotBook account discriminator");
@@ -225,6 +304,17 @@ export function deserializeSlotBook(
   // locks: Vec<u64> — 4-byte length prefix + N * 8 bytes
   const locksLen = readU32LE(buf, offset);
   offset += 4;
+  if (locksLen > MAX_SLOTBOOK_VEC_LEN) {
+    throw new Error(
+      `SlotBook locks length ${locksLen} exceeds maximum allowed (${MAX_SLOTBOOK_VEC_LEN}).`,
+    );
+  }
+  const availableForLocks = buf.byteLength - offset;
+  if (locksLen > Math.floor(availableForLocks / 8)) {
+    throw new Error(
+      `Invalid SlotBook locks length ${locksLen}: only ${availableForLocks} bytes available for lock data.`,
+    );
+  }
   const locks: bigint[] = [];
   for (let i = 0; i < locksLen; i++) {
     locks.push(readU64LE(buf, offset));
@@ -234,12 +324,30 @@ export function deserializeSlotBook(
   // occupied: Vec<u8> — 4-byte length prefix + N * 1 byte
   const occupiedLen = readU32LE(buf, offset);
   offset += 4;
+  if (occupiedLen > MAX_SLOTBOOK_VEC_LEN) {
+    throw new Error(
+      `SlotBook occupied length ${occupiedLen} exceeds maximum allowed (${MAX_SLOTBOOK_VEC_LEN}).`,
+    );
+  }
+  const availableForOccupied = buf.byteLength - offset;
+  if (occupiedLen > availableForOccupied - 1) {
+    throw new Error(
+      `Invalid SlotBook occupied length ${occupiedLen}: only ${availableForOccupied} bytes available for occupied data and bump.`,
+    );
+  }
   const occupied: boolean[] = [];
   for (let i = 0; i < occupiedLen; i++) {
     occupied.push(buf[offset] === 1);
     offset += 1;
   }
 
+  if (locksLen !== occupiedLen) {
+    throw new Error(
+      `Malformed SlotBook: locks length (${locksLen}) does not match occupied length (${occupiedLen}).`,
+    );
+  }
+
+  ensureByteRange(buf, offset, 1, "SlotBook bump");
   const bump = buf[offset];
 
   return { locks, occupied, bump };
@@ -250,6 +358,7 @@ export function deserializeClaimableBalance(
   data: Buffer | Uint8Array,
 ): ClaimableBalanceAccount {
   const buf = Buffer.from(data);
+  ensureByteRange(buf, 0, 57, "ClaimableBalance account");
   const disc = buf.subarray(0, 8);
   if (!disc.equals(CLAIMABLE_BALANCE_DISCRIMINATOR)) {
     throw new Error("Invalid ClaimableBalance account discriminator");
@@ -267,8 +376,13 @@ export async function fetchProtocolConfig(
   connection: Connection,
 ): Promise<ProtocolConfigAccount> {
   const [pda] = getProtocolConfigPDA();
-  const info = await connection.getAccountInfo(pda);
+  const info = await withTimeout(
+    connection.getAccountInfo(pda),
+    RPC_READ_TIMEOUT_MS,
+    "fetchProtocolConfig",
+  );
   if (!info) throw new Error("ProtocolConfig account not found on-chain.");
+  assertProgramOwner(info, "ProtocolConfig");
   return deserializeProtocolConfig(info.data);
 }
 
@@ -277,8 +391,13 @@ export async function fetchSlotBook(
   connection: Connection,
 ): Promise<SlotBookAccount> {
   const [pda] = getSlotBookPDA();
-  const info = await connection.getAccountInfo(pda);
+  const info = await withTimeout(
+    connection.getAccountInfo(pda),
+    RPC_READ_TIMEOUT_MS,
+    "fetchSlotBook",
+  );
   if (!info) throw new Error("SlotBook account not found on-chain.");
+  assertProgramOwner(info, "SlotBook");
   return deserializeSlotBook(info.data);
 }
 
@@ -288,8 +407,13 @@ export async function fetchClaimableBalance(
   owner: PublicKey,
 ): Promise<ClaimableBalanceAccount | null> {
   const [pda] = getClaimableBalancePDA(owner);
-  const info = await connection.getAccountInfo(pda);
+  const info = await withTimeout(
+    connection.getAccountInfo(pda),
+    RPC_READ_TIMEOUT_MS,
+    "fetchClaimableBalance",
+  );
   if (!info) return null;
+  assertProgramOwner(info, "ClaimableBalance");
   return deserializeClaimableBalance(info.data);
 }
 
@@ -301,6 +425,12 @@ export async function fetchClaimableBalance(
 export function computeLowestSlot(
   slotBook: SlotBookAccount,
 ): LowestSlotInfo | null {
+  if (slotBook.locks.length !== slotBook.occupied.length) {
+    throw new Error(
+      `Invalid SlotBook state: locks length (${slotBook.locks.length}) does not match occupied length (${slotBook.occupied.length}).`,
+    );
+  }
+
   let lowestIdx = -1;
   let lowestLock = BigInt(0);
 
@@ -334,8 +464,13 @@ export async function fetchLowestSlotInfo(
   if (!lowest) return null;
 
   const [slotPda] = getSlotPDA(lowest.slotId);
-  const slotInfo = await connection.getAccountInfo(slotPda);
+  const slotInfo = await withTimeout(
+    connection.getAccountInfo(slotPda),
+    RPC_READ_TIMEOUT_MS,
+    "fetchLowestSlotInfo",
+  );
   if (!slotInfo) return null;
+  assertProgramOwner(slotInfo, "Slot");
 
   const slotData = deserializeSlot(slotInfo.data);
   return {
@@ -446,10 +581,15 @@ export async function fetchWalletPositions(
 
   for (let i = 0; i < pdas.length; i += BATCH) {
     const batch = pdas.slice(i, i + BATCH);
-    const accounts = await connection.getMultipleAccountsInfo(batch);
+    const accounts = await withTimeout(
+      connection.getMultipleAccountsInfo(batch),
+      RPC_READ_TIMEOUT_MS,
+      "fetchWalletPositions",
+    );
     for (let j = 0; j < accounts.length; j++) {
       const acct = accounts[j];
       if (!acct) continue;
+      assertProgramOwner(acct, "Slot");
       const slot = deserializeSlot(acct.data);
       if (slot.isOccupied && slot.owner.equals(wallet)) {
         positions.push({
@@ -462,6 +602,24 @@ export async function fetchWalletPositions(
   }
 
   return positions.sort((a, b) => a.slotId - b.slotId);
+}
+
+// ── Instruction input guards ─────────────────────────────────────────
+
+function assertU16(name: string, value: number): void {
+  if (!Number.isInteger(value) || value < 0 || value > 0xFFFF) {
+    throw new Error(
+      `${name}: expected integer in 0..65535, got ${value}.`,
+    );
+  }
+}
+
+function assertNonNegativeLamports(name: string, value: bigint): void {
+  if (value < BigInt(0)) {
+    throw new Error(
+      `${name}: expected non-negative lamports, got ${value}.`,
+    );
+  }
 }
 
 // ── Instruction builders ──────────────────────────────────────────────
@@ -494,6 +652,8 @@ export function buildClaimUnfilledSlotIx(
   slotId: number,
   lockLamports: bigint,
 ): TransactionInstruction {
+  assertU16("slotId", slotId);
+  assertNonNegativeLamports("lockLamports", lockLamports);
   const [protocolConfig] = getProtocolConfigPDA();
   const [vault] = getVaultPDA();
   const [slotBook] = getSlotBookPDA();
@@ -544,6 +704,9 @@ export function buildDisplaceLowestIx(
   treasuryPubkey: PublicKey,
   displacedOwnerPubkey: PublicKey,
 ): TransactionInstruction {
+  assertU16("expectedSlotId", expectedSlotId);
+  assertNonNegativeLamports("expectedLowestLamports", expectedLowestLamports);
+  assertNonNegativeLamports("newLockLamports", newLockLamports);
   const [protocolConfig] = getProtocolConfigPDA();
   const [slotBook] = getSlotBookPDA();
   const [vault] = getVaultPDA();
@@ -606,6 +769,8 @@ export function buildClaimInstructions(
   lockLamports: bigint,
   includeInitClaimableBalance: boolean,
 ): TransactionInstruction[] {
+  assertU16("slotId", slotId);
+  assertNonNegativeLamports("lockLamports", lockLamports);
   const instructions: TransactionInstruction[] = [];
 
   if (includeInitClaimableBalance) {

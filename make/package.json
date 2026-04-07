@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "npm run test:auth && npm run test:rpc && npm run test:disc",
     "test:auth": "tsx --test src/lib/__tests__/publish-auth.test.ts",
-    "test:rpc": "tsx --test src/lib/__tests__/rpc-retry.test.ts"
+    "test:rpc": "tsx --test src/lib/__tests__/rpc-retry.test.ts",
+    "test:disc": "tsx --test src/lib/__tests__/discriminators.test.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
