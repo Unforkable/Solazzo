@@ -1889,16 +1889,21 @@ export default function PortraitStudio() {
 
             {/* Wallet gate */}
             {!connected ? (
-              <div className="bg-surface-raised/50 border border-gold-dim/20 p-6 sm:p-8 max-w-md mx-auto text-center space-y-4">
-                <p className="text-sm text-foreground/60 font-body leading-relaxed">
-                  Connect your Solana wallet to claim a slot on-chain.
-                </p>
+              <div className="max-w-md mx-auto space-y-3">
+                <div className="border border-gold-dim/15 bg-black/20 px-4 py-2.5 space-y-0.5 text-[11px] text-foreground/45 font-body">
+                  <p>You lock SOL in the protocol vault &mdash; non-custodial, no admin keys.</p>
+                  <p>Unlocks when SOL hits $1,000 or Mar 16, 2030 UTC &mdash; whichever comes first.</p>
+                  <p>If displaced, your full SOL is immediately claimable.</p>
+                </div>
                 <button
                   onClick={() => openWalletModal(true)}
-                  className="btn-gold font-display tracking-wide text-base py-3 px-8 cursor-pointer"
+                  className="w-full btn-gold font-display tracking-wide text-base py-3.5 cursor-pointer"
                 >
-                  Connect Wallet
+                  Connect Wallet to Claim
                 </button>
+                <p className="text-[11px] text-foreground/30 font-body text-center">
+                  Requires a Solana wallet (Phantom, Solflare, etc.)
+                </p>
               </div>
             ) : (
               <>
@@ -2001,56 +2006,62 @@ export default function PortraitStudio() {
                   </div>
                 </div>
 
-                {/* Transaction disclosure */}
-                <div className="bg-surface-raised/30 border border-gold-dim/15 p-4 max-w-md mx-auto">
-                  <p className="text-xs text-foreground/50 font-body leading-relaxed space-y-1">
-                    <span className="block">
-                      &bull; Lock <span className="text-gold font-display font-semibold">{lockAmount} SOL</span>{" "}
-                      in Slot <span className="text-gold font-display font-semibold">{assignedSlotId !== null ? `#${assignedSlotId}` : "pending assignment"}</span>
-                    </span>
-                    <span className="block">&bull; Funds are transferred to the protocol vault on-chain.</span>
-                    <span className="block">&bull; Non-custodial: your SOL becomes immediately claimable if you are displaced, when SOL reaches $1,000, or at protocol end date (Mar 16, 2030 UTC).</span>
-                    <span className="block">&bull; No admin can access your locked funds.</span>
-                  </p>
-                </div>
-
-                {/* Objections */}
-                <div className="max-w-md mx-auto space-y-3">
-                  <details className="group border border-gold-dim/15 bg-surface-raised/30">
-                    <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
-                      What if SOL never hits $1,000?
-                      <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
+                {/* Transaction disclosure + objections (collapsed to reduce CTA distance) */}
+                <div className="max-w-md mx-auto">
+                  <details className="group">
+                    <summary className="cursor-pointer text-[11px] text-foreground/40 font-body hover:text-foreground/60 transition-colors flex items-center gap-1.5 py-1">
+                      <span className="text-gold-dim/50 group-open:rotate-90 transition-transform text-[10px] leading-none">&#9656;</span>
+                      Learn more about this transaction
                     </summary>
-                    <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
-                      Your SOL unlocks when SOL hits $1,000 or at the protocol
-                      end date (Mar 16, 2030 UTC), whichever comes first.
-                      Your portraits remain yours regardless.
-                      No admin keys, no backdoors.
-                    </p>
-                  </details>
-                  <details className="group border border-gold-dim/15 bg-surface-raised/30">
-                    <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
-                      What if I lose access to my wallet?
-                      <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
-                    </summary>
-                    <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
-                      Your locked SOL and portraits are soulbound &mdash; tied to
-                      your wallet, non-transferable. If you lose access, those are
-                      gone. However, your Solazzo Points token can be freely sent
-                      and traded.
-                    </p>
-                  </details>
-                  <details className="group border border-gold-dim/15 bg-surface-raised/30">
-                    <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
-                      Can someone take my slot?
-                      <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
-                    </summary>
-                    <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
-                      Only once all 1,000 slots are filled. After that, anyone can
-                      outbid the lowest slot. If you&rsquo;re displaced, you get
-                      your full SOL immediately claimable. You don&rsquo;t lose money
-                      &mdash; you lose position.
-                    </p>
+                    <div className="mt-2 space-y-3">
+                      <div className="bg-surface-raised/30 border border-gold-dim/15 p-4">
+                        <p className="text-xs text-foreground/50 font-body leading-relaxed space-y-1">
+                          <span className="block">
+                            &bull; Lock <span className="text-gold font-display font-semibold">{lockAmount} SOL</span>{" "}
+                            in Slot <span className="text-gold font-display font-semibold">{assignedSlotId !== null ? `#${assignedSlotId}` : "pending assignment"}</span>
+                          </span>
+                          <span className="block">&bull; Funds are transferred to the protocol vault on-chain.</span>
+                          <span className="block">&bull; Non-custodial: your SOL becomes immediately claimable if you are displaced, when SOL reaches $1,000, or at protocol end date (Mar 16, 2030 UTC).</span>
+                          <span className="block">&bull; No admin can access your locked funds.</span>
+                        </p>
+                      </div>
+                      <details className="group border border-gold-dim/15 bg-surface-raised/30">
+                        <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
+                          What if SOL never hits $1,000?
+                          <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
+                        </summary>
+                        <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
+                          Your SOL unlocks when SOL hits $1,000 or at the protocol
+                          end date (Mar 16, 2030 UTC), whichever comes first.
+                          Your portraits remain yours regardless.
+                          No admin keys, no backdoors.
+                        </p>
+                      </details>
+                      <details className="group border border-gold-dim/15 bg-surface-raised/30">
+                        <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
+                          What if I lose access to my wallet?
+                          <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
+                        </summary>
+                        <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
+                          Your locked SOL and portraits are soulbound &mdash; tied to
+                          your wallet, non-transferable. If you lose access, those are
+                          gone. However, your Solazzo Points token can be freely sent
+                          and traded.
+                        </p>
+                      </details>
+                      <details className="group border border-gold-dim/15 bg-surface-raised/30">
+                        <summary className="px-4 py-3 cursor-pointer text-sm font-body text-foreground/70 hover:text-foreground transition-colors flex items-center justify-between">
+                          Can someone take my slot?
+                          <span className="text-gold-dim/40 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
+                        </summary>
+                        <p className="px-4 pb-3 text-sm text-foreground/40 font-body leading-relaxed">
+                          Only once all 1,000 slots are filled. After that, anyone can
+                          outbid the lowest slot. If you&rsquo;re displaced, you get
+                          your full SOL immediately claimable. You don&rsquo;t lose money
+                          &mdash; you lose position.
+                        </p>
+                      </details>
+                    </div>
                   </details>
                 </div>
 
