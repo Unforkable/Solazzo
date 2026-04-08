@@ -20,6 +20,11 @@ const ENABLED =
 
 let initialized = false;
 
+/** Random 8-char hex string, stable for the current page load. Ties related funnel events together without identifying the user. */
+const SESSION_ID = IS_BROWSER
+  ? Math.random().toString(16).slice(2, 10)
+  : "ssr";
+
 /** Call once from a client component (e.g. PostHogProvider). Safe to call multiple times. */
 export function initAnalytics(): void {
   if (initialized || !ENABLED) return;
@@ -44,10 +49,10 @@ function send(name: string, payload: EventPayload): void {
   }
 }
 
-/** Fire-and-forget event — never throws, never blocks UI. */
+/** Fire-and-forget event — never throws, never blocks UI. Automatically includes funnel_session_id. */
 export function track(name: string, payload: EventPayload = {}): void {
   try {
-    send(name, payload);
+    send(name, { funnel_session_id: SESSION_ID, ...payload });
   } catch {
     // Swallow — telemetry must never break UX.
   }

@@ -814,6 +814,18 @@ export default function PortraitStudio() {
     void refreshAssignedSlot();
   }, [connected, appStage, refreshAssignedSlot]);
 
+  // Fire once when claim area is fully interactive (connected + network verified)
+  const claimViewFired = useRef(false);
+  useEffect(() => {
+    if (appStage !== "commit" || networkLoading || claimViewFired.current) return;
+    claimViewFired.current = true;
+    track("claim_view_loaded", {
+      connected,
+      network: verifiedNetwork,
+      is_mainnet: isMainnet,
+    });
+  }, [appStage, networkLoading, connected, verifiedNetwork, isMainnet]);
+
   const handleFile = useCallback((file: Blob) => {
     setError(null);
     if (file instanceof File) {
@@ -1908,7 +1920,7 @@ export default function PortraitStudio() {
                   <p>If displaced, your full SOL is immediately claimable.</p>
                 </div>
                 <button
-                  onClick={() => { track("claim_connect_wallet_click"); openWalletModal(true); }}
+                  onClick={() => { track("claim_connect_wallet_click", { network: verifiedNetwork, is_mainnet: isMainnet }); openWalletModal(true); }}
                   className="w-full btn-gold font-display tracking-wide text-base py-3.5 cursor-pointer"
                 >
                   Connect Wallet to Claim
@@ -2020,7 +2032,7 @@ export default function PortraitStudio() {
 
                 {/* Transaction disclosure + objections (collapsed to reduce CTA distance) */}
                 <div className="max-w-md mx-auto">
-                  <details className="group" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) track("claim_learn_more_toggle_open", { lock_bucket: lockBucket(lockAmount) }); }}>
+                  <details className="group" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) track("claim_learn_more_toggle_open", { lock_bucket: lockBucket(lockAmount), network: verifiedNetwork, is_mainnet: isMainnet }); }}>
                     <summary className="cursor-pointer text-[11px] text-foreground/40 font-body hover:text-foreground/60 transition-colors flex items-center gap-1.5 py-1">
                       <span className="text-gold-dim/50 group-open:rotate-90 transition-transform text-[10px] leading-none">&#9656;</span>
                       Learn more about this transaction
