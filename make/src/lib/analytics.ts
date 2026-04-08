@@ -20,10 +20,22 @@ const ENABLED =
 
 let initialized = false;
 
-/** Random 8-char hex string, stable for the current page load. Ties related funnel events together without identifying the user. */
-const SESSION_ID = IS_BROWSER
-  ? Math.random().toString(16).slice(2, 10)
-  : "ssr";
+/** Random session string, stable for the current page load. Ties related funnel events without identifying the user. */
+function generateSessionId(): string {
+  if (!IS_BROWSER) return "ssr";
+  try {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID().slice(0, 8);
+    }
+    if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+      const buf = new Uint8Array(4);
+      crypto.getRandomValues(buf);
+      return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
+    }
+  } catch { /* fall through */ }
+  return Math.random().toString(16).slice(2, 10);
+}
+const SESSION_ID = generateSessionId();
 
 /** Call once from a client component (e.g. PostHogProvider). Safe to call multiple times. */
 export function initAnalytics(): void {
