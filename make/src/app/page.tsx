@@ -663,6 +663,7 @@ export default function PortraitStudio() {
   const [confirmReset, setConfirmReset] = useState(false);
 
   const compressedRef = useRef<Blob | null>(null);
+  const claimingRef = useRef(false); // synchronous guard against double-submit
   const fileInputRef = useRef<HTMLInputElement>(null);
   const swipeTouchStart = useRef<number>(0);
   const swipeTouchEnd = useRef<number>(0);
@@ -941,6 +942,8 @@ export default function PortraitStudio() {
 
     const allDone = portraits.every((p) => p !== null);
     if (!allDone || claimStep !== "idle") return;
+    if (claimingRef.current) return;
+    claimingRef.current = true;
 
     let targetSlotId = assignedSlotId;
     if (targetSlotId === null) {
@@ -1131,6 +1134,8 @@ export default function PortraitStudio() {
         setClaimError(msg);
       }
       setClaimStep("idle");
+    } finally {
+      claimingRef.current = false;
     }
   }, [publicKey, sendTransaction, signMessage, connection, portraits, traitManifests, assignedSlotId, lockAmount, claimStep, router, refreshAssignedSlot, postJsonWithTimeout, persistClaim]);
 
