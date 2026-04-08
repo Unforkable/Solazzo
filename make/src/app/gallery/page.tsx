@@ -529,7 +529,7 @@ function DisplacementModal({
                     <span className="text-sm font-display font-bold text-gold">{totalCostSol} SOL</span>
                   </div>
                   <p className="text-[10px] text-foreground/30 font-body mt-2 leading-relaxed">
-                    The displaced holder&apos;s full principal is credited to their claimable balance for withdrawal.
+                    The displaced holder&apos;s full principal is immediately claimable via their claimable balance.
                     Your lock is held in the protocol vault until settlement (SOL hits $1,000 or Mar 16, 2030 UTC) or displacement.
                   </p>
                 </div>
@@ -674,7 +674,7 @@ function WithdrawBanner() {
             &#9678; {solAmount} SOL available to withdraw
           </p>
           <p className="text-xs text-foreground/40 font-body mt-1">
-            You were displaced from a slot. Your full principal is ready for withdrawal.
+            You were displaced from a slot. Your full principal is immediately claimable and ready for withdrawal.
           </p>
         </div>
         <button
@@ -899,7 +899,7 @@ function CollectionLightbox({
                 <p className="text-sm text-foreground/60 font-body">
                   Lock more SOL than the current lowest holder to take their position.
                   The protocol always displaces the lowest-locked slot, not this one specifically.
-                  The displaced holder gets their full SOL back.
+                  The displaced holder gets their full SOL immediately claimable.
                 </p>
               </div>
               <button
@@ -1345,7 +1345,7 @@ function GalleryContent() {
                   </p>
                   <p className="text-sm text-foreground/60 font-body mt-1.5 leading-relaxed">
                     SOL crossed the $1,000 threshold. All locked SOL is now
-                    available for withdrawal. Your portraits remain permanently
+                    immediately claimable for withdrawal. Your portraits remain permanently
                     in the collection at their final stage. Conviction rewarded.
                   </p>
                 </div>

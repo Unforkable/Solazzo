@@ -4,11 +4,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useNetworkGuard, type SolanaNetwork } from "@/lib/onchain/useNetworkGuard";
+
+const NETWORK_BADGE: Record<SolanaNetwork, { label: string; className: string }> = {
+  devnet:         { label: "Devnet (Test Funds)",   className: "border-yellow-500/40 text-yellow-300" },
+  testnet:        { label: "Testnet (Test Funds)",  className: "border-yellow-500/40 text-yellow-300" },
+  "mainnet-beta": { label: "Mainnet (Real Funds)",  className: "border-red-500/40 text-red-300" },
+  localnet:       { label: "Localnet",              className: "border-blue-500/40 text-blue-300" },
+  unknown:        { label: "Unknown Network",       className: "border-gold-dim/30 text-foreground/70" },
+};
 
 export function Navbar() {
   const pathname = usePathname();
   const { publicKey, connected, disconnect } = useWallet();
   const { setVisible } = useWalletModal();
+  const { network: verifiedNetwork, loading: networkLoading } = useNetworkGuard();
+  const badge = NETWORK_BADGE[verifiedNetwork];
 
   const handleConnect = () => {
     if (connected) {
@@ -64,29 +75,36 @@ export function Navbar() {
             <span className="hidden sm:inline">My </span>Positions
           </Link>
         </div>
-        <button
-          onClick={handleConnect}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-body font-medium border transition-colors cursor-pointer rounded-sm ${
-            connected
-              ? "border-gold/50 text-gold hover:border-gold"
-              : "border-gold-dim/30 text-foreground/80 hover:border-gold hover:text-gold"
-          }`}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        <div className="flex items-center gap-2">
+          <span
+            className={`hidden sm:inline-flex items-center px-2 py-1 text-[10px] font-body border rounded-sm ${badge.className}`}
           >
-            <rect x="2" y="6" width="20" height="12" rx="2" />
-            <path d="M22 10H18a2 2 0 0 0 0 4h4" />
-          </svg>
-          {walletLabel}
-        </button>
+            {networkLoading ? "Verifying\u2026" : badge.label}
+          </span>
+          <button
+            onClick={handleConnect}
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-body font-medium border transition-colors cursor-pointer rounded-sm ${
+              connected
+                ? "border-gold/50 text-gold hover:border-gold"
+                : "border-gold-dim/30 text-foreground/80 hover:border-gold hover:text-gold"
+            }`}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="2" y="6" width="20" height="12" rx="2" />
+              <path d="M22 10H18a2 2 0 0 0 0 4h4" />
+            </svg>
+            {walletLabel}
+          </button>
+        </div>
       </div>
     </nav>
   );
