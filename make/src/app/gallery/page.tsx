@@ -119,6 +119,7 @@ function DisplacementModal({
   const [lockInput, setLockInput] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [txSig, setTxSig] = useState<string | null>(null);
+  const submittingRef = useRef(false); // synchronous guard against double-submit
 
   // Fetch on-chain state on open
   const fetchState = useCallback(async () => {
@@ -192,6 +193,8 @@ function DisplacementModal({
 
   const handleDisplace = useCallback(async () => {
     if (!publicKey || !config || !lowest) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
     // Refetch freshest state to prevent stale-data race (preflight keeps form visible)
     setStep("preflight");
@@ -370,6 +373,8 @@ function DisplacementModal({
 
       setErrorMsg(friendlyMsg);
       setStep("ready");
+    } finally {
+      submittingRef.current = false;
     }
   }, [publicKey, sendTransaction, signTransaction, connection, config, lowest, lockLamports, fetchState]);
 
@@ -590,6 +595,7 @@ function WithdrawBanner() {
   const [withdrawStep, setWithdrawStep] = useState<"idle" | "signing" | "confirming" | "done">("idle");
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [withdrawTxSig, setWithdrawTxSig] = useState<string | null>(null);
+  const withdrawingRef = useRef(false); // synchronous guard against double-submit
 
   const checkBalance = useCallback(async () => {
     if (!publicKey || !connected) {
@@ -618,6 +624,8 @@ function WithdrawBanner() {
 
   const handleWithdraw = useCallback(async () => {
     if (!publicKey || !sendTransaction || !claimableLamports) return;
+    if (withdrawingRef.current) return;
+    withdrawingRef.current = true;
 
     setWithdrawStep("signing");
     setWithdrawError(null);
@@ -643,6 +651,8 @@ function WithdrawBanner() {
         setWithdrawError(msg);
       }
       setWithdrawStep("idle");
+    } finally {
+      withdrawingRef.current = false;
     }
   }, [publicKey, sendTransaction, connection, claimableLamports]);
 
