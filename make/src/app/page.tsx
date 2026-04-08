@@ -2073,6 +2073,11 @@ export default function PortraitStudio() {
 
                 {/* Claim CTA */}
                 <div className="max-w-md mx-auto">
+                  <div className="border border-gold-dim/15 bg-black/20 px-4 py-2.5 mb-3 space-y-0.5 text-[11px] text-foreground/45 font-body">
+                    <p>You lock <span className="text-foreground/70 font-display">{lockAmount} SOL</span> in the protocol vault — non-custodial, no admin keys.</p>
+                    <p>Unlocks when SOL hits $1,000 or Mar 16, 2030 UTC — whichever comes first.</p>
+                    <p>If displaced, your full SOL is immediately claimable.</p>
+                  </div>
                   <button
                     onClick={claimAndPublish}
                     disabled={claimStep !== "idle" || assignedSlotId === null || lockAmount < MIN_LOCK_SOL || networkLoading}
