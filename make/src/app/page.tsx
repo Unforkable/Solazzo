@@ -34,6 +34,7 @@ import {
 import { MIN_LOCK_SOL, MAX_SLOT_ID, SOL_DECIMALS } from "@/lib/onchain/constants";
 import { useNetworkGuard } from "@/lib/onchain/useNetworkGuard";
 import { rpcRetry } from "@/lib/rpc-retry";
+import { track, lockBucket } from "@/lib/analytics";
 import { NotificationSignup } from "@/components/notification-signup";
 
 type AppStage = "intro" | "capture" | "preview" | "gallery" | "commit" | "locked";
@@ -945,6 +946,9 @@ export default function PortraitStudio() {
     if (claimingRef.current) return;
     claimingRef.current = true;
 
+    const eventMeta = { lock_bucket: lockBucket(lockAmount), network: verifiedNetwork, is_mainnet: isMainnet };
+    track("claim_cta_click", eventMeta);
+
     let targetSlotId = assignedSlotId;
     if (targetSlotId === null) {
       targetSlotId = await refreshAssignedSlot();
@@ -967,6 +971,7 @@ export default function PortraitStudio() {
     setClaimStep("preflight");
     setClaimError(null);
     setError(null);
+    track("claim_submit_started", eventMeta);
 
     try {
       // 1. Pre-flight: check if slot is available
@@ -1112,6 +1117,7 @@ export default function PortraitStudio() {
       const publishStatus = galleryId ? "published" : "local-only";
       const meta: ClaimMeta = { wallet: walletAddr, slotId: targetSlotId, lockSol: lockAmount, claimTxSig: sig, publishStatus };
       persistClaim(meta);
+      track("claim_submit_success", { ...eventMeta, publish_status: publishStatus });
 
       setClaimStep("idle");
       if (galleryId) {
@@ -1122,13 +1128,19 @@ export default function PortraitStudio() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Transaction failed.";
-      if (err instanceof Error && err.name === "AbortError") {
+      const reason = err instanceof Error && err.name === "AbortError"
+        ? "timeout"
+        : msg.includes("User rejected") || msg.includes("rejected")
+          ? "user_rejected"
+          : "tx_error";
+      track("claim_submit_error", { ...eventMeta, reason });
+
+      if (reason === "timeout") {
         setClaimError("Publish request timed out. Your slot may still be claimed on-chain; use Retry Publish.");
         setClaimStep("idle");
         return;
       }
-      // User rejected wallet prompt
-      if (msg.includes("User rejected") || msg.includes("rejected")) {
+      if (reason === "user_rejected") {
         setClaimError("Transaction cancelled — no changes were made.");
       } else {
         setClaimError(msg);
@@ -1137,7 +1149,7 @@ export default function PortraitStudio() {
     } finally {
       claimingRef.current = false;
     }
-  }, [publicKey, sendTransaction, signMessage, connection, portraits, traitManifests, assignedSlotId, lockAmount, claimStep, router, refreshAssignedSlot, postJsonWithTimeout, persistClaim]);
+  }, [publicKey, sendTransaction, signMessage, connection, portraits, traitManifests, assignedSlotId, lockAmount, claimStep, router, refreshAssignedSlot, postJsonWithTimeout, persistClaim, verifiedNetwork, isMainnet]);
 
   const retryPublishLocalOnly = useCallback(async () => {
     if (!claimMeta || claimMeta.publishStatus !== "local-only") return;
@@ -1896,7 +1908,7 @@ export default function PortraitStudio() {
                   <p>If displaced, your full SOL is immediately claimable.</p>
                 </div>
                 <button
-                  onClick={() => openWalletModal(true)}
+                  onClick={() => { track("claim_connect_wallet_click"); openWalletModal(true); }}
                   className="w-full btn-gold font-display tracking-wide text-base py-3.5 cursor-pointer"
                 >
                   Connect Wallet to Claim
@@ -2008,7 +2020,7 @@ export default function PortraitStudio() {
 
                 {/* Transaction disclosure + objections (collapsed to reduce CTA distance) */}
                 <div className="max-w-md mx-auto">
-                  <details className="group">
+                  <details className="group" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) track("claim_learn_more_toggle_open", { lock_bucket: lockBucket(lockAmount) }); }}>
                     <summary className="cursor-pointer text-[11px] text-foreground/40 font-body hover:text-foreground/60 transition-colors flex items-center gap-1.5 py-1">
                       <span className="text-gold-dim/50 group-open:rotate-90 transition-transform text-[10px] leading-none">&#9656;</span>
                       Learn more about this transaction
