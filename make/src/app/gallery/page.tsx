@@ -98,7 +98,7 @@ function rpcNetworkLabel(endpoint: string): string {
 
 // ── Displacement Modal ───────────────────────────────────────────────
 
-type DisplaceStep = "idle" | "loading" | "ready" | "signing" | "confirming" | "success" | "error";
+type DisplaceStep = "idle" | "loading" | "ready" | "preflight" | "signing" | "confirming" | "success" | "error";
 
 function DisplacementModal({
   onClose,
@@ -187,12 +187,14 @@ function DisplacementModal({
   const totalCostSol = lockSol + feeSol;
   const isAmountValid = lockLamports >= minRequiredLamports;
   const isSelfDisplace = publicKey && lowest?.owner ? publicKey.equals(lowest.owner) : false;
+  // True while a tx is in-flight — block close and duplicate submits
+  const isTxPending = step === "preflight" || step === "signing" || step === "confirming";
 
   const handleDisplace = useCallback(async () => {
     if (!publicKey || !config || !lowest) return;
 
-    // Refetch freshest state to prevent stale-data race
-    setStep("loading");
+    // Refetch freshest state to prevent stale-data race (preflight keeps form visible)
+    setStep("preflight");
     setErrorMsg(null);
     try {
       const [freshConfig, freshLowest] = await Promise.all([
@@ -374,7 +376,7 @@ function DisplacementModal({
   return (
     <div
       className="fixed inset-0 z-[55] overflow-y-auto"
-      onClick={onClose}
+      onClick={isTxPending ? undefined : onClose}
     >
       <div className="fixed inset-0 bg-black/90 backdrop-blur-sm" />
       <div className="relative min-h-full flex items-center justify-center p-4">
@@ -389,7 +391,8 @@ function DisplacementModal({
             </h3>
             <button
               onClick={onClose}
-              className="text-muted hover:text-gold transition-colors cursor-pointer text-sm font-body min-h-[44px] min-w-[44px] flex items-center justify-center"
+              disabled={isTxPending}
+              className="text-muted hover:text-gold transition-colors cursor-pointer text-sm font-body min-h-[44px] min-w-[44px] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Close
             </button>
@@ -457,7 +460,7 @@ function DisplacementModal({
               </button>
             </div>
           ) : (
-            /* step === "ready" | "signing" | "confirming" */
+            /* step === "ready" | "preflight" | "signing" | "confirming" */
             <div className="space-y-5">
               {/* Current lowest info */}
               {lowest && config && (
@@ -550,16 +553,12 @@ function DisplacementModal({
               {/* CTA */}
               <button
                 onClick={handleDisplace}
-                disabled={
-                  step !== "ready" ||
-                  !isAmountValid ||
-                  isSelfDisplace ||
-                  false
-                }
+                disabled={isTxPending || !isAmountValid || isSelfDisplace}
                 className="w-full btn-gold font-display tracking-wide text-base py-3.5 disabled:opacity-50 cursor-pointer"
               >
-                {step === "signing" && "Sign in your wallet..."}
-                {step === "confirming" && "Confirming on-chain..."}
+                {step === "preflight" && "Verifying on-chain state\u2026"}
+                {step === "signing" && "Sign in your wallet\u2026"}
+                {step === "confirming" && "Confirming on-chain\u2026"}
                 {step === "ready" && (
                   isAmountValid
                     ? `Displace Slot #${lowest?.slotId ?? "?"} - Lock ${lockSol} SOL`
@@ -608,6 +607,14 @@ function WithdrawBanner() {
   useEffect(() => {
     checkBalance();
   }, [checkBalance]);
+
+  // Reset stale tx state when wallet reconnects (e.g. disconnect during signing)
+  useEffect(() => {
+    if (connected && withdrawStep !== "idle" && withdrawStep !== "done") {
+      setWithdrawStep("idle");
+      setWithdrawError(null);
+    }
+  }, [connected]); // eslint-disable-line react-hooks/exhaustive-deps -- reset only on reconnect
 
   const handleWithdraw = useCallback(async () => {
     if (!publicKey || !sendTransaction || !claimableLamports) return;
@@ -688,7 +695,15 @@ function WithdrawBanner() {
         </button>
       </div>
       {withdrawError && (
-        <p className="text-sm text-red-400 font-body mt-2">{withdrawError}</p>
+        <div className="flex items-center gap-3 mt-2">
+          <p className="text-sm text-red-400 font-body">{withdrawError}</p>
+          <button
+            onClick={() => { setWithdrawError(null); handleWithdraw(); }}
+            className="text-xs text-gold/70 hover:text-gold font-body underline underline-offset-2 cursor-pointer flex-shrink-0"
+          >
+            Retry
+          </button>
+        </div>
       )}
     </div>
   );
