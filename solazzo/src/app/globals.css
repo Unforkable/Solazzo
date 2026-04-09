@@ -5,6 +5,8 @@
   --foreground: #ccc;
   --muted: #666;
   --accent: #999;
+  --gold: #c9a84c;
+  --gold-dim: #8a7033;
 }
 
 @theme inline {
@@ -12,8 +14,13 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-gold: var(--gold);
+  --color-gold-dim: var(--gold-dim);
 }
 
+/* ---------------------------------------------------------------- */
+/* Typography                                                       */
+/* ---------------------------------------------------------------- */
 body {
   background: var(--background);
   color: var(--foreground);
@@ -22,6 +29,360 @@ body {
   line-height: 1.7;
 }
 
+/* ---------------------------------------------------------------- */
+/* Ambient atmosphere — vignette + warm top-light                   */
+/* ---------------------------------------------------------------- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 50%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50vh;
+  pointer-events: none;
+  z-index: 99;
+  background: radial-gradient(
+    ellipse 60% 40% at 50% 0%,
+    rgba(201, 168, 76, 0.03) 0%,
+    transparent 100%
+  );
+}
+
 ::selection {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(201, 168, 76, 0.25);
+}
+
+/* ---------------------------------------------------------------- */
+/* Reading progress bar                                             */
+/* ---------------------------------------------------------------- */
+#reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--gold-dim) 0%, var(--gold) 100%);
+  z-index: 200;
+  transition: width 80ms linear;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- */
+/* Scroll-reveal — progressive enhancement                         */
+/* Default: content fully visible. Chrome/Edge get scroll-driven   */
+/* animation via @supports. Safari/Firefox see static content.     */
+/* ---------------------------------------------------------------- */
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .scroll-reveal {
+    animation: reveal-up ease-out both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 30%;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Serif classes for headings                                       */
+/* ---------------------------------------------------------------- */
+.font-serif-display {
+  font-family: "Georgia", "Times New Roman", "Palatino Linotype", serif;
+}
+
+/* ---------------------------------------------------------------- */
+/* Section decorative divider                                       */
+/* ---------------------------------------------------------------- */
+.section-divider {
+  position: relative;
+}
+
+.section-divider::before {
+  content: "";
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: linear-gradient(to right, var(--gold-dim), transparent);
+  margin-bottom: 24px;
+  opacity: 0.5;
+}
+
+/* ---------------------------------------------------------------- */
+/* CTA buttons                                                      */
+/* ---------------------------------------------------------------- */
+.cta-primary {
+  display: inline-block;
+  padding: 0.875rem 2rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--background);
+  background: var(--foreground);
+  border: 1px solid var(--foreground);
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+}
+.cta-primary:hover {
+  background: #fff;
+  border-color: #fff;
+  transform: scale(1.02);
+  box-shadow: 0 0 24px rgba(201, 168, 76, 0.1);
+}
+.cta-primary:active {
+  transform: scale(0.98);
+}
+
+.cta-secondary {
+  display: inline-block;
+  padding: 0.75rem 1.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--foreground);
+  border: 1px solid rgba(204, 204, 204, 0.3);
+  text-decoration: none;
+  transition: border-color 0.25s ease, color 0.2s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+}
+.cta-secondary:hover {
+  border-color: var(--gold-dim);
+  color: #fff;
+  transform: scale(1.02);
+  box-shadow: 0 0 20px rgba(201, 168, 76, 0.08);
+}
+.cta-secondary:active {
+  transform: scale(0.98);
+}
+
+/* ---------------------------------------------------------------- */
+/* TOC link — left-border highlight on hover                       */
+/* ---------------------------------------------------------------- */
+.toc-link {
+  display: block;
+  padding-left: 12px;
+  border-left: 2px solid transparent;
+  transition: border-color 0.25s ease,
+              color 0.25s ease,
+              padding-left 0.25s ease;
+}
+
+.toc-link:hover {
+  border-left-color: var(--gold-dim);
+  padding-left: 16px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Stage image — hover scale                                       */
+/* ---------------------------------------------------------------- */
+.stage-image-wrap {
+  overflow: hidden;
+  position: relative;
+}
+
+.stage-image-wrap img {
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.stage-image-wrap:hover img {
+  transform: scale(1.04);
+}
+
+.stage-image-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(17, 17, 17, 0.5) 0%,
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.stage-image-wrap:hover::after {
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------- */
+/* Sticky floating CTA                                              */
+/* ---------------------------------------------------------------- */
+#sticky-cta {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 90;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+#sticky-cta.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+#sticky-cta a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  color: var(--background);
+  background: var(--foreground);
+  border: none;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+#sticky-cta a:hover {
+  background: #fff;
+}
+
+/* ---------------------------------------------------------------- */
+/* FAQ accordion (details/summary)                                  */
+/* ---------------------------------------------------------------- */
+.faq-details {
+  border-bottom: 1px solid rgba(102, 102, 102, 0.15);
+  overflow: hidden;
+}
+
+.faq-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.faq-summary:hover {
+  color: var(--foreground);
+}
+
+.faq-summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-summary::marker {
+  content: "";
+}
+
+.faq-chevron {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.faq-details[open] .faq-chevron {
+  transform: rotate(180deg);
+}
+
+.faq-answer {
+  overflow: hidden;
+  animation: faq-close 0.25s ease-out forwards;
+}
+
+.faq-details[open] .faq-answer {
+  animation: faq-open 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes faq-open {
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding-bottom: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    padding-bottom: 16px;
+  }
+}
+
+@keyframes faq-close {
+  from {
+    opacity: 1;
+    max-height: 500px;
+    padding-bottom: 16px;
+  }
+  to {
+    opacity: 0;
+    max-height: 0;
+    padding-bottom: 0;
+  }
+}
+
+/* Footer link gold accent */
+.footer-link {
+  transition: color 0.25s ease;
+}
+
+.footer-link:hover {
+  color: var(--gold) !important;
+}
+
+/* ---------------------------------------------------------------- */
+/* Reduced motion                                                   */
+/* ---------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal {
+    animation: none !important;
+  }
+
+  .faq-answer,
+  .faq-details[open] .faq-answer {
+    animation: none !important;
+  }
+
+  .faq-answer {
+    max-height: none;
+    opacity: 1;
+    padding-bottom: 16px;
+  }
+
+  .cta-primary:hover,
+  .cta-secondary:hover {
+    transform: none;
+  }
+
+  .stage-image-wrap img,
+  .stage-image-wrap:hover img {
+    transform: none;
+    transition: none;
+  }
+
+  .toc-link:hover {
+    padding-left: 12px;
+  }
+
+  #sticky-cta {
+    transition: none;
+  }
 }
