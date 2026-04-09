@@ -78,7 +78,52 @@ export async function listCollections(): Promise<GalleryEntry[]> {
     .filter((r): r is PromiseFulfilledResult<GalleryEntry> => r.status === "fulfilled")
     .map((r) => r.value);
 
-  return entries.sort((a, b) => b.publishedAt - a.publishedAt);
+  // Sort by publishedAt descending (newest first), then deduplicate.
+  entries.sort((a, b) => b.publishedAt - a.publishedAt);
+  return deduplicateEntries(entries);
+}
+
+/**
+ * Read-time deduplication — removes duplicate gallery entries without
+ * mutating blob storage. Duplicates can occur when two concurrent publish
+ * requests pass the claimTxSig idempotency check before either write
+ * propagates in Vercel Blob's eventually-consistent listing.
+ *
+ * Dedup key priority:
+ *   1. claimTxSig (on-chain unique claim tx — strongest signal)
+ *   2. wallet + slot + first portrait URL (stable composite fallback)
+ *   3. No key derivable → entry is kept (avoid false positives)
+ *
+ * Keeps the first entry encountered (after sorting), which is the newest.
+ */
+export function deduplicateEntries(entries: GalleryEntry[]): GalleryEntry[] {
+  const seen = new Set<string>();
+  const result: GalleryEntry[] = [];
+
+  for (const entry of entries) {
+    const key = dedupeKey(entry);
+    if (key === null || !seen.has(key)) {
+      if (key !== null) seen.add(key);
+      result.push(entry);
+    }
+  }
+
+  return result;
+}
+
+function dedupeKey(entry: GalleryEntry): string | null {
+  // Primary: claimTxSig (globally unique on-chain)
+  if (entry.claimTxSig) {
+    return `tx:${entry.claimTxSig}`;
+  }
+
+  // Fallback: wallet + slot + first portrait URL
+  if (entry.wallet && typeof entry.slot === "number" && entry.portraits?.[0]) {
+    return `ws:${entry.wallet}:${entry.slot}:${entry.portraits[0]}`;
+  }
+
+  // No reliable key — keep the entry to avoid false positives
+  return null;
 }
 
 export async function findCollectionByClaimTxSig(
