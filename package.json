@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "description": "Solazzo monorepo — root-level Vercel ops scripts",
+  "scripts": {
+    "vercel:check": "node scripts/vercel-check.mjs",
+    "vercel:solazzo:env": "cd solazzo && vercel env ls",
+    "vercel:make:env": "cd make && vercel env ls",
+    "vercel:solazzo:ls": "cd solazzo && vercel ls",
+    "vercel:make:ls": "cd make && vercel ls",
+    "vercel:solazzo:redeploy": "cd solazzo && vercel ls 2>/dev/null | grep Ready | head -1 | awk '{print $2}' | xargs vercel redeploy",
+    "vercel:make:redeploy": "cd make && vercel ls 2>/dev/null | grep Ready | head -1 | awk '{print $2}' | xargs vercel redeploy"
+  }
+}
