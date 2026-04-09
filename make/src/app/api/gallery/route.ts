@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
-import { listCollections } from "@/lib/gallery-store";
+import { listCollections, canonicalizeBySlot } from "@/lib/gallery-store";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const collections = await listCollections();
+    const all = await listCollections();
+    const { canonical, legacy } = canonicalizeBySlot(all);
+
+    const url = new URL(request.url);
+    const includeLegacy = url.searchParams.get("includeLegacy") === "true";
+
+    const collections = includeLegacy
+      ? [...canonical, ...legacy]
+      : canonical;
+
     return NextResponse.json({ collections });
   } catch (error) {
     console.error("Gallery list error:", error);

@@ -126,6 +126,66 @@ function dedupeKey(entry: GalleryEntry): string | null {
   return null;
 }
 
+/**
+ * Slot canonicalization — one visible entry per slot number.
+ *
+ * Entries without a `slot` field are classified as legacy (pre-chain).
+ * Among entries sharing the same slot, the winner is chosen by:
+ *   1. Has both claimTxSig AND wallet (on-chain bound, highest confidence)
+ *   2. Has claimTxSig (partially bound)
+ *   3. Newest publishedAt
+ *   4. Lexical id (deterministic tiebreak)
+ *
+ * Read-time only — no blob mutations.
+ */
+export function canonicalizeBySlot(entries: GalleryEntry[]): {
+  canonical: GalleryEntry[];
+  legacy: GalleryEntry[];
+} {
+  const slotMap = new Map<number, GalleryEntry>();
+  const legacy: GalleryEntry[] = [];
+
+  for (const entry of entries) {
+    if (typeof entry.slot !== "number") {
+      legacy.push(entry);
+      continue;
+    }
+
+    const existing = slotMap.get(entry.slot);
+    if (!existing || slotCanonicalCompare(entry, existing) < 0) {
+      slotMap.set(entry.slot, entry);
+    }
+  }
+
+  const canonical = [...slotMap.values()].sort(
+    (a, b) => b.publishedAt - a.publishedAt,
+  );
+
+  return { canonical, legacy };
+}
+
+/**
+ * Compare two entries for the same slot.
+ * Returns negative if `a` should win (is more canonical).
+ */
+function slotCanonicalCompare(a: GalleryEntry, b: GalleryEntry): number {
+  const scoreA = canonicalScore(a);
+  const scoreB = canonicalScore(b);
+  if (scoreA !== scoreB) return scoreB - scoreA; // higher score wins
+
+  // Same confidence tier — prefer newest
+  if (a.publishedAt !== b.publishedAt) return b.publishedAt - a.publishedAt;
+
+  // Final deterministic tiebreak
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+function canonicalScore(entry: GalleryEntry): number {
+  if (entry.claimTxSig && entry.wallet) return 2;
+  if (entry.claimTxSig) return 1;
+  return 0;
+}
+
 export async function findCollectionByClaimTxSig(
   claimTxSig: string,
 ): Promise<GalleryEntry | null> {
