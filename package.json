@@ -3,6 +3,7 @@
   "description": "Solazzo monorepo — root-level Vercel ops scripts",
   "scripts": {
     "vercel:check": "node scripts/vercel-check.mjs",
+    "vercel:doctor": "node scripts/vercel-doctor.mjs",
     "vercel:solazzo:env": "cd solazzo && vercel env ls",
     "vercel:make:env": "cd make && vercel env ls",
     "vercel:solazzo:ls": "cd solazzo && vercel ls",

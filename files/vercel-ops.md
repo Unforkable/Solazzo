@@ -76,6 +76,17 @@ GitHub fine-grained tokens default to 30-day expiry. When `GITHUB_TOKEN` expires
 
 **Fix:** Set token expiry to 90 days when generating. Add a calendar reminder to rotate before expiry.
 
+## Doctor Check
+
+Run `npm run vercel:doctor` before changing env vars or investigating deploy issues. It checks:
+
+- Current git branch (warns if not `main`)
+- Vercel project reachability and latest deployment status for both apps
+- Required env var presence on `make` (`GITHUB_TOKEN`, `TRAIT_EDITOR_PASSWORD`, `INTERNAL_TEST_KEY`, `NEXT_PUBLIC_INTERNAL_TEST_KEY`, `GEMINI_API_KEY`, `BLOB_READ_WRITE_TOKEN`)
+- Env var status on `solazzo` (informational)
+
+Exits 0 if all checks pass, 1 if anything needs attention. Never prints secrets.
+
 ## 60-Second Preflight: Before Changing Env Vars
 
 1. **Which app needs this var?** `solazzo` or `make`?
