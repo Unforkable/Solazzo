@@ -92,8 +92,7 @@ async function saveViaGitHub(generated: string) {
   // Get current file (need SHA + header)
   const getRes = await fetch(`${apiBase}?ref=main`, { headers });
   if (!getRes.ok) {
-    const body = await getRes.text();
-    throw new Error(`GitHub read failed (${getRes.status}): ${body}`);
+    throwGitHubError("read", getRes.status, await safeBody(getRes));
   }
   const { sha, content: encodedContent } = await getRes.json();
   const currentContent = Buffer.from(encodedContent, "base64").toString(
@@ -116,11 +115,59 @@ async function saveViaGitHub(generated: string) {
     }),
   });
   if (!putRes.ok) {
-    const body = await putRes.text();
-    if (putRes.status === 409) {
-      throw new Error("File was modified externally — refresh and try again");
-    }
-    throw new Error(`GitHub commit failed (${putRes.status}): ${body}`);
+    throwGitHubError("commit", putRes.status, await safeBody(putRes));
+  }
+}
+
+/** Parse response body without throwing on malformed JSON. */
+async function safeBody(res: Response): Promise<string> {
+  try {
+    return await res.text();
+  } catch {
+    return "(unreadable body)";
+  }
+}
+
+/** Map GitHub status codes to operator-actionable messages. */
+function throwGitHubError(
+  op: string,
+  status: number,
+  body: string,
+): never {
+  // Log the raw response for debugging — never surfaces to UI
+  console.error(`GitHub ${op} failed (${status}):`, body);
+
+  switch (status) {
+    case 401:
+      throw new Error(
+        `GitHub ${op} failed (401): GITHUB_TOKEN is invalid or expired. ` +
+          "Regenerate the token in GitHub Settings → Developer settings → Fine-grained tokens, " +
+          "then update the env var on Vercel.",
+      );
+    case 403:
+      throw new Error(
+        `GitHub ${op} failed (403): GITHUB_TOKEN lacks required permissions. ` +
+          "The token needs Contents: read & write on Unforkable/Solazzo. " +
+          "Check for SSO/org restrictions or rate limits.",
+      );
+    case 404:
+      throw new Error(
+        `GitHub ${op} failed (404): repo, branch, or file path not accessible to this token. ` +
+          "Verify GITHUB_TOKEN has access to Unforkable/Solazzo and that the main branch exists.",
+      );
+    case 409:
+      throw new Error(
+        "File was modified externally — refresh and try again",
+      );
+    case 422:
+      throw new Error(
+        `GitHub ${op} failed (422): validation error. ` +
+          "The commit payload may be malformed or the SHA is stale — refresh and retry.",
+      );
+    default:
+      throw new Error(
+        `GitHub ${op} failed (${status}): unexpected error. Check server logs for details.`,
+      );
   }
 }
 
