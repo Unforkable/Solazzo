@@ -91,6 +91,49 @@ function weightedSelect(
   return pool[pool.length - 1];
 }
 
+// ── Hand-budget classification ──────────────────────────────────────────────
+// Explicit ID-based maps — no fragment parsing.
+
+/** Props whose fragments describe using both hands. */
+const TWO_HAND_PROPS = new Set([
+  "goose-i",
+  "white-rabbit",
+  "instant-ramen-cup",
+  "magic-8-ball",
+  "whole-pineapple",
+  "lobster-iv",
+  "faberge-egg",
+  "koi-fish",
+]);
+
+/** How many hands each pose occupies (0 = hands-neutral). */
+const POSE_HANDS: Record<string, number> = {
+  "three-quarter-profile": 0,
+  "profile-looking-back": 0,
+  "leaning-forward": 0,
+  "leaning-back-chin-up": 0,
+  "head-tilted": 0,
+  "hand-touching-face": 1,
+  "adjusting-collar-chain": 1,
+  "pulling-down-lower-lip": 1,
+  "holding-prop-up": 1,
+  "hand-over-mouth": 1,
+  "hand-raised-to-mouth-bust-down": 1,
+  "arms-crossed": 2,
+  "hands-in-pockets": 2,
+};
+
+function propHandsRequired(roll: TraitRoll): number {
+  if (roll.isNothing) return 0;
+  if (TWO_HAND_PROPS.has(roll.itemId)) return 2;
+  if (roll.tags.includes("held-object")) return 1;
+  return 0;
+}
+
+function poseHandsUsed(roll: TraitRoll): number {
+  return POSE_HANDS[roll.itemId] ?? 0;
+}
+
 // ── Coupling resolution ─────────────────────────────────────────────────────
 
 function resolveCouplings(
@@ -206,8 +249,54 @@ function resolveCouplings(
     fired.push("silhouette→wealth-markers-suppressed-except-chain");
   }
 
+  // 9. Hand-budget enforcement (must run last — after all pose/prop mutations)
+  {
+    const pH = poseHandsUsed(rolls.pose);
+    const prH = propHandsRequired(rolls.prop);
+
+    if (pH + prH > 2) {
+      const lipPullForced = fired.includes("lip-tattoo→lip-pull-pose");
+
+      if (lipPullForced) {
+        // Lip-pull is coupling-mandatory; clear the prop instead
+        const nothingProp = getStagePool(PROP, stage).find((i) => i.isNothing);
+        if (nothingProp) {
+          rolls.prop = toTraitRoll("prop", nothingProp);
+        } else {
+          rolls.prop = {
+            ...rolls.prop,
+            itemId: "nothing",
+            itemName: "Nothing",
+            fragment: "",
+            isNothing: true,
+            tags: [],
+          };
+        }
+        fired.push("hand-budget→prop-cleared-for-lip-pull");
+      } else if (prH === 2) {
+        // Two-hand prop: pose must be hands-neutral
+        const neutral = findItemById(POSE, "three-quarter-profile");
+        if (neutral) {
+          rolls.pose = toTraitRoll("pose", neutral);
+          fired.push("hand-budget→pose-neutralized-for-two-hand-prop");
+        }
+      } else {
+        // One-hand prop + two-hand pose: free one hand via holding pose
+        const holding = findItemById(POSE, "holding-prop-up");
+        if (holding) {
+          rolls.pose = toTraitRoll("pose", holding);
+          fired.push("hand-budget→pose-to-holding-for-one-hand-prop");
+        }
+      }
+    }
+  }
+
   return fired;
 }
+
+// ── Exported for testing ────────────────────────────────────────────────────
+
+export { TWO_HAND_PROPS, POSE_HANDS, propHandsRequired, poseHandsUsed };
 
 // ── Main export ─────────────────────────────────────────────────────────────
 
