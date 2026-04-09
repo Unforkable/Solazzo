@@ -52,3 +52,4 @@ Vercel ops scripts live in root `package.json` — run `npm run vercel:check` fo
 - Path alias `@/*` maps to `src/*` in both apps
 - Telegram notifications for generation reports (async via `after()`)
 - Seed-based PRNG for reproducible trait rolls
+- Gallery API returns one canonical entry per slot (read-time dedup + slot canonicalization). Legacy entries hidden by default; `?includeLegacy=true` for debug. UI has a "Show legacy" toggle.

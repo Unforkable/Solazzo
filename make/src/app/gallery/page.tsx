@@ -1022,6 +1022,7 @@ function GalleryContent() {
   const [sliderPrice, setSliderPrice] = useState(127);
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [sort, setSort] = useState<SortOption>("highest");
+  const [showLegacy, setShowLegacy] = useState(false);
   const [showDisplace, setShowDisplace] = useState(false);
   const currentStage = priceToStage(sliderPrice);
   const searchParams = useSearchParams();
@@ -1042,8 +1043,9 @@ function GalleryContent() {
     }));
   }, []);
 
-  const fetchCollections = useCallback(() => {
-    fetch("/api/gallery")
+  const fetchCollections = useCallback((includeLegacy = false) => {
+    const url = includeLegacy ? "/api/gallery?includeLegacy=true" : "/api/gallery";
+    fetch(url)
       .then((res) => res.json())
       .then((data) => {
         const items = data.collections ?? [];
@@ -1061,6 +1063,11 @@ function GalleryContent() {
       .catch(() => setKpiError("Failed to load on-chain data."))
       .finally(() => setKpiLoading(false));
   }, [connection]);
+
+  // Re-fetch when legacy toggle changes
+  useEffect(() => {
+    fetchCollections(showLegacy);
+  }, [showLegacy, fetchCollections]);
 
   useEffect(() => {
     fetchCollections();
@@ -1379,7 +1386,7 @@ function GalleryContent() {
           );
         })()}
 
-        {/* Sort controls */}
+        {/* Sort controls + legacy toggle */}
         {!loading && entries.length > 0 && (
           <div className="flex items-center gap-2 mb-6 flex-wrap">
             <span className="text-xs text-muted/30 font-body mr-1">Sort</span>
@@ -1396,6 +1403,12 @@ function GalleryContent() {
                 {opt.label}
               </button>
             ))}
+            <button
+              onClick={() => setShowLegacy((v) => !v)}
+              className="text-[10px] font-body text-muted/30 hover:text-muted/50 transition-colors cursor-pointer ml-auto"
+            >
+              {showLegacy ? "Hide legacy" : "Show legacy"}
+            </button>
           </div>
         )}
 
@@ -1499,7 +1512,7 @@ function GalleryContent() {
           onClose={() => setShowDisplace(false)}
           onSuccess={() => {
             setShowDisplace(false);
-            fetchCollections();
+            fetchCollections(showLegacy);
           }}
         />
       )}

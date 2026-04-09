@@ -53,6 +53,19 @@ The slot-book fetch in the commit stage uses `rpcRetry` (exponential backoff, 4 
 
 All slot IDs are `0..999` everywhere: on-chain program, backend API payloads, frontend state, and UI display text. There is no 1-based display mapping. This prevents off-by-one bugs between layers.
 
+## Gallery Canonicalization
+
+The gallery API returns one canonical entry per slot. When multiple entries exist for the same slot (e.g. reclaim after displacement, or publish-time race duplicates), the winner is selected by:
+
+1. Entry with `claimTxSig` + `wallet` (on-chain bound, highest confidence)
+2. Entry with `claimTxSig` only
+3. Newest `publishedAt`
+4. Lexical `id` tiebreak
+
+**Legacy entries** (pre-chain, no `slot` field) are excluded from the default `GET /api/gallery` response. To include them for debugging: `GET /api/gallery?includeLegacy=true`. The gallery UI has a small "Show legacy" toggle in the sort controls bar.
+
+All canonicalization is read-time only — no blob data is deleted or mutated.
+
 ## Pre-Launch Verification
 
 Use the canonical runbook before release:
