@@ -62,3 +62,130 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+
+  onchain:
+    name: onchain/ — anchor build + bankrun
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: onchain
+    env:
+      # Pin Solana + Anchor versions so cache keys are stable and CI is
+      # reproducible. Bump these together when the program is rebuilt against
+      # a newer toolchain. Rust version comes from onchain/rust-toolchain.toml.
+      SOLANA_VERSION: 2.0.21
+      ANCHOR_VERSION: 0.32.1
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Rust toolchain (channel pinned by onchain/rust-toolchain.toml) ---
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.89.0"
+          components: rustfmt, clippy
+
+      # Caches ~/.cargo/{registry,git} and onchain/target. Keyed on Cargo.lock
+      # (if present) + rust-toolchain — handles the bulk of cold-build time.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: onchain -> target
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # --- Solana CLI (cached install dir) ---
+      - name: Cache Solana CLI install
+        id: solana-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/solana/install
+          key: solana-${{ runner.os }}-${{ env.SOLANA_VERSION }}
+
+      - name: Install Solana CLI
+        if: steps.solana-cache.outputs.cache-hit != 'true'
+        # Anza is the post-Solana-Labs maintainer of the Agave validator/CLI.
+        run: sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
+
+      - name: Add Solana to PATH
+        run: echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Verify Solana CLI
+        run: solana --version
+
+      # --- Anchor CLI (cached as a single cargo bin) ---
+      - name: Cache Anchor CLI binary
+        id: anchor-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/anchor
+          key: anchor-${{ runner.os }}-${{ env.ANCHOR_VERSION }}-rust1.89
+
+      - name: Install Anchor CLI
+        if: steps.anchor-cache.outputs.cache-hit != 'true'
+        run: cargo install --locked anchor-cli --version ${ANCHOR_VERSION}
+
+      - name: Verify Anchor CLI
+        run: anchor --version
+
+      # --- Fast Rust lints (cheap; fail before the slow build) ---
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # --- Build the program + IDL ---
+      - name: anchor build
+        run: anchor build
+
+      # --- IDL drift guard (full canonical compare) ---
+      # The bundled IDL in make/ is the client/server contract. ANY drift from
+      # the freshly built IDL — address, instructions, accounts, types, errors,
+      # discriminators — must fail CI loud. We canonicalize both JSONs (recursive
+      # key sort) before comparing so cosmetic key-ordering changes from anchor
+      # build don't cause false positives. Node is already on PATH; no jq dep.
+      - name: IDL drift check (built vs bundled, full canonical compare)
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("fs");
+            const canon = (x) => {
+              if (Array.isArray(x)) return x.map(canon);
+              if (x && typeof x === "object") {
+                const o = {};
+                for (const k of Object.keys(x).sort()) o[k] = canon(x[k]);
+                return o;
+              }
+              return x;
+            };
+            const built   = canon(JSON.parse(fs.readFileSync("target/idl/solazzo_core.json", "utf8")));
+            const bundled = canon(JSON.parse(fs.readFileSync("../make/src/lib/onchain/idl/solazzo_core.json", "utf8")));
+            const bs = JSON.stringify(built);
+            const cs = JSON.stringify(bundled);
+            if (bs === cs) { console.log("IDL bundled === built (canonical equal)"); process.exit(0); }
+            console.error("::error::Bundled IDL drifted from the on-chain build.");
+            console.error("Built  .address =", built.address, "errors =", built.errors?.length);
+            console.error("Bundled .address =", bundled.address, "errors =", bundled.errors?.length);
+            console.error("Remediation:");
+            console.error("  cp onchain/target/idl/solazzo_core.json make/src/lib/onchain/idl/solazzo_core.json");
+            console.error("  cd make && npm test && npx tsc --noEmit  # confirm");
+            console.error("  git add make/src/lib/onchain/idl/solazzo_core.json && git commit");
+            process.exit(1);
+          '
+
+      # --- JS deps for bankrun tests ---
+      # onchain/ has no lockfile, so use 'npm install'. Tests run with the
+      # versions declared in onchain/package.json.
+      - name: Install onchain JS deps
+        run: npm install --ignore-scripts
+
+      # --- Deterministic protocol coverage via bankrun ---
+      # Runs the program through in-process bankrun (no solana-test-validator
+      # required). Covers all four user-facing instructions, all four events,
+      # the full settlement state machine, and oracle-validation edge cases.
+      # See "CI risk notes" in the PR / runbook for the coverage tradeoff.
+      - name: Bankrun tests (events + settlement)
+        run: npx ts-mocha -p ./tsconfig.json -t 1000000 tests/events.ts tests/zz-settlement.ts

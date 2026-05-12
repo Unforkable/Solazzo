@@ -1,9 +1,6 @@
-import { PublicKey } from "@solana/web3.js";
-
-export const PROGRAM_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_SOLAZZO_PROGRAM_ID ??
-    "52xHAYaQW1ywhdhNjxg1LvJvsEHpPBrK1J9Aud371hHC",
-);
+// PROGRAM_ID is resolved from a single source-of-truth module so the bundled
+// IDL address, env override, and on-chain declare_id! cannot drift apart.
+export { PROGRAM_ID, IDL_PROGRAM_ID } from "./program-id";
 
 export const SOLANA_RPC_URL =
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";

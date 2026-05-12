@@ -3,7 +3,44 @@ import { PublicKey } from "@solana/web3.js";
 import * as fs from "fs";
 import * as path from "path";
 
-const PROGRAM_ID = new PublicKey("52xHAYaQW1ywhdhNjxg1LvJvsEHpPBrK1J9Aud371hHC");
+/**
+ * Program ID resolution order (single source of truth):
+ *   1. SOLAZZO_PROGRAM_ID env var (validated; warns if it differs from IDL).
+ *   2. The "address" field of the loaded IDL.
+ *
+ * This mirrors the same SoT pattern as make/src/lib/onchain/program-id.ts so
+ * the indexer cannot decode events against a different program than the
+ * client/build expects.
+ */
+function resolveProgramId(idl: Idl): PublicKey {
+  const idlAddr = (idl as unknown as { address?: unknown }).address;
+  if (typeof idlAddr !== "string" || idlAddr.length === 0) {
+    throw new Error(
+      "Indexer: IDL is missing a non-empty 'address' field; cannot derive program ID.",
+    );
+  }
+  // Construct once to validate the IDL address itself.
+  const idlKey = new PublicKey(idlAddr);
+
+  const envValue = process.env.SOLAZZO_PROGRAM_ID;
+  if (!envValue || envValue.trim() === "") return idlKey;
+
+  let envKey: PublicKey;
+  try {
+    envKey = new PublicKey(envValue);
+  } catch {
+    throw new Error(
+      `SOLAZZO_PROGRAM_ID is not a valid base58 Solana public key: ${JSON.stringify(envValue)}`,
+    );
+  }
+  if (envValue !== idlAddr) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[indexer] SOLAZZO_PROGRAM_ID (${envValue}) differs from IDL address (${idlAddr}).`,
+    );
+  }
+  return envKey;
+}
 
 // Event types matching the on-chain Anchor events
 export interface SlotClaimedEvent {
@@ -83,8 +120,9 @@ export function decodeEvents(
   idl?: Idl
 ): Array<{ logIndex: number; event: SolazzoEvent }> {
   const resolvedIdl = idl ?? loadIdl();
+  const programId = resolveProgramId(resolvedIdl);
   const coder = new BorshCoder(resolvedIdl);
-  const parser = new EventParser(PROGRAM_ID, coder);
+  const parser = new EventParser(programId, coder);
 
   const results: Array<{ logIndex: number; event: SolazzoEvent }> = [];
   let logIndex = 0;

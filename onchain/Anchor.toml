@@ -6,6 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
+# Must equal declare_id! in programs/solazzo-core/src/lib.rs and the IDL "address".
 solazzo_core = "3zYyfExhUGd8dh3wZZP285iwdjdnSphpqWks4x8L1gvy"
 
 [registry]

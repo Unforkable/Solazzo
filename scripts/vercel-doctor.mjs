@@ -107,14 +107,29 @@ function getEnvNames(cwd) {
   return names;
 }
 
-// make — required vars
+// make — required vars (failure = degraded or broken user flow)
+// See CLAUDE.md `#### make env vars` for what breaks if any of these are missing.
 const MAKE_REQUIRED = [
-  "GITHUB_TOKEN",
-  "TRAIT_EDITOR_PASSWORD",
-  "INTERNAL_TEST_KEY",
-  "NEXT_PUBLIC_INTERNAL_TEST_KEY",
   "GEMINI_API_KEY",
   "BLOB_READ_WRITE_TOKEN",
+  "NEXT_PUBLIC_SOLAZZO_PROGRAM_ID",
+  "SOLANA_RPC_URL",
+  "NEXT_PUBLIC_SOLANA_RPC_URL",
+  "PUBLISH_CHALLENGE_SECRET",
+  "INTERNAL_TEST_KEY",
+  "NEXT_PUBLIC_INTERNAL_TEST_KEY",
+  "TELEGRAM_BOT_TOKEN",
+  "TELEGRAM_CHAT_ID",
+  "GITHUB_TOKEN",
+  "TRAIT_EDITOR_PASSWORD",
+];
+
+// make — optional vars (informational; doctor reports presence but never fails on absence)
+const MAKE_OPTIONAL = [
+  "GENERATE_RATE_LIMIT_MAX",
+  "GENERATE_RATE_LIMIT_WINDOW_MS",
+  "GENERATE_DAILY_MAX_REQUESTS",
+  "GENERATE_GLOBAL_DAILY_MAX",
 ];
 
 const makeEnv = getEnvNames("make");
@@ -133,9 +148,15 @@ if (makeEnv === null) {
       failures++;
     }
   }
+  for (const v of MAKE_OPTIONAL) {
+    if (makeEnv.has(v)) {
+      dim(`make (optional): ${v} present`);
+    }
+  }
   if (!makeOk) {
     dim("  Inspect: npm run vercel:make:env");
     dim("  Fix:     cd make && vercel env add <VAR_NAME> production");
+    dim("  See CLAUDE.md for what each var does and what breaks if missing.");
   }
 }
 

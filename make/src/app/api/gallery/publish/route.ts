@@ -10,6 +10,9 @@ import {
 import { verifyChallengeToken } from "@/lib/publish-auth";
 import { testGate } from "@/lib/test-gate";
 import { rpcRetry, RpcUnavailableError } from "@/lib/rpc-retry";
+// PROGRAM_ID resolves from the single source-of-truth module (bundled IDL +
+// validated env override) so this route cannot drift from the client.
+import { PROGRAM_ID } from "@/lib/onchain/program-id";
 
 const MAX_IMAGE_SIZE = 1024 * 1024; // 1 MB per portrait
 
@@ -20,11 +23,6 @@ const SLOT_DISCRIMINATOR = Buffer.from([140, 54, 3, 187, 53, 189, 250, 230]);
 const CLAIM_UNFILLED_SLOT_DISC = Buffer.from([
   227, 27, 177, 192, 4, 75, 201, 176,
 ]);
-
-const PROGRAM_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_SOLAZZO_PROGRAM_ID ??
-    "52xHAYaQW1ywhdhNjxg1LvJvsEHpPBrK1J9Aud371hHC",
-);
 
 function getRpcUrl(): string {
   return (

@@ -1,5 +1,5 @@
 {
-  "address": "52xHAYaQW1ywhdhNjxg1LvJvsEHpPBrK1J9Aud371hHC",
+  "address": "3zYyfExhUGd8dh3wZZP285iwdjdnSphpqWks4x8L1gvy",
   "metadata": {
     "name": "solazzo_core",
     "version": "0.1.0",
@@ -624,10 +624,12 @@
     {
       "name": "settle_if_threshold_met",
       "docs": [
-        "Attempt settlement if oracle price meets threshold for sustained window.",
+        "Attempt settlement via oracle price threshold OR global timeout deadline.",
         "",
-        "Permissionless: anyone can call. Reads the external Pyth oracle account,",
-        "validates freshness/confidence, and runs the sustained-window state machine.",
+        "Permissionless: anyone can call. Two settlement paths:",
+        "1. **Timeout**: if current timestamp >= config.settle_deadline_ts, settles immediately.",
+        "2. **Price**: reads the external Pyth oracle account, validates freshness/confidence,",
+        "and runs the sustained-window state machine.",
         "",
         "Any invalid observation (stale, non-positive, wide confidence, below threshold,",
         "bad data format) resets the window and returns Ok — errors would revert state",
@@ -891,106 +893,111 @@
     },
     {
       "code": 6008,
+      "name": "NonCanonicalSettleDeadline",
+      "msg": "Settlement deadline must equal 1899849600 (2030-03-16T00:00:00Z)"
+    },
+    {
+      "code": 6009,
       "name": "InvalidAdminMultisig",
       "msg": "Admin multisig pubkey must not be the default address"
     },
     {
-      "code": 6009,
+      "code": 6010,
       "name": "InvalidTreasuryAccount",
       "msg": "Treasury account pubkey must not be the default address"
     },
     {
-      "code": 6010,
+      "code": 6011,
       "name": "InvalidOracleFeed",
       "msg": "Oracle feed pubkey must not be the default address"
     },
     {
-      "code": 6011,
+      "code": 6012,
       "name": "ProtocolPaused",
       "msg": "Protocol is paused"
     },
     {
-      "code": 6012,
+      "code": 6013,
       "name": "ProtocolSettled",
       "msg": "Protocol is already settled"
     },
     {
-      "code": 6013,
+      "code": 6014,
       "name": "SlotsAlreadyFull",
       "msg": "All slots are already filled"
     },
     {
-      "code": 6014,
+      "code": 6015,
       "name": "InvalidSlotId",
       "msg": "Slot ID is out of range (must be < slot_count)"
     },
     {
-      "code": 6015,
+      "code": 6016,
       "name": "SlotAlreadyOccupied",
       "msg": "Slot is already occupied"
     },
     {
-      "code": 6016,
+      "code": 6017,
       "name": "LockBelowMinimum",
       "msg": "Lock amount is below the minimum"
     },
     {
-      "code": 6017,
+      "code": 6018,
       "name": "Unauthorized",
       "msg": "Signer is not the admin authority"
     },
     {
-      "code": 6018,
+      "code": 6019,
       "name": "CollectionNotFull",
       "msg": "All slots must be filled before displacement"
     },
     {
-      "code": 6019,
+      "code": 6020,
       "name": "ExpectedLowestMismatch",
       "msg": "Expected lowest slot_id does not match actual lowest"
     },
     {
-      "code": 6020,
+      "code": 6021,
       "name": "ExpectedLowestLockMismatch",
       "msg": "Expected lowest lock_lamports does not match actual lowest"
     },
     {
-      "code": 6021,
+      "code": 6022,
       "name": "InsufficientDisplacementIncrement",
       "msg": "New lock must exceed lowest lock + min_increment"
     },
     {
-      "code": 6022,
+      "code": 6023,
       "name": "SelfDisplacementNotAllowed",
       "msg": "Cannot displace yourself"
     },
     {
-      "code": 6023,
+      "code": 6024,
       "name": "ClaimableBalanceOwnerMismatch",
       "msg": "Claimable balance owner does not match displaced slot owner"
     },
     {
-      "code": 6024,
+      "code": 6025,
       "name": "NoClaimableBalance",
       "msg": "No claimable balance to withdraw"
     },
     {
-      "code": 6025,
+      "code": 6026,
       "name": "AlreadySettled",
       "msg": "Protocol is already settled"
     },
     {
-      "code": 6026,
+      "code": 6027,
       "name": "InvalidOracleFeedAccount",
       "msg": "Oracle feed account does not match protocol config"
     },
     {
-      "code": 6027,
+      "code": 6028,
       "name": "FeeTooHigh",
       "msg": "Displacement fee must be less than minimum lock amount"
     },
     {
-      "code": 6028,
+      "code": 6029,
       "name": "ArithmeticOverflow",
       "msg": "Arithmetic overflow"
     }
@@ -1129,6 +1136,10 @@
           {
             "name": "settle_window_sec",
             "type": "u32"
+          },
+          {
+            "name": "settle_deadline_ts",
+            "type": "i64"
           }
         ]
       }
@@ -1139,7 +1150,7 @@
         "Global protocol configuration (singleton PDA).",
         "",
         "Seeds: [\"protocol_config\"]",
-        "Size: 8 (discriminator) + 153 = 161 bytes"
+        "Size: 8 (discriminator) + 161 = 169 bytes"
       ],
       "type": {
         "kind": "struct",
@@ -1250,6 +1261,13 @@
             "type": "i64"
           },
           {
+            "name": "settle_deadline_ts",
+            "docs": [
+              "Global settlement deadline (Unix timestamp). Protocol settles unconditionally at/after this time."
+            ],
+            "type": "i64"
+          },
+          {
             "name": "bump",
             "docs": [
               "PDA bump seed."
@@ -1267,6 +1285,31 @@
           {
             "name": "ts",
             "type": "i64"
+          },
+          {
+            "name": "cause",
+            "type": {
+              "defined": {
+                "name": "SettlementCause"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettlementCause",
+      "docs": [
+        "Cause of protocol settlement."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Price"
+          },
+          {
+            "name": "Timeout"
           }
         ]
       }

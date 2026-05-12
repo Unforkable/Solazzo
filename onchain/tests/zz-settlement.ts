@@ -13,9 +13,9 @@ import * as anchor from "@coral-xyz/anchor";
 import { Clock } from "solana-bankrun";
 
 const IDL = require("../target/idl/solazzo_core.json");
-const PROGRAM_ID = new PublicKey(
-  "52xHAYaQW1ywhdhNjxg1LvJvsEHpPBrK1J9Aud371hHC"
-);
+// Derive from the IDL so the test cannot drift from declare_id! / Anchor.toml.
+// Anchor writes the program's declare_id into IDL.address at build time.
+const PROGRAM_ID = new PublicKey(IDL.address);
 
 // Pyth Receiver program ID (must match on-chain owner check)
 const PYTH_RECEIVER_PROGRAM_ID = new PublicKey(

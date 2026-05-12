@@ -4,6 +4,12 @@ import { reportError, reportGeneration } from "@/lib/report";
 import { geminiGenerate, type ReferenceImage } from "@/lib/gemini";
 import { loadStageReferences } from "@/lib/reference-images";
 import { testGate, generationGate } from "@/lib/test-gate";
+import {
+  checkDailyQuota,
+  checkRateLimit,
+  getClientIp,
+  getGenerateLimitConfig,
+} from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -19,6 +25,44 @@ export async function POST(request: NextRequest) {
 
   const killSwitch = generationGate();
   if (killSwitch) return killSwitch;
+
+  // ── Abuse & cost guardrails ──────────────────────────────────────────
+  // Per-IP sliding window first (cheap), then per-IP + global daily quota.
+  // Both run before any Gemini call to keep spend bounded.
+  const ip = getClientIp(request);
+  const windowConfig = getGenerateLimitConfig();
+  const window = checkRateLimit(ip, windowConfig);
+  if (!window.allowed) {
+    console.warn(
+      `[generate] blocked window-limit ip=${ip} ` +
+        `max=${windowConfig.maxRequests} windowMs=${windowConfig.windowMs}`,
+    );
+    return NextResponse.json(
+      {
+        error: "Too many generation requests. Please slow down.",
+        retryAfterMs: windowConfig.windowMs,
+      },
+      { status: 429 },
+    );
+  }
+
+  const daily = checkDailyQuota(ip);
+  if (!daily.allowed) {
+    console.warn(
+      `[generate] blocked daily-quota ip=${ip} reason=${daily.reason} ` +
+        `perIp=${daily.perIpCount}/${daily.perIpMax} ` +
+        `global=${daily.globalCount}/${daily.globalMax}`,
+    );
+    return NextResponse.json(
+      {
+        error:
+          daily.reason === "global-daily"
+            ? "Daily generation capacity reached. Try again tomorrow."
+            : "Daily generation limit reached. Try again tomorrow.",
+      },
+      { status: 429 },
+    );
+  }
 
   try {
     const formData = await request.formData();

@@ -7,13 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npm run test:auth && npm run test:rpc && npm run test:disc && npm run test:hands && npm run test:dedup && npm run test:canonical",
+    "test": "npm run test:auth && npm run test:rpc && npm run test:disc && npm run test:hands && npm run test:dedup && npm run test:canonical && npm run test:programid && npm run test:ratelimit",
     "test:auth": "tsx --test src/lib/__tests__/publish-auth.test.ts",
     "test:rpc": "tsx --test src/lib/__tests__/rpc-retry.test.ts",
     "test:disc": "tsx --test src/lib/__tests__/discriminators.test.ts",
     "test:hands": "tsx --test src/lib/__tests__/hand-budget.test.ts",
     "test:dedup": "tsx --test src/lib/__tests__/gallery-dedup.test.ts",
-    "test:canonical": "tsx --test src/lib/__tests__/gallery-canonical.test.ts"
+    "test:canonical": "tsx --test src/lib/__tests__/gallery-canonical.test.ts",
+    "test:programid": "tsx --test src/lib/__tests__/program-id.test.ts",
+    "test:ratelimit": "tsx --test src/lib/__tests__/rate-limit.test.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
