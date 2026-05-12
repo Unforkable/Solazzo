@@ -123,6 +123,15 @@ jobs:
           path: ~/.cargo/bin/anchor
           key: anchor-${{ runner.os }}-${{ env.ANCHOR_VERSION }}-rust1.89
 
+      # `cargo install anchor-cli` pulls in the `hidapi` crate, whose build
+      # script links against libudev on Linux. Ubuntu runners do not ship it
+      # by default. Gated on cache miss so we don't apt-install on warm runs.
+      - name: Install libudev (Linux build dep for anchor-cli)
+        if: steps.anchor-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libudev-dev
+
       - name: Install Anchor CLI
         if: steps.anchor-cache.outputs.cache-hit != 'true'
         run: cargo install --locked anchor-cli --version ${ANCHOR_VERSION}
