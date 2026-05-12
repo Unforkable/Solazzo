@@ -74,7 +74,9 @@ jobs:
       # Pin Solana + Anchor versions so cache keys are stable and CI is
       # reproducible. Bump these together when the program is rebuilt against
       # a newer toolchain. Rust version comes from onchain/rust-toolchain.toml.
-      SOLANA_VERSION: 2.0.21
+      # SOLANA_VERSION must be new enough to parse the committed onchain/Cargo.lock
+      # version (v4 = cargo 1.84+, shipped from Agave 2.2 / 3.x onward).
+      SOLANA_VERSION: 3.1.10
       ANCHOR_VERSION: 0.32.1
     steps:
       - uses: actions/checkout@v4
