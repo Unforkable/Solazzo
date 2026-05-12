@@ -82,10 +82,13 @@ Run `npm run vercel:doctor` before changing env vars or investigating deploy iss
 
 - Current git branch (warns if not `main`)
 - Vercel project reachability and latest deployment status for both apps
-- Required env var presence on `make` (`GITHUB_TOKEN`, `TRAIT_EDITOR_PASSWORD`, `INTERNAL_TEST_KEY`, `NEXT_PUBLIC_INTERNAL_TEST_KEY`, `GEMINI_API_KEY`, `BLOB_READ_WRITE_TOKEN`)
+- Required env var presence on `make` — canonical list lives in `CLAUDE.md` under `#### make env vars`. The doctor reads the same list and fails if anything required is missing.
+- Optional env vars on `make` (e.g. `GENERATE_*` guardrails) — reported informationally only.
 - Env var status on `solazzo` (informational)
 
 Exits 0 if all checks pass, 1 if anything needs attention. Never prints secrets.
+
+For release-readiness (RPC + program + IDL alignment) checks, use `node scripts/smoke-release.mjs` — see `files/solazzo_verification_runbook.md` § Release Smoke Flow.
 
 ## 60-Second Preflight: Before Changing Env Vars
 

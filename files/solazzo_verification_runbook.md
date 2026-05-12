@@ -203,3 +203,87 @@ Runbook passes when all are true:
 - Withdraw succeeds and claimable returns to zero.
 - No unresolved network mismatch or RPC alignment issues.
 
+---
+
+## 8) Release Smoke Flow (pre-deploy or post-deploy sanity)
+
+A short, repeatable smoke for the claim → challenge → publish path. Most of it is automated; the wallet-signed final step requires a human + browser.
+
+### 8.1 Preconditions
+
+| Item | Expected value |
+| --- | --- |
+| Cluster | `https://api.devnet.solana.com` (production today; check `vercel env pull --environment=production`) |
+| Program ID | `3zYyfExhUGd8dh3wZZP285iwdjdnSphpqWks4x8L1gvy` (devnet) |
+| Bundled IDL `.address` (`make/src/lib/onchain/idl/solazzo_core.json`) | must equal the program ID |
+| Vercel env `NEXT_PUBLIC_SOLAZZO_PROGRAM_ID` (make, all 3 tiers) | must equal the program ID |
+| `PUBLISH_CHALLENGE_SECRET` | set, ≥ 32 chars, present in production env |
+| Test wallet | devnet keypair with ≥ 2 SOL |
+
+### 8.2 Automated checks — single command
+
+From the repo root:
+
+```bash
+SOLANA_RPC_URL=https://api.devnet.solana.com node scripts/smoke-release.mjs
+```
+
+The script (read-only) runs the four checks below and prints a PASS/FAIL summary. Exit code reflects the outcome — wire it into your release script.
+
+| # | Check | What it asserts |
+| --- | --- | --- |
+| 1 | Bundled IDL vs built IDL canonical equality | `make/src/lib/onchain/idl/solazzo_core.json` matches `onchain/target/idl/solazzo_core.json` byte-for-byte after recursive key sort (this is the same compare CI runs). Built IDL must exist locally — run `cd onchain && anchor build` first if the file is absent. |
+| 2 | Program account on configured RPC | `getAccountInfo(programId)` returns a record with `executable === true`, owner = BPF upgradeable loader. |
+| 3 | ProtocolConfig PDA exists with the expected discriminator | PDA derived from `["protocol_config"]` is present, owned by the program, and its 8-byte discriminator matches `[207, 91, 250, 28, 152, 179, 215, 209]`. |
+| 4 | SlotBook PDA exists with the expected discriminator | PDA derived from `["slot_book"]`; discriminator matches `[174, 179, 156, 123, 56, 7, 117, 186]`. |
+
+### 8.3 Repo health checks
+
+```bash
+cd make             && npm test && npx tsc --noEmit
+cd ../onchain/indexer && npx tsc --noEmit
+```
+
+Expected: 93 make tests + 29 indexer tests pass; both typechecks exit 0.
+
+### 8.4 Manual wallet step (browser-only)
+
+Required for the publish path because Ed25519 wallet signing cannot be automated server-side without keys.
+
+1. Open `https://make.solazzo.fun` (or the preview URL).
+2. Connect a devnet wallet with ≥ 2 SOL.
+3. Generate a portrait.
+4. Click **Claim** with a `1 SOL` lock. Approve the wallet tx.
+5. Click **Publish**. The site asks you to sign a challenge message that begins:
+   ```
+   SOLAZZO Publish Authorization v1
+   wallet:<your_wallet>
+   slotId:<n>
+   claimTxSig:<base58 sig>
+   ...
+   ```
+6. Approve the signature.
+
+Expected: the gallery card appears, `/api/gallery` returns the new entry, and the response is `{ "id": "<uuid>" }` or `{ "id": "...", "deduped": true }` on retry.
+
+### 8.5 PASS / FAIL criteria
+
+**PASS** when all of the following are true:
+- `scripts/smoke-release.mjs` exits 0.
+- Repo-health commands in §8.3 all exit 0.
+- Manual wallet step in §8.4 produces a gallery card without error.
+
+**FAIL** if any check above fails.
+
+### 8.6 Common failure modes & remediation
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| Smoke script: "IDL drift" | Someone changed `declare_id!` without resyncing the bundled IDL | `cp onchain/target/idl/solazzo_core.json make/src/lib/onchain/idl/solazzo_core.json && cd make && npm test` then commit |
+| Smoke script: "Program account not found" | RPC points at the wrong cluster (mainnet vs devnet), or `NEXT_PUBLIC_SOLAZZO_PROGRAM_ID` is wrong | `vercel env pull` and compare against runbook §8.1 |
+| Smoke script: "ProtocolConfig PDA missing" | Program is deployed but `initialize_protocol` hasn't run | Run main runbook §3 Step B (initialize) |
+| Smoke script: discriminator mismatch | Bundled client is built against a different program version than the deployed one | Rebuild + redeploy `onchain/`, then resync bundled IDL |
+| Browser publish: `Challenge token integrity check failed` | `PUBLISH_CHALLENGE_SECRET` differs between issue and verify (e.g. only set on Production but request hit Preview) | Set the same secret on all three Vercel environments |
+| Browser publish: `Slot not found on-chain` | Wallet on different cluster than the app | Switch wallet to devnet |
+| Browser publish: `Wallet does not own this slot` | Replay of a stale claim, or wallet impersonation | Re-claim, then retry publish |
+
