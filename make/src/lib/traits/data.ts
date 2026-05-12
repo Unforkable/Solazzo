@@ -430,6 +430,7 @@ export const PROP: TraitCategoryDef = {
     { id: "single-grape", name: "Single grape", stages: [5], weight: 4, rarity: "Rare", fragment: "A single grape is held between thumb and forefinger, its surface catching warm light with a translucent inner glow — the smallest possible object of contemplation, painted with the obsessive detail of a Flemish still life.", tags: ["held-object"] },
     { id: "promethazine-bottle", name: "Promethazine bottle", stages: "all", weight: 2, rarity: "Legendary", fragment: "A small prescription bottle is held up between two fingers, its purple syrup catching the warm light source like stained glass — the liquid glowing from within, the pharmacy label barely legible in the shadow. The gesture is deliberate, almost devotional." },
     { id: "lemon", name: "Lemon", stages: "all", weight: 2, rarity: "Legendary", fragment: "A single lemon rests in the open palm, its pitted yellow skin catching the light with surprising fidelity. " },
+    { id: "pomegranate", name: "pomegranate", stages: "all", weight: 4, rarity: "Rare", fragment: "A pomegranate is held in one hand, its deep crimson skin catching the light like lacquered wood. One side is split open, seeds visible — small, wet, and dark." },
   ],
 };
 
