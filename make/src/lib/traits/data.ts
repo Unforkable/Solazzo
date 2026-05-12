@@ -431,6 +431,7 @@ export const PROP: TraitCategoryDef = {
     { id: "promethazine-bottle", name: "Promethazine bottle", stages: "all", weight: 2, rarity: "Legendary", fragment: "A small prescription bottle is held up between two fingers, its purple syrup catching the warm light source like stained glass — the liquid glowing from within, the pharmacy label barely legible in the shadow. The gesture is deliberate, almost devotional." },
     { id: "lemon", name: "Lemon", stages: "all", weight: 2, rarity: "Legendary", fragment: "A single lemon rests in the open palm, its pitted yellow skin catching the light with surprising fidelity. " },
     { id: "pomegranate", name: "pomegranate", stages: "all", weight: 4, rarity: "Rare", fragment: "A pomegranate is held in one hand, its deep crimson skin catching the light like lacquered wood. One side is split open, seeds visible — small, wet, and dark." },
+    { id: "a-fat-cat", name: "A fat cat", stages: "all", weight: 2, rarity: "Legendary", fragment: "A large, heavy cat is held forward with both hands, its weight substantial, its expression remote. The fur catches light along the spine. The subject presents it without ceremony." },
   ],
 };
 
