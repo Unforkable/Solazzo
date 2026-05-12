@@ -190,8 +190,11 @@ jobs:
       # --- JS deps for bankrun tests ---
       # onchain/ has no lockfile, so use 'npm install'. Tests run with the
       # versions declared in onchain/package.json.
+      # --legacy-peer-deps: anchor-bankrun@0.5 declares @coral-xyz/anchor@^0.30
+      # as a peer; we pin ^0.32. Local dev uses yarn (Anchor.toml's
+      # package_manager) which tolerates the mismatch; npm 10 doesn't.
       - name: Install onchain JS deps
-        run: npm install --ignore-scripts
+        run: npm install --ignore-scripts --legacy-peer-deps
 
       # --- Deterministic protocol coverage via bankrun ---
       # Runs the program through in-process bankrun (no solana-test-validator
