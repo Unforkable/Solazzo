@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -46,6 +47,23 @@ const RARITY_COLORS: Record<string, string> = {
 };
 
 type SortOption = "highest" | "lowest" | "slot";
+
+// Matches Tailwind grid breakpoints used in the wall: 2 / sm:3 / lg:4.
+// SSR default = 4 (largest); on the client we update from window.innerWidth.
+// Used for grid virtualization — see the virtualized render below.
+function useGalleryColumns(): number {
+  const [cols, setCols] = useState(4);
+  useEffect(() => {
+    const update = () => {
+      const w = window.innerWidth;
+      setCols(w < 640 ? 2 : w < 1024 ? 3 : 4);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return cols;
+}
 
 export function BaroqueFrame({ children }: { children: React.ReactNode }) {
   return (
@@ -1027,7 +1045,7 @@ function GalleryContent() {
   const currentStage = priceToStage(sliderPrice);
   const searchParams = useSearchParams();
   const newId = searchParams.get("new");
-  const highlightedRef = useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
   const [autoOpened, setAutoOpened] = useState(false);
 
   // On-chain KPI state
@@ -1102,12 +1120,7 @@ function GalleryContent() {
     }
   }
 
-  // Scroll to highlighted entry
-  useEffect(() => {
-    if (newId && highlightedRef.current) {
-      setTimeout(() => highlightedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 600);
-    }
-  }, [newId, loading]);
+  // Scroll-to-highlighted moved below virtualizer setup so it can use scrollToIndex.
 
   // Stats — derived from on-chain SlotBook (truth), not gallery metadata
   const stats = useMemo(() => {
@@ -1152,6 +1165,35 @@ function GalleryContent() {
     { key: "lowest", label: "Lowest Conviction" },
     { key: "slot", label: "Slot #" },
   ];
+
+  // Virtualized grid: chunk sorted entries into rows; render only visible rows.
+  const columns = useGalleryColumns();
+  const rows = useMemo(() => {
+    const out: (typeof sorted)[] = [];
+    for (let i = 0; i < sorted.length; i += columns) {
+      out.push(sorted.slice(i, i + columns));
+    }
+    return out;
+  }, [sorted, columns]);
+
+  const virtualizer = useWindowVirtualizer({
+    count: rows.length,
+    estimateSize: () => 400,
+    overscan: 3,
+    scrollMargin: parentRef.current?.offsetTop ?? 0,
+  });
+
+  // Scroll the virtualizer to the highlighted entry (?new=<id>) once data lands.
+  useEffect(() => {
+    if (!newId || loading) return;
+    const idx = sorted.findIndex((e) => e.id === newId);
+    if (idx < 0) return;
+    const rowIndex = Math.floor(idx / columns);
+    const t = setTimeout(() => {
+      virtualizer.scrollToIndex(rowIndex, { align: "center", behavior: "smooth" });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [newId, loading, sorted, columns, virtualizer]);
 
   const handleChallenge = useCallback(() => {
     setSelected(null); // close lightbox
@@ -1438,56 +1480,86 @@ function GalleryContent() {
 
         {/* Grid */}
         {sorted.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
-            {sorted.map((entry, idx) => {
-              const coverUrl = entry.portraits[currentStage - 1] ?? entry.portraits[0];
-              const legendaryCount = entry.traits
-                ? entry.traits.reduce(
-                    (sum, t) =>
-                      sum +
-                      Object.values(t.rolls).filter(
-                        (r: GalleryTraitRoll) => r.rarity === "Legendary" && !r.isNothing,
-                      ).length,
-                    0,
-                  )
-                : 0;
-
+          <div
+            ref={parentRef}
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              position: "relative",
+              width: "100%",
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const rowEntries = rows[virtualRow.index];
+              if (!rowEntries) return null;
               return (
                 <div
-                  key={entry.id}
-                  ref={entry.id === newId ? highlightedRef : undefined}
-                  className={`gallery-panel cursor-pointer group ${entry.id === newId ? "ring-1 ring-gold/50 ring-offset-2 ring-offset-black" : ""}`}
-                  style={{ animationDelay: `${idx * 80}ms` }}
-                  onClick={() => setSelected(entry)}
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start - (parentRef.current?.offsetTop ?? 0)}px)`,
+                  }}
                 >
-                  <div className="relative transition-transform duration-300 group-hover:scale-[1.02]">
-                    <BaroqueFrame>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={coverUrl}
-                        alt={`Slot #${entry.slot}`}
-                        className="w-full aspect-square object-cover"
-                      />
-                    </BaroqueFrame>
-                    <span className="absolute top-3 left-3 bg-black/70 text-foreground/80 text-[10px] font-display font-semibold px-2 py-0.5 backdrop-blur-sm">
-                      #{entry.slot}
-                    </span>
-                  </div>
-                  <div className="mt-2 px-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-muted/40 font-body">
-                        {timeAgo(entry.publishedAt)}
-                      </span>
-                      {entry.conviction != null && entry.conviction > 0 ? (
-                        <span className="text-[11px] text-gold font-body">
-                          &#9678; {entry.conviction.toFixed(1)}
-                        </span>
-                      ) : legendaryCount > 0 ? (
-                        <span className="text-[11px] text-gold/60 font-body">
-                          {legendaryCount} legendary
-                        </span>
-                      ) : null}
-                    </div>
+                  <div
+                    className="grid gap-5 sm:gap-6 pb-5 sm:pb-6"
+                    style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+                  >
+                    {rowEntries.map((entry) => {
+                      const coverUrl = entry.portraits[currentStage - 1] ?? entry.portraits[0];
+                      const legendaryCount = entry.traits
+                        ? entry.traits.reduce(
+                            (sum, t) =>
+                              sum +
+                              Object.values(t.rolls).filter(
+                                (r: GalleryTraitRoll) => r.rarity === "Legendary" && !r.isNothing,
+                              ).length,
+                            0,
+                          )
+                        : 0;
+
+                      return (
+                        <div
+                          key={entry.id}
+                          className={`gallery-panel cursor-pointer group ${entry.id === newId ? "ring-1 ring-gold/50 ring-offset-2 ring-offset-black" : ""}`}
+                          onClick={() => setSelected(entry)}
+                        >
+                          <div className="relative transition-transform duration-300 group-hover:scale-[1.02]">
+                            <BaroqueFrame>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={coverUrl}
+                                alt={`Slot #${entry.slot}`}
+                                className="w-full aspect-square object-cover"
+                                loading="lazy"
+                              />
+                            </BaroqueFrame>
+                            <span className="absolute top-3 left-3 bg-black/70 text-foreground/80 text-[10px] font-display font-semibold px-2 py-0.5 backdrop-blur-sm">
+                              #{entry.slot}
+                            </span>
+                          </div>
+                          <div className="mt-2 px-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] text-muted/40 font-body">
+                                {timeAgo(entry.publishedAt)}
+                              </span>
+                              {entry.conviction != null && entry.conviction > 0 ? (
+                                <span className="text-[11px] text-gold font-body">
+                                  &#9678; {entry.conviction.toFixed(1)}
+                                </span>
+                              ) : legendaryCount > 0 ? (
+                                <span className="text-[11px] text-gold/60 font-body">
+                                  {legendaryCount} legendary
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
