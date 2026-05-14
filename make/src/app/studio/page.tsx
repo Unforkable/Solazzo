@@ -774,6 +774,14 @@ export default function PortraitStudio() {
         // In that case, restore the collection but keep claim flow available.
         setAppStage("gallery");
       }
+      return;
+    }
+    // Deep-link from the wall: ?start=capture skips the intro/explainer
+    // for fresh visitors clicking "Create & Hang" or a vacant frame.
+    // Only honored when there is no saved in-progress work above.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("start") === "capture") {
+      setAppStage("capture");
     }
   }, []);
 

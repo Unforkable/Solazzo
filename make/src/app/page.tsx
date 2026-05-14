@@ -249,7 +249,7 @@ function HomeContent() {
         result.push({
           kind: "vacant",
           slot: slotNo,
-          onClick: () => router.push("/studio"),
+          onClick: () => router.push("/studio?start=capture"),
         });
       }
     }
@@ -310,7 +310,10 @@ function HomeContent() {
   }, [newId]);
 
   // ── Handlers ──────────────────────────────────────────────────────────
-  const handleCreate = useCallback(() => router.push("/studio"), [router]);
+  const handleCreate = useCallback(
+    () => router.push("/studio?start=capture"),
+    [router],
+  );
   const handleReplace = useCallback(() => setShowDisplace(true), []);
   const handleInspect = useCallback(() => {
     // Open lightbox on the lowest slot if we have its gallery entry
@@ -324,7 +327,7 @@ function HomeContent() {
     window.scrollTo({ top, behavior: "smooth" });
   }, []);
   const handleEnterStudio = useCallback(
-    () => router.push("/studio"),
+    () => router.push("/studio?start=capture"),
     [router],
   );
 
