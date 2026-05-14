@@ -5,9 +5,11 @@
 //
 // Structure:
 //   Marquee → StageBanner → Triptych → WithdrawBanner (if claimable)
-//   → Vitals → OracleDial → ChallengeHero (Create-Hang or Replace)
-//   → CuratorIndex → TheWall (grid of claimed + vacant frames)
+//   → Vitals → ChallengeHero (Create-Hang or Replace)
+//   → CuratorIndex → OracleDial → TheWall (grid of claimed + vacant frames)
 //   → SettlementPlaque
+// OracleDial sits immediately above the wall so scrubbing visibly re-stages
+// every tile below.
 //
 // State follows the same shape as the old /gallery page so nothing on-chain
 // changes — same fetchSlotBook / fetchProtocolConfig / fetchLowestSlotInfo /
@@ -348,11 +350,6 @@ function HomeContent() {
         total={stats.total}
         stage={livePrice !== null ? priceToStage(livePrice) : 1}
       />
-      <OracleDial
-        price={sliderPrice}
-        onChange={setSliderPrice}
-        livePrice={livePrice}
-      />
       <ChallengeHero
         hung={stats.hung ?? 0}
         total={stats.slotsTotal}
@@ -368,6 +365,13 @@ function HomeContent() {
         setSort={setSort}
         count={wallEntries.length}
         total={stats.slotsTotal}
+      />
+      {/* Sits directly above the wall so scrubbing the slider visibly
+          re-stages every tile below. */}
+      <OracleDial
+        price={sliderPrice}
+        onChange={setSliderPrice}
+        livePrice={livePrice}
       />
 
       {/* Errors */}
