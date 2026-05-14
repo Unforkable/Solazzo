@@ -37,7 +37,7 @@ export function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-gold-dim/10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <Link
             href="/"
             className="text-lg font-display font-bold tracking-wide text-foreground hover:text-gold transition-colors"
@@ -46,7 +46,7 @@ export function Navbar() {
           </Link>
           <Link
             href="/gallery"
-            className={`text-xs font-body tracking-wide transition-colors hidden sm:block ${
+            className={`text-xs font-body tracking-wide transition-colors ${
               pathname === "/gallery"
                 ? "text-gold"
                 : "text-foreground/40 hover:text-foreground/70"
@@ -66,7 +66,7 @@ export function Navbar() {
           </Link>
           <Link
             href="/positions"
-            className={`text-xs font-body tracking-wide transition-colors ${
+            className={`text-xs font-body tracking-wide transition-colors hidden sm:block ${
               pathname === "/positions"
                 ? "text-gold"
                 : "text-foreground/40 hover:text-foreground/70"
