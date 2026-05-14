@@ -47,7 +47,7 @@ const RARITY_COLORS: Record<string, string> = {
 
 type SortOption = "highest" | "lowest" | "slot";
 
-function BaroqueFrame({ children }: { children: React.ReactNode }) {
+export function BaroqueFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="w-full" style={{ filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.5))" }}>
       <div className="p-[3px] bg-gradient-to-b from-[#8B7441] via-[#5C4A28] to-[#3A2E18]">
@@ -100,7 +100,7 @@ function rpcNetworkLabel(endpoint: string): string {
 
 type DisplaceStep = "idle" | "loading" | "ready" | "preflight" | "signing" | "confirming" | "success" | "error";
 
-function DisplacementModal({
+export function DisplacementModal({
   onClose,
   onSuccess,
 }: {
@@ -587,7 +587,7 @@ function DisplacementModal({
 
 // ── Withdraw Banner ──────────────────────────────────────────────────
 
-function WithdrawBanner() {
+export function WithdrawBanner() {
   const { publicKey, connected, sendTransaction } = useWallet();
   const { connection } = useConnection();
 
@@ -721,7 +721,7 @@ function WithdrawBanner() {
 
 // ── Collection Lightbox ──────────────────────────────────────────────
 
-function CollectionLightbox({
+export function CollectionLightbox({
   entry,
   onClose,
   currentStage,

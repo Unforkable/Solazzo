@@ -45,14 +45,14 @@ export function Navbar() {
             SOLAZZO
           </Link>
           <Link
-            href="/gallery"
+            href="/studio"
             className={`text-xs font-body tracking-wide transition-colors ${
-              pathname === "/gallery"
+              pathname === "/studio"
                 ? "text-gold"
                 : "text-foreground/40 hover:text-foreground/70"
             }`}
           >
-            Gallery
+            Studio
           </Link>
           <Link
             href="/leaderboard"
