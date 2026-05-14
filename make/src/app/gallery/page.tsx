@@ -7,6 +7,8 @@ import Link from "next/link";
 import {
   CuratorIndex,
   GalleryCard,
+  OracleDial,
+  Vitals,
   type SortOption,
   type WallEntry,
 } from "../_home/sections";
@@ -1415,16 +1417,22 @@ function GalleryContent() {
           );
         })()}
 
-        {/* Sort controls + legacy toggle — match the wall's CuratorIndex visual */}
+        {/* Vitals + sort controls + slider — same composition as the wall */}
         {!loading && entries.length > 0 && (
           <>
+            <Vitals
+              hung={slotBook ? stats.slotsFilled : null}
+              floor={stats.floor}
+              total={slotBook ? stats.total : null}
+              stage={solPrice !== null ? priceToStage(solPrice) : 1}
+            />
             <CuratorIndex
               sort={sort}
               setSort={setSort}
               count={sorted.length}
               total={1000}
             />
-            <div className="flex justify-end -mt-2 mb-6">
+            <div className="flex justify-end -mt-2 mb-2">
               <button
                 onClick={() => setShowLegacy((v) => !v)}
                 className="text-[10px] font-body text-muted/30 hover:text-muted/50 transition-colors cursor-pointer"
@@ -1432,6 +1440,12 @@ function GalleryContent() {
                 {showLegacy ? "Hide legacy" : "Show legacy"}
               </button>
             </div>
+            {/* Sits directly above the grid so scrubbing visibly re-stages every tile below. */}
+            <OracleDial
+              price={sliderPrice}
+              onChange={setSliderPrice}
+              livePrice={solPrice}
+            />
           </>
         )}
 
