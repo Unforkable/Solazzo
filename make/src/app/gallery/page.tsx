@@ -4,6 +4,12 @@ import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "rea
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import {
+  CuratorIndex,
+  GalleryCard,
+  type SortOption,
+  type WallEntry,
+} from "../_home/sections";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useConnection } from "@solana/wallet-adapter-react";
@@ -46,8 +52,6 @@ const RARITY_COLORS: Record<string, string> = {
   Legendary: "#c9a84c",
 };
 
-type SortOption = "highest" | "lowest" | "slot";
-
 // Matches Tailwind grid breakpoints used in the wall: 2 / sm:3 / lg:4.
 // SSR default = 4 (largest); on the client we update from window.innerWidth.
 // Used for grid virtualization — see the virtualized render below.
@@ -86,19 +90,6 @@ export function BaroqueFrame({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   );
-}
-
-function timeAgo(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  const months = Math.floor(days / 30);
-  return `${months}mo ago`;
 }
 
 function lamportsToSol(lamports: bigint): number {
@@ -1155,16 +1146,12 @@ function GalleryContent() {
         return items.sort((a, b) => (a.conviction ?? 0) - (b.conviction ?? 0) || a.slot - b.slot);
       case "slot":
         return items.sort((a, b) => a.slot - b.slot);
+      case "recency":
+        return items.sort((a, b) => b.publishedAt - a.publishedAt);
       default:
         return items;
     }
   }, [entries, sort]);
-
-  const sortOptions: { key: SortOption; label: string }[] = [
-    { key: "highest", label: "Highest Conviction" },
-    { key: "lowest", label: "Lowest Conviction" },
-    { key: "slot", label: "Slot #" },
-  ];
 
   // Virtualized grid: chunk sorted entries into rows; render only visible rows.
   const columns = useGalleryColumns();
@@ -1209,7 +1196,7 @@ function GalleryContent() {
             href="/"
             className="text-sm text-muted hover:text-gold transition-colors font-body mb-4 inline-block"
           >
-            &larr; Portrait Studio
+            &larr; The Wall
           </Link>
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
             <div>
@@ -1428,30 +1415,24 @@ function GalleryContent() {
           );
         })()}
 
-        {/* Sort controls + legacy toggle */}
+        {/* Sort controls + legacy toggle — match the wall's CuratorIndex visual */}
         {!loading && entries.length > 0 && (
-          <div className="flex items-center gap-2 mb-6 flex-wrap">
-            <span className="text-xs text-muted/30 font-body mr-1">Sort</span>
-            {sortOptions.map((opt) => (
+          <>
+            <CuratorIndex
+              sort={sort}
+              setSort={setSort}
+              count={sorted.length}
+              total={1000}
+            />
+            <div className="flex justify-end -mt-2 mb-6">
               <button
-                key={opt.key}
-                onClick={() => setSort(opt.key)}
-                className={`text-xs font-body px-3 py-1.5 border transition-colors cursor-pointer min-h-[36px] ${
-                  sort === opt.key
-                    ? "border-gold text-gold bg-gold/10"
-                    : "border-gold-dim/20 text-muted/60 hover:text-gold hover:border-gold/50"
-                }`}
+                onClick={() => setShowLegacy((v) => !v)}
+                className="text-[10px] font-body text-muted/30 hover:text-muted/50 transition-colors cursor-pointer"
               >
-                {opt.label}
+                {showLegacy ? "Hide legacy" : "Show legacy"}
               </button>
-            ))}
-            <button
-              onClick={() => setShowLegacy((v) => !v)}
-              className="text-[10px] font-body text-muted/30 hover:text-muted/50 transition-colors cursor-pointer ml-auto"
-            >
-              {showLegacy ? "Hide legacy" : "Show legacy"}
-            </button>
-          </div>
+            </div>
+          </>
         )}
 
         {/* Empty state */}
@@ -1509,54 +1490,26 @@ function GalleryContent() {
                     style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
                   >
                     {rowEntries.map((entry) => {
-                      const coverUrl = entry.portraits[currentStage - 1] ?? entry.portraits[0];
-                      const legendaryCount = entry.traits
-                        ? entry.traits.reduce(
-                            (sum, t) =>
-                              sum +
-                              Object.values(t.rolls).filter(
-                                (r: GalleryTraitRoll) => r.rarity === "Legendary" && !r.isNothing,
-                              ).length,
-                            0,
-                          )
-                        : 0;
-
+                      const wallEntry: WallEntry = {
+                        kind: "claimed",
+                        slot: entry.slot,
+                        stage: currentStage,
+                        conviction: entry.conviction ?? 0,
+                        ageHrs: Math.max(
+                          1,
+                          Math.floor((Date.now() - entry.publishedAt) / 3_600_000),
+                        ),
+                        portraitUrl:
+                          entry.portraits[currentStage - 1] ?? entry.portraits[0],
+                        onClick: () => setSelected(entry),
+                      };
+                      const isHighlight = entry.id === newId;
                       return (
                         <div
                           key={entry.id}
-                          className={`gallery-panel cursor-pointer group ${entry.id === newId ? "ring-1 ring-gold/50 ring-offset-2 ring-offset-black" : ""}`}
-                          onClick={() => setSelected(entry)}
+                          className={isHighlight ? "ring-1 ring-gold/50 ring-offset-2 ring-offset-black" : ""}
                         >
-                          <div className="relative transition-transform duration-300 group-hover:scale-[1.02]">
-                            <BaroqueFrame>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={coverUrl}
-                                alt={`Slot #${entry.slot}`}
-                                className="w-full aspect-square object-cover"
-                                loading="lazy"
-                              />
-                            </BaroqueFrame>
-                            <span className="absolute top-3 left-3 bg-black/70 text-foreground/80 text-[10px] font-display font-semibold px-2 py-0.5 backdrop-blur-sm">
-                              #{entry.slot}
-                            </span>
-                          </div>
-                          <div className="mt-2 px-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] text-muted/40 font-body">
-                                {timeAgo(entry.publishedAt)}
-                              </span>
-                              {entry.conviction != null && entry.conviction > 0 ? (
-                                <span className="text-[11px] text-gold font-body">
-                                  &#9678; {entry.conviction.toFixed(1)}
-                                </span>
-                              ) : legendaryCount > 0 ? (
-                                <span className="text-[11px] text-gold/60 font-body">
-                                  {legendaryCount} legendary
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
+                          <GalleryCard entry={wallEntry} />
                         </div>
                       );
                     })}
