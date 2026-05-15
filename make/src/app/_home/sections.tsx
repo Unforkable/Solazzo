@@ -222,12 +222,12 @@ export function Vitals({
   hung,
   floor,
   total,
-  stage,
+  uniqueHolders,
 }: {
   hung: number | null;
   floor: number | null;
   total: number | null;
-  stage: number;
+  uniqueHolders: number | null;
 }) {
   const items = [
     {
@@ -252,10 +252,10 @@ export function Vitals({
       accent: TOKENS.fg,
     },
     {
-      k: "stage",
-      label: "Stage",
-      sub: STAGE_NAMES[stage],
-      val: roman(stage),
+      k: "holders",
+      label: "Holders",
+      sub: "unique owners",
+      val: uniqueHolders !== null ? uniqueHolders.toLocaleString() : "—",
       accent: `${TOKENS.burgundy}ee`,
     },
   ];

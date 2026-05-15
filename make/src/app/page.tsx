@@ -38,6 +38,7 @@ import {
   fetchLowestSlotInfo,
   fetchProtocolConfig,
   fetchSlotBook,
+  fetchUniqueHolderCount,
   type LowestSlotInfo,
   type ProtocolConfigAccount,
   type SlotBookAccount,
@@ -93,6 +94,7 @@ function HomeContent() {
   const [lowest, setLowest] = useState<
     (LowestSlotInfo & { owner: PublicKey }) | null
   >(null);
+  const [uniqueHolders, setUniqueHolders] = useState<number | null>(null);
   const [kpiError, setKpiError] = useState<string | null>(null);
 
   // ── Oracle / UI state ─────────────────────────────────────────────────
@@ -123,11 +125,13 @@ function HomeContent() {
       fetchSlotBook(connection),
       fetchProtocolConfig(connection),
       fetchLowestSlotInfo(connection).catch(() => null),
+      fetchUniqueHolderCount(connection).catch(() => null),
     ])
-      .then(([sb, cfg, low]) => {
+      .then(([sb, cfg, low, holders]) => {
         setSlotBook(sb);
         setProtocolConfig(cfg);
         setLowest(low ?? null);
+        setUniqueHolders(holders);
       })
       .catch(() => setKpiError("Failed to load on-chain data."));
   }, [connection]);
@@ -348,7 +352,7 @@ function HomeContent() {
         hung={stats.hung}
         floor={stats.floor}
         total={stats.total}
-        stage={livePrice !== null ? priceToStage(livePrice) : 1}
+        uniqueHolders={uniqueHolders}
       />
       <ChallengeHero
         hung={stats.hung ?? 0}

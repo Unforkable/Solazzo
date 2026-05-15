@@ -21,6 +21,7 @@ import {
   fetchProtocolConfig,
   fetchLowestSlotInfo,
   fetchSlotBook,
+  fetchUniqueHolderCount,
   fetchClaimableBalance,
   buildDisplaceLowestIx,
   buildClaimWithdrawIx,
@@ -1043,7 +1044,7 @@ function GalleryContent() {
 
   // On-chain KPI state
   const [slotBook, setSlotBook] = useState<SlotBookAccount | null>(null);
-  const [kpiLoading, setKpiLoading] = useState(true);
+  const [uniqueHolders, setUniqueHolders] = useState<number | null>(null);
   const [kpiError, setKpiError] = useState<string | null>(null);
 
   const enrichEntries = useCallback((items: GalleryEntry[]) => {
@@ -1067,12 +1068,16 @@ function GalleryContent() {
   }, []);
 
   const fetchKpis = useCallback(() => {
-    setKpiLoading(true);
     setKpiError(null);
-    fetchSlotBook(connection)
-      .then((sb) => setSlotBook(sb))
-      .catch(() => setKpiError("Failed to load on-chain data."))
-      .finally(() => setKpiLoading(false));
+    Promise.all([
+      fetchSlotBook(connection),
+      fetchUniqueHolderCount(connection).catch(() => null),
+    ])
+      .then(([sb, holders]) => {
+        setSlotBook(sb);
+        setUniqueHolders(holders);
+      })
+      .catch(() => setKpiError("Failed to load on-chain data."));
   }, [connection]);
 
   // Re-fetch when legacy toggle changes
@@ -1192,7 +1197,7 @@ function GalleryContent() {
   return (
     <main className="min-h-screen px-4 py-10 sm:px-6 sm:py-24">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
+        {/* Header — masthead only; Hung / Floor / Vault / Holders live in the Vitals strip below */}
         <div className="mb-10">
           <Link
             href="/"
@@ -1200,51 +1205,25 @@ function GalleryContent() {
           >
             &larr; The Wall
           </Link>
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-wide text-foreground">
-                THE GALLERY
-              </h1>
-              {!loading && (
-                <div className="mt-2">
-                  <div className="flex items-center gap-3 mb-1.5">
-                    <span className="text-sm font-body text-foreground/70">
-                      {slotBook ? stats.slotsFilled : entries.length} <span className="text-muted/40">/ 1,000 claimed</span>
-                    </span>
-                    {solPrice !== null && (
-                      <span className="text-xs text-muted/30 font-body">
-                        SOL ${solPrice.toFixed(0)}
-                      </span>
-                    )}
-                    {solPrice !== null && (
-                      <span className="text-[10px] text-muted/20 font-body">
-                        Source: Pyth
-                      </span>
-                    )}
-                  </div>
-                  <div className="h-1 w-48 sm:w-64 bg-surface-raised rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-gold-dim to-gold rounded-full transition-all duration-700"
-                      style={{ width: `${Math.max(((slotBook ? stats.slotsFilled : entries.length) / 1000) * 100, 0.5)}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-              {loading && (
-                <p className="text-muted/40 text-sm mt-1 font-body">Loading...</p>
-              )}
-            </div>
-          </div>
+          <p
+            className="font-mono uppercase text-muted/80 mb-2"
+            style={{ fontSize: 10, letterSpacing: "0.32em" }}
+          >
+            The Collection
+          </p>
+          <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-wide text-foreground">
+            THE GALLERY
+          </h1>
         </div>
 
         {/* Withdraw banner */}
         {!loading && <WithdrawBanner />}
 
-        {/* Stats (on-chain truth) */}
+        {/* Vitals + sort controls + slider — same composition as the wall */}
         {!loading && entries.length > 0 && (
-          <div className="mb-8 space-y-2">
+          <>
             {kpiError && (
-              <div className="flex items-center justify-between bg-red-900/20 border border-red-500/30 px-4 py-2">
+              <div className="flex items-center justify-between bg-red-900/20 border border-red-500/30 px-4 py-2 mb-3">
                 <p className="text-xs text-red-400 font-body">{kpiError}</p>
                 <button
                   onClick={fetchKpis}
@@ -1254,177 +1233,11 @@ function GalleryContent() {
                 </button>
               </div>
             )}
-            <div className="grid grid-cols-3 gap-3 sm:gap-4">
-              <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
-                <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
-                  Floor Lock
-                </p>
-                <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
-                  {kpiLoading ? (
-                    <span className="text-muted/30">...</span>
-                  ) : stats.floor != null ? (
-                    <>
-                      <span className="text-gold">&#9678;</span> {stats.floor.toFixed(1)}
-                    </>
-                  ) : (
-                    "—"
-                  )}
-                </p>
-              </div>
-              <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
-                <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
-                  Total SOL Locked
-                </p>
-                <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
-                  {kpiLoading ? (
-                    <span className="text-muted/30">...</span>
-                  ) : stats.total > 0 ? (
-                    <>
-                      <span className="text-gold">&#9678;</span>{" "}
-                      {stats.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    </>
-                  ) : (
-                    "—"
-                  )}
-                </p>
-              </div>
-              <div className="bg-surface-raised/50 border border-gold-dim/20 p-3 sm:p-5 text-center">
-                <p className="text-muted/50 text-[10px] sm:text-xs font-body uppercase tracking-wider mb-1">
-                  Slots Available
-                </p>
-                <p className="text-lg sm:text-2xl font-display font-bold text-foreground">
-                  {kpiLoading ? (
-                    <span className="text-muted/30">...</span>
-                  ) : (
-                    stats.slotsAvailable.toLocaleString()
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Price slider */}
-        {!loading && entries.length > 0 && (() => {
-          const settled = sliderPrice >= 1000;
-          return (
-            <div className={`mb-8 border p-4 sm:p-6 transition-all duration-700 ${
-              settled
-                ? "bg-gold/10 border-gold/40 shadow-[0_0_30px_rgba(201,168,76,0.15)]"
-                : "bg-surface-raised/50 border-gold-dim/20"
-            }`}>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 mb-3">
-                <p className={`text-xs font-body uppercase tracking-wider transition-colors duration-500 ${
-                  settled ? "text-gold" : "text-muted/50"
-                }`}>
-                  {settled ? "Settlement reached" : "What if SOL hits..."}
-                </p>
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <span className={`text-lg sm:text-xl font-display font-bold transition-colors duration-500 ${
-                    settled ? "text-gold animate-shimmer" : "text-foreground"
-                  }`}>
-                    ${sliderPrice.toFixed(0)}
-                  </span>
-                  <span className={`text-xs sm:text-sm font-display transition-colors duration-500 ${
-                    settled ? "text-gold-bright" : "text-gold"
-                  }`}>
-                    {settled ? "Settled" : STAGE_NAMES[currentStage]}
-                  </span>
-                  {solPrice !== null && Math.abs(sliderPrice - solPrice) > 5 && (
-                    <button
-                      onClick={() => setSliderPrice(solPrice)}
-                      className="text-[10px] text-muted/40 font-body border border-gold-dim/20 px-2 py-0.5 hover:text-gold hover:border-gold/50 transition-colors cursor-pointer"
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Slider track with $1k marker */}
-              <div className="relative">
-                <input
-                  type="range"
-                  min={0}
-                  max={1200}
-                  step={1}
-                  value={sliderPrice}
-                  onChange={(e) => setSliderPrice(Number(e.target.value))}
-                  className={`w-full h-1.5 appearance-none cursor-pointer outline-none transition-all duration-500 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer ${
-                    settled
-                      ? "bg-gold/30 [&::-webkit-slider-thumb]:bg-gold-bright [&::-webkit-slider-thumb]:shadow-[0_0_12px_rgba(226,201,126,0.6)] [&::-moz-range-thumb]:bg-gold-bright"
-                      : "bg-gold-dim/30 [&::-webkit-slider-thumb]:bg-gold [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(201,168,76,0.4)] [&::-moz-range-thumb]:bg-gold"
-                  }`}
-                />
-                {/* $1,000 milestone marker */}
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
-                  style={{ left: `${(1000 / 1200) * 100}%` }}
-                >
-                  <div className={`w-px h-4 transition-colors duration-500 ${
-                    settled ? "bg-gold" : "bg-gold-dim/50"
-                  }`} />
-                </div>
-              </div>
-
-              {/* Scale labels */}
-              <div className="relative mt-1.5 h-4">
-                {[
-                  { price: 0, label: "$0" },
-                  { price: 200, label: "$200" },
-                  { price: 400, label: "$400" },
-                  { price: 600, label: "$600" },
-                  { price: 800, label: "$800" },
-                  { price: 1000, label: "$1k" },
-                  { price: 1200, label: "$1.2k" },
-                ].map(({ price, label }, i, arr) => (
-                  <span
-                    key={price}
-                    className={`absolute font-body transition-colors duration-500 ${
-                      price === 1000
-                        ? `text-[11px] font-medium ${settled ? "text-gold" : "text-gold-dim"}`
-                        : "text-[10px] text-muted/40"
-                    }`}
-                    style={{
-                      left: `${(price / 1200) * 100}%`,
-                      transform:
-                        i === 0
-                          ? "none"
-                          : i === arr.length - 1
-                            ? "translateX(-100%)"
-                            : "translateX(-50%)",
-                    }}
-                  >
-                    {label}
-                  </span>
-                ))}
-              </div>
-
-              {/* Settlement banner */}
-              {settled && (
-                <div className="mt-4 pt-4 border-t border-gold/30 animate-fade-in">
-                  <p className="text-base sm:text-lg font-display font-bold text-gold leading-snug">
-                    Settlement reached &mdash; you made it.
-                  </p>
-                  <p className="text-sm text-foreground/60 font-body mt-1.5 leading-relaxed">
-                    SOL crossed the $1,000 threshold. All locked SOL is now
-                    immediately claimable for withdrawal. Your portraits remain permanently
-                    in the collection at their final stage. Conviction rewarded.
-                  </p>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* Vitals + sort controls + slider — same composition as the wall */}
-        {!loading && entries.length > 0 && (
-          <>
             <Vitals
               hung={slotBook ? stats.slotsFilled : null}
               floor={stats.floor}
               total={slotBook ? stats.total : null}
-              stage={solPrice !== null ? priceToStage(solPrice) : 1}
+              uniqueHolders={uniqueHolders}
             />
             <CuratorIndex
               sort={sort}

@@ -606,6 +606,47 @@ export async function fetchWalletPositions(
   return positions.sort((a, b) => a.slotId - b.slotId);
 }
 
+/**
+ * Count distinct slot owners on-chain (the "unique holders" KPI).
+ *
+ * On-chain truth, not inferred from slot count: reads SlotBook for occupied
+ * indices, batch-fetches their Slot PDAs, and dedupes owners into a Set.
+ * Same strategy as fetchWalletPositions. Throws on RPC/deserialize failure
+ * so callers can render a graceful fallback.
+ */
+export async function fetchUniqueHolderCount(
+  connection: Connection,
+): Promise<number> {
+  const slotBook = await fetchSlotBook(connection);
+
+  const occupiedIndices: number[] = [];
+  for (let i = 0; i < slotBook.occupied.length; i++) {
+    if (slotBook.occupied[i]) occupiedIndices.push(i);
+  }
+  if (occupiedIndices.length === 0) return 0;
+
+  const pdas = occupiedIndices.map((id) => getSlotPDA(id)[0]);
+  const BATCH = 100;
+  const owners = new Set<string>();
+
+  for (let i = 0; i < pdas.length; i += BATCH) {
+    const batch = pdas.slice(i, i + BATCH);
+    const accounts = await withTimeout(
+      connection.getMultipleAccountsInfo(batch),
+      RPC_READ_TIMEOUT_MS,
+      "fetchUniqueHolderCount",
+    );
+    for (const acct of accounts) {
+      if (!acct) continue;
+      assertProgramOwner(acct, "Slot");
+      const slot = deserializeSlot(acct.data);
+      if (slot.isOccupied) owners.add(slot.owner.toBase58());
+    }
+  }
+
+  return owners.size;
+}
+
 // ── Instruction input guards ─────────────────────────────────────────
 
 function assertU16(name: string, value: number): void {
