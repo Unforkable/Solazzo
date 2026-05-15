@@ -235,7 +235,7 @@ export function deserializeProtocolConfig(
   data: Buffer | Uint8Array,
 ): ProtocolConfigAccount {
   const buf = Buffer.from(data);
-  ensureByteRange(buf, 0, 178, "ProtocolConfig account");
+  ensureByteRange(buf, 0, 169, "ProtocolConfig account");
   const disc = buf.subarray(0, 8);
   if (!disc.equals(PROTOCOL_CONFIG_DISCRIMINATOR)) {
     throw new Error("Invalid ProtocolConfig account discriminator");
@@ -247,6 +247,7 @@ export function deserializeProtocolConfig(
   // is_paused: bool, is_settled: bool
   // oracle_max_staleness_sec: u32, oracle_max_conf_bps: u16
   // settle_threshold_price_e8: i64, settle_window_sec: u32, first_valid_settle_ts: i64
+  // settle_deadline_ts: i64
   // bump: u8
   let offset = 8;
   const adminMultisig = new PublicKey(buf.subarray(offset, offset + 32));
@@ -270,8 +271,9 @@ export function deserializeProtocolConfig(
   const isSettled = buf[offset] === 1;
   offset += 1;
   // skip oracle_max_staleness_sec (4) + oracle_max_conf_bps (2) +
-  // settle_threshold_price_e8 (8) + settle_window_sec (4) + first_valid_settle_ts (8)
-  offset += 4 + 2 + 8 + 4 + 8;
+  // settle_threshold_price_e8 (8) + settle_window_sec (4) + first_valid_settle_ts (8) +
+  // settle_deadline_ts (8)
+  offset += 4 + 2 + 8 + 4 + 8 + 8;
   const bump = buf[offset];
 
   return {
