@@ -11,3 +11,6 @@ make/test-output/
 make/tsx
 make/solazzo-make@0.1.0
 test-ledger/
+
+# Local-only inspiration assets (large binaries; previously tracked files stay tracked)
+Moodboard/
