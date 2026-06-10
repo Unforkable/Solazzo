@@ -287,3 +287,36 @@ Expected: the gallery card appears, `/api/gallery` returns the new entry, and th
 | Browser publish: `Slot not found on-chain` | Wallet on different cluster than the app | Switch wallet to devnet |
 | Browser publish: `Wallet does not own this slot` | Replay of a stale claim, or wallet impersonation | Re-claim, then retry publish |
 
+---
+
+## 9) CI Triage Quick Notes (2026-05 baseline)
+
+If GitHub `onchain/ — anchor build + bankrun` fails, check in this order:
+
+1. **Anchor install native deps**
+   - Symptom: `hidapi` build error, `could not find system library 'libudev'`.
+   - Fix: ensure CI still has:
+     ```yaml
+     sudo apt-get install -y pkg-config libudev-dev
+     ```
+     before `cargo install anchor-cli` on cache-miss path.
+
+2. **Solana CLI pin too old for lockfile**
+   - Symptom: Cargo/lock parsing issues in onchain toolchain setup.
+   - Baseline known-good pin: `SOLANA_VERSION: 3.1.10` in `.github/workflows/ci.yml`.
+
+3. **Bankrun npm peer dependency conflict**
+   - Symptom: npm install fails under `onchain/` with peer dependency resolution errors.
+   - Fix: keep CI install command:
+     ```bash
+     npm install --ignore-scripts --legacy-peer-deps
+     ```
+
+4. **IDL drift failures**
+   - Symptom: `IDL drift check (built vs bundled, full canonical compare)` fails.
+   - Fix:
+     ```bash
+     cp onchain/target/idl/solazzo_core.json make/src/lib/onchain/idl/solazzo_core.json
+     cd make && npm test && npx tsc --noEmit
+     ```
+

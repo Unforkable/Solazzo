@@ -76,6 +76,7 @@ Invalid values fall back to defaults rather than crash. Blocked requests return 
 - `files/solazzo_protocol_v1_spec.md` — Protocol spec (canonical numeric params live here)
 - `files/solazzo_trait_system_spec.md` — Trait system spec
 - `files/solazzo_verification_runbook.md` — Localnet/devnet rehearsal + release smoke flow
+- `files/session_handoff_2026-05-12.md` — Latest execution handoff and tomorrow quick-start checklist
 - `files/vercel-ops.md` — Vercel CLI + deploy runbook
 - `make/src/lib/onchain/program-id.ts` — Single source of truth for the Solazzo program ID at runtime. The bundled IDL's `address` is canonical; `NEXT_PUBLIC_SOLAZZO_PROGRAM_ID` can override (validated; mismatch warns). The SoT test `make/src/lib/__tests__/program-id.test.ts` asserts equality across `declare_id!`, `Anchor.toml`, bundled IDL, and runtime export.
 - `make/src/lib/onchain/client.ts` — Borsh deserializers + ix builders + discriminator map (`DISCRIMINATORS` is exercised by `discriminators.test.ts`).
@@ -92,6 +93,16 @@ Four jobs, all hard gates:
 - `make` — typecheck + lint + 93-case test suite
 - `indexer` — lint + 29-case test suite
 - `onchain` — Rust fmt/clippy, anchor build (with cached Solana + Anchor CLIs), full canonical IDL drift guard, bankrun tests
+
+### onchain CI operational notes
+
+- Solana CLI pin in CI is currently `3.1.10` (`SOLANA_VERSION` in `.github/workflows/ci.yml`). This is intentional: the committed `onchain/Cargo.lock` format requires a newer Cargo than older Agave 2.0 pins.
+- `anchor-cli` build on Ubuntu requires `libudev` headers. CI installs `pkg-config` + `libudev-dev` on Anchor cache misses before `cargo install anchor-cli`.
+- Bankrun dependency install in CI uses `npm install --ignore-scripts --legacy-peer-deps` in `onchain/` to tolerate the `anchor-bankrun` peer range lag behind `@coral-xyz/anchor@0.32.x`.
+- If `onchain` CI fails, check these three areas first:
+  1. Solana/Anchor version pins in `.github/workflows/ci.yml`
+  2. Anchor install system deps (`libudev-dev`)
+  3. npm peer dependency behavior for `onchain` bankrun install
 
 ## Conventions
 
