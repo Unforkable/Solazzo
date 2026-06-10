@@ -29,7 +29,7 @@
     "@vercel/blob": "^2.3.1",
     "bs58": "^6.0.0",
     "jszip": "^3.10.1",
-    "next": "16.1.6",
+    "next": "16.2.9",
     "posthog-js": "^1.365.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -47,5 +47,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"
+  },
+  "overrides": {
+    "protobufjs": "^7.6.3"
   }
 }
