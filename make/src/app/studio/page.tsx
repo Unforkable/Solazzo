@@ -790,6 +790,26 @@ export default function PortraitStudio() {
     void reconcileLocalOnlyPublish();
   }, [claimMeta, reconcileLocalOnlyPublish]);
 
+  // Autosave the finished set so generated portraits survive a refresh even
+  // before the claim flow starts (the claim flow re-saves with final traits).
+  useEffect(() => {
+    if (appStage !== "gallery" || generatingStages.size > 0) return;
+    if (!portraits.every((p) => p !== null)) return;
+    let cancelled = false;
+    void (async () => {
+      const compressed: string[] = [];
+      for (const p of portraits) {
+        compressed.push(await compressForStorage(p!));
+      }
+      if (cancelled) return;
+      const validTraits = traitManifests.filter((t): t is TraitManifest => t !== null);
+      savePortraits(compressed, validTraits.length === 5 ? validTraits : undefined);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [appStage, generatingStages, portraits, traitManifests]);
+
   const refreshAssignedSlot = useCallback(async (): Promise<number | null> => {
     setSlotAssigning(true);
     setSlotAssignError(null);
@@ -906,7 +926,7 @@ export default function PortraitStudio() {
       if (!res.ok) {
         setStageErrors((prev) => {
           const next = [...prev];
-          next[stage - 1] = data.error ?? "Failed";
+          next[stage - 1] = data.error ?? "Generation failed — tap Retry.";
           return next;
         });
         return;
@@ -936,7 +956,7 @@ export default function PortraitStudio() {
     } catch {
       setStageErrors((prev) => {
         const next = [...prev];
-        next[stage - 1] = "Network error";
+        next[stage - 1] = "Network error — check your connection and tap Retry.";
         return next;
       });
     } finally {
@@ -969,39 +989,44 @@ export default function PortraitStudio() {
     const eventMeta = { lock_bucket: lockBucket(lockAmount), network: verifiedNetwork, is_mainnet: isMainnet };
     track("claim_cta_click", eventMeta);
 
-    let targetSlotId = assignedSlotId;
-    if (targetSlotId === null) {
-      targetSlotId = await refreshAssignedSlot();
-    }
-    if (targetSlotId === null || targetSlotId < 0 || targetSlotId > MAX_SLOT_ID) {
-      setClaimError("No open slot could be assigned. Refresh assignment and verify app RPC/network settings.");
-      return;
-    }
-
-    if (lockAmount < MIN_LOCK_SOL) {
-      setClaimError(`Minimum lock is ${MIN_LOCK_SOL} SOL.`);
-      return;
-    }
-
-    if (!signMessage) {
-      setClaimError("Your wallet does not support message signing. Please use a wallet like Phantom or Solflare.");
-      return;
-    }
-
-    setClaimStep("preflight");
-    setClaimError(null);
-    setError(null);
-    track("claim_submit_started", eventMeta);
+    // Set once the claim tx confirms on-chain. From that point on, any failure
+    // must land the user in "locked" with Retry Publish — never back in the
+    // claim form with a "nothing happened" message, because SOL is locked.
+    let confirmedClaim: { sig: string; walletAddr: string; slotId: number; compressed: string[] } | null = null;
 
     try {
+      let targetSlotId = assignedSlotId;
+      if (targetSlotId === null) {
+        targetSlotId = await refreshAssignedSlot();
+      }
+      if (targetSlotId === null || targetSlotId < 0 || targetSlotId > MAX_SLOT_ID) {
+        setClaimError("No open slot could be assigned. Refresh assignment and verify app RPC/network settings.");
+        return;
+      }
+
+      if (lockAmount < MIN_LOCK_SOL) {
+        setClaimError(`Minimum lock is ${MIN_LOCK_SOL} SOL.`);
+        return;
+      }
+
+      if (!signMessage) {
+        setClaimError("Your wallet does not support message signing. Please use a wallet like Phantom or Solflare.");
+        return;
+      }
+
+      setClaimStep("preflight");
+      setClaimError(null);
+      setError(null);
+      track("claim_submit_started", eventMeta);
+
       // 1. Pre-flight: check if slot is available
       const occupied = await isSlotOccupied(connection, targetSlotId);
       if (occupied) {
         const nextOpen = await refreshAssignedSlot();
         if (nextOpen !== null) {
-          setClaimError(`Slot #${targetSlotId} was just claimed. Reassigned to open Slot #${nextOpen}. Click claim again.`);
+          setClaimError(`Slot #${targetSlotId} was just claimed. You've been reassigned to open Slot #${nextOpen} — tap Try Again to claim it.`);
         } else {
-          setClaimError("That slot was just claimed and no open slots are currently available.");
+          setClaimError("That slot was just claimed and no open slots are available right now — the wall may be full. Check again in a moment.");
         }
         setClaimStep("idle");
         return;
@@ -1041,11 +1066,11 @@ export default function PortraitStudio() {
       }
 
       setClaimTxSig(sig);
+      const walletAddr = publicKey.toBase58();
+      confirmedClaim = { sig, walletAddr, slotId: targetSlotId, compressed };
 
       // 7. Request publish challenge and sign it
       setClaimStep("authorizing");
-
-      const walletAddr = publicKey.toBase58();
       const challengeRes = await postJsonWithTimeout(
         "/api/gallery/publish/challenge",
         {
@@ -1155,8 +1180,31 @@ export default function PortraitStudio() {
           : "tx_error";
       track("claim_submit_error", { ...eventMeta, reason });
 
+      if (confirmedClaim) {
+        // SOL is locked on-chain; only the gallery publish step failed.
+        const meta: ClaimMeta = {
+          wallet: confirmedClaim.walletAddr,
+          slotId: confirmedClaim.slotId,
+          lockSol: lockAmount,
+          claimTxSig: confirmedClaim.sig,
+          publishStatus: "local-only",
+        };
+        persistClaim(meta);
+        setPortraits(confirmedClaim.compressed);
+        setAppStage("locked");
+        setClaimError(
+          reason === "user_rejected"
+            ? "Publish authorization was cancelled, but your slot IS claimed on-chain and your collection is saved on this device. Use Retry Publish below to finish."
+            : reason === "timeout"
+              ? "Your slot is claimed on-chain, but the gallery publish timed out. Use Retry Publish below to finish."
+              : `Your slot is claimed on-chain, but gallery publish could not finish: ${msg} Use Retry Publish below.`,
+        );
+        setClaimStep("idle");
+        return;
+      }
+
       if (reason === "timeout") {
-        setClaimError("Publish request timed out. Your slot may still be claimed on-chain; use Retry Publish.");
+        setClaimError("The request timed out before anything was sent on-chain. Check your connection and try again.");
         setClaimStep("idle");
         return;
       }
@@ -2161,14 +2209,21 @@ export default function PortraitStudio() {
                   <div className="bg-red-900/20 border border-red-500/30 p-4 max-w-md mx-auto space-y-3">
                     <p className="text-sm text-red-400 font-body">{claimError}</p>
                     <div className="flex gap-3 justify-center">
-                      {(claimError.includes("cancelled") || claimError.includes("rejected")) && (
+                      {claimError.toLowerCase().includes("no open slot") ? (
+                        <button
+                          onClick={() => { setClaimError(null); void refreshAssignedSlot(); }}
+                          className="btn-gold text-xs py-2 px-4 font-display"
+                        >
+                          Check For Open Slots
+                        </button>
+                      ) : !claimError.includes("Minimum lock") && !claimError.includes("message signing") ? (
                         <button
                           onClick={() => { setClaimError(null); void claimAndPublish(); }}
                           className="btn-gold text-xs py-2 px-4 font-display"
                         >
                           Try Again
                         </button>
-                      )}
+                      ) : null}
                       <button
                         onClick={() => setClaimError(null)}
                         className="text-xs text-muted/60 hover:text-foreground transition-colors font-body min-h-[36px] px-3 border border-gold-dim/20"
@@ -2284,7 +2339,7 @@ export default function PortraitStudio() {
               </div>
             )}
 
-            {claimError && (
+            {claimError && claimMeta?.publishStatus !== "local-only" && (
               <div className="bg-red-900/20 border border-red-500/30 p-4 space-y-3">
                 <p className="text-sm text-red-400 font-body">{claimError}</p>
                 <button
